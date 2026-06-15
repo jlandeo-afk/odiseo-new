@@ -1,5 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
 import { GenerateMaterialRequestDto } from './dto/generate-material-request.dto';
+import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { MaterialsService } from './materials.service';
 
 @Controller('v1/materials')
@@ -20,5 +21,15 @@ export class MaterialsController {
       job_id: jobId,
       message: 'La solicitud ha sido encolada exitosamente. Recibirás una notificación cuando el material esté listo para descargar.',
     };
+  }
+
+  @Post('webhook/status')
+  @HttpCode(HttpStatus.OK)
+  async updateMaterialStatus(@Body() request: WebhookStatusRequestDto) {
+    if (!request.job_id || !request.status) {
+      throw new BadRequestException('job_id and status are required');
+    }
+    await this.materialsService.updateMaterialStatus(request);
+    return { success: true };
   }
 }

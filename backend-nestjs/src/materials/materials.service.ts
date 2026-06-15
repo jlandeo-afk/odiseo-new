@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GenerateMaterialRequestDto } from './dto/generate-material-request.dto';
+import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { GenerateMaterialJobDto, ExamArea } from './dto/generate-material-job.dto';
 import { MaterialRequest, MaterialRequestStatus } from './entities/material-request.entity';
 import { v4 as uuidv4 } from 'uuid';
@@ -77,5 +78,20 @@ export class MaterialsService {
     await this.sqsService.sendGenerateMaterialJob(payload);
 
     return jobId;
+  }
+
+  async updateMaterialStatus(statusData: WebhookStatusRequestDto): Promise<void> {
+    this.logger.log(`Received internal webhook update for job ${statusData.job_id}: ${statusData.status}`);
+    try {
+      // Mocking DB update
+      // await this.materialRequestRepo.update(statusData.job_id, {
+      //   status: statusData.status,
+      //   downloadUrl: statusData.download_url,
+      //   errorMessage: statusData.error_message,
+      // });
+      this.logger.log(`MaterialRequest ${statusData.job_id} updated to ${statusData.status} in DB.`);
+    } catch (error) {
+      this.logger.error(`Failed to update MaterialRequest status: ${error.message}`);
+    }
   }
 }

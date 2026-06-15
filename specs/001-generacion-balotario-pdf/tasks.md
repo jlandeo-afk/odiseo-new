@@ -83,7 +83,7 @@
 
 - [x] T018 [P] [US3] Create `MaterialRequest` TypeORM entity en `backend-nestjs/src/materials/entities/material-request.entity.ts`.
 - [x] T019 [US3] Update `backend-nestjs/src/materials/materials.service.ts` para persistir estado "pending" antes de enviar mensaje a SQS.
-- [ ] T020 [P] [US3] Create internal webhook endpoint `POST /api/v1/materials/webhook/status` en `backend-nestjs/src/materials/materials.controller.ts` para recibir actualización del worker.
+- [x] T020 [P] [US3] Create internal webhook endpoint `POST /api/v1/materials/webhook/status` en `backend-nestjs/src/materials/materials.controller.ts` para recibir actualización del worker.
 - [ ] T021 [US3] Update `worker-fastapi/app/sqs_consumer.py` para invocar el webhook interno notificando éxito (`download_url`) o error para actualizar la base de datos B2B.
 
 **Checkpoint**: All user stories should now be independently functional.
