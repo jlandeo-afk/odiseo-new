@@ -53,16 +53,19 @@ class SQSConsumer:
         material_type = body.get('material_type', 'UNKNOWN')
         
         try:
-            # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3)
+            # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3) o pausar (Curaduría)
             download_url = material_assembler.assemble(body)
             
-            logger.info(f"Successfully finished processing job_id: {job_id}. Download URL: {download_url}")
-            
-            # 2. Notificar por WebSocket si hay connection_id
-            ws_notifier.notify_success(connection_id, job_id, material_type, download_url)
-            
-            # 3. T021 [US3]: Notificar webhook interno B2B para persistencia
-            self.notify_internal_webhook(job_id, "completed", download_url=download_url)
+            if download_url == "CURATION_REQUIRED":
+                logger.info(f"Job {job_id} requires manual curation. Waiting for user action.")
+                ws_notifier.notify_success(connection_id, job_id, material_type, "CURATION_REQUIRED")
+                self.notify_internal_webhook(job_id, "curation_pending")
+            else:
+                logger.info(f"Successfully finished processing job_id: {job_id}. Download URL: {download_url}")
+                # 2. Notificar por WebSocket si hay connection_id
+                ws_notifier.notify_success(connection_id, job_id, material_type, download_url)
+                # 3. T021 [US3]: Notificar webhook interno B2B para persistencia
+                self.notify_internal_webhook(job_id, "completed", download_url=download_url)
             
         except InsufficientQuestionsError as e:
             logger.error(f"Data validation error for job {job_id}: {str(e)}")

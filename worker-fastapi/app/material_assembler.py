@@ -21,10 +21,17 @@ class MaterialAssembler:
         syllabus = job_payload.get('syllabus_distribution', [])
         tenant = job_payload.get('tenant', {})
         exam_areas = job_payload.get('exam_areas')
+        requires_curation = job_payload.get('requires_curation', False)
 
         logger.info(f"Assembling {material_type} for job {job_id}")
 
         try:
+            if requires_curation:
+                # T024 [US4]: Pausar la generación física para revisión en UI Intermedia
+                logger.info(f"Curation required for job {job_id}. Fetching questions and pausing physical generation.")
+                _ = core_api_client.fetch_questions(course_id, difficulty, syllabus)
+                return "CURATION_REQUIRED"
+
             if material_type == 'EXAMEN' and exam_areas:
             # Lógica CR-002 y CR-003: Segregación física por áreas
             pdf_buffers = {}
