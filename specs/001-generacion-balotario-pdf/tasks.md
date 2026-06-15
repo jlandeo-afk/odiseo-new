@@ -114,7 +114,7 @@
 **Purpose**: Improvements that affect multiple user stories.
 
 - [x] T027 [P] Ejecutar y validar escenarios End-to-End descritos en `quickstart.md`.
-- [ ] T028 Refactorizar código del generador PDF para optimizar la inyección de estilos (CSS a PDF).
+- [x] T028 Refactorizar código del generador PDF para optimizar la inyección de estilos (CSS a PDF).
 - [ ] T029 [P] Validar Clean Architecture: asegurar que `materials.controller.ts` no contenga reglas de negocio.
 
 ---
