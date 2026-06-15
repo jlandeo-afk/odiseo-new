@@ -45,7 +45,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Create API endpoint `POST /api/v1/materials/generate` en `backend-nestjs/src/materials/materials.controller.ts` asegurando retorno HTTP 202 síncrono.
+- [x] T008 [P] [US1] Create API endpoint `POST /api/v1/materials/generate` en `backend-nestjs/src/materials/materials.controller.ts` asegurando retorno HTTP 202 síncrono.
 - [ ] T009 [US1] Implement `MaterialsService` en `backend-nestjs/src/materials/materials.service.ts` para extraer jerarquía de sílabo y enviar el payload a `sqs.service.ts`.
 - [ ] T010 [P] [US1] Implement Core API REST client en `worker-fastapi/app/core_api_client.py` para consultar reactivos.
 - [ ] T011 [P] [US1] Implement PDF generation logic en `worker-fastapi/app/pdf_generator.py` inyectando dinámicamente metadatos del Tenant.
