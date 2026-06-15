@@ -18,7 +18,7 @@
 
 - [x] T001 [P] Configure SQS queue and S3 bucket in LocalStack or AWS para desarrollo local (`docker-compose.yml` u scripts auxiliares).
 - [x] T002 [P] Install AWS SDK (`@aws-sdk/client-sqs`, `@aws-sdk/client-s3`) en `backend-nestjs/package.json`.
-- [ ] T003 [P] Install `boto3`, `fastapi`, y librerías de PDF (`pdfkit` o `reportlab`) en `worker-fastapi/requirements.txt`.
+- [x] T003 [P] Install `boto3`, `fastapi`, y librerías de PDF (`pdfkit` o `reportlab`) en `worker-fastapi/requirements.txt`.
 
 ---
 
