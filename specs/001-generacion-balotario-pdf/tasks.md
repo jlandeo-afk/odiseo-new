@@ -28,7 +28,7 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Create `GenerateMaterialJob` DTO/interface en `backend-nestjs/src/materials/dto/generate-material-job.dto.ts` basado en `data-model.md`.
+- [x] T004 Create `GenerateMaterialJob` DTO/interface en `backend-nestjs/src/materials/dto/generate-material-job.dto.ts` basado en `data-model.md`.
 - [ ] T005 [P] Implement AWS SQS producer service en `backend-nestjs/src/aws/sqs.service.ts`.
 - [ ] T006 [P] Implement AWS S3 upload service base en `worker-fastapi/app/s3_service.py`.
 - [ ] T007 [P] Implement SQS consumer base loop en `worker-fastapi/app/sqs_consumer.py`.
