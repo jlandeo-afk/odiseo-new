@@ -104,7 +104,7 @@
 
 **Goal**: Orquestar la ejecución desatendida a través de programación horaria.
 
-- [ ] T025 [P] [US5] Implement the recurrent Cron Job / worker scheduler in Laravel (o framework equivalente acordado) para disparar lotes de balotarios automáticamente.
+- [x] T025 [P] [US5] Implement the recurrent Cron Job / worker scheduler in Laravel (o framework equivalente acordado) para disparar lotes de balotarios automáticamente.
 - [ ] T026 [US5] Implement `cycle_weeks` traversal logic garantizando la preservación estricta de las semanas nulas (NULL) en la base de datos B2B.
 
 ---
