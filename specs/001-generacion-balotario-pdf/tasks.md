@@ -66,7 +66,7 @@
 ### Implementation for User Story 2
 
 - [x] T015 [US2] Update `worker-fastapi/app/core_api_client.py` para detectar y validar cantidad de reactivos vs. `requested_quantity` y lanzar excepción controlada.
-- [ ] T016 [US2] Update `worker-fastapi/app/material_assembler.py` para abortar operación limpiamente ante la excepción.
+- [x] T016 [US2] Update `worker-fastapi/app/material_assembler.py` para abortar operación limpiamente ante la excepción.
 - [ ] T017 [US2] Update `worker-fastapi/app/ws_notifier.py` para capturar error en consumidor y emitir evento `material.generation.failed` con la causa.
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently.

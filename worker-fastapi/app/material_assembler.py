@@ -1,7 +1,7 @@
 import logging
 import zipfile
 import io
-from .core_api_client import core_api_client
+from .core_api_client import core_api_client, InsufficientQuestionsError
 from .pdf_generator import pdf_generator
 from .s3_service import s3_service
 
@@ -24,7 +24,8 @@ class MaterialAssembler:
 
         logger.info(f"Assembling {material_type} for job {job_id}")
 
-        if material_type == 'EXAMEN' and exam_areas:
+        try:
+            if material_type == 'EXAMEN' and exam_areas:
             # Lógica CR-002 y CR-003: Segregación física por áreas
             pdf_buffers = {}
             for area in exam_areas:
@@ -62,5 +63,12 @@ class MaterialAssembler:
             file_name = f"materiales/{job_id}/documento.pdf"
             download_url = s3_service.upload_pdf(pdf_bytes, file_name)
             return download_url
+            
+        except InsufficientQuestionsError as e:
+            logger.error(f"Assembly aborted for job {job_id} due to data validation: {str(e)}")
+            raise e
+        except Exception as e:
+            logger.error(f"Assembly aborted for job {job_id} due to unexpected error: {str(e)}")
+            raise e
 
 material_assembler = MaterialAssembler()
