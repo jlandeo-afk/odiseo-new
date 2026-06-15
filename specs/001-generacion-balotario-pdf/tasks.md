@@ -104,7 +104,7 @@
 
 **Goal**: Orquestar la ejecución desatendida a través de programación horaria.
 
-- [x] T025 [P] [US5] Implement the recurrent Cron Job / worker scheduler in Laravel (o framework equivalente acordado) para disparar lotes de balotarios automáticamente.
+- [x] T025 [P] [US5] Implement the recurrent Cron Job / worker scheduler usando `@nestjs/schedule` para disparar lotes de balotarios automáticamente.
 - [x] T026 [US5] Implement `cycle_weeks` traversal logic garantizando la preservación estricta de las semanas nulas (NULL) en la base de datos B2B.
 
 ---
@@ -116,6 +116,7 @@
 - [x] T027 [P] Ejecutar y validar escenarios End-to-End descritos en `quickstart.md`.
 - [x] T028 Refactorizar código del generador PDF para optimizar la inyección de estilos (CSS a PDF).
 - [x] T029 [P] Validar Clean Architecture: asegurar que `materials.controller.ts` no contenga reglas de negocio.
+- [ ] T030 [P] Implementar contratos OpenAPI/Swagger en `materials.controller.ts` para cumplir con el Estándar de Calidad IV de la Constitución.
 
 ---
 
@@ -142,5 +143,6 @@
 - **[CR-001/002/003]**: Partición física de cuadernillos → T012.
 - **[CR-004]**: Semanas nulas intactas → T026.
 - **[CR-005]**: Funciones Postgres VOID → T023.
+- **[Const-IV]**: Contratos OpenAPI/Swagger → T030.
 
 ✅ Confirmación explícita: El 100% de los requisitos (FR y CR) especificados en `spec.md` cuentan con al menos una tarea atómica asignada y trazable.
