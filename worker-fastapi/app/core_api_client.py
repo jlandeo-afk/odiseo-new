@@ -5,6 +5,10 @@ from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
+class InsufficientQuestionsError(Exception):
+    """Excepción lanzada cuando el Core API no devuelve suficientes reactivos según el sílabo."""
+    pass
+
 class CoreApiClient:
     def __init__(self):
         self.base_url = os.getenv("CORE_API_URL", "http://localhost:8000/api/v1/questions")
@@ -36,10 +40,18 @@ class CoreApiClient:
             # MOCK IMPLEMENTATION para desarrollo aislado
             logger.info("Mocking Core API response...")
             mock_questions = []
+            expected_total = sum(item.get("requested_quantity", 0) for item in syllabus)
+            
             for item in syllabus:
                 topic_id = item.get("topic_id")
                 qty = item.get("requested_quantity", 0)
-                for i in range(qty):
+                
+                # MOCK DE FALLO: Si se piden cantidades irreales o magic numbers, simulamos escasez
+                actual_qty = qty
+                if qty >= 99:
+                    actual_qty = qty // 2
+                    
+                for i in range(actual_qty):
                     mock_questions.append({
                         "question_id": f"q-{topic_id}-{i}",
                         "content": f"Pregunta simulada {i+1} de la DB central para el tema {topic_id}. Nivel: {difficulty_level}",
@@ -51,6 +63,13 @@ class CoreApiClient:
                         ],
                         "correct_answer": "A"
                     })
+            
+            # T015 [US2]: Validación de reactivos insuficientes
+            if len(mock_questions) < expected_total:
+                logger.error(f"Insufficient questions. Expected: {expected_total}, Found: {len(mock_questions)}")
+                raise InsufficientQuestionsError(
+                    f"No hay suficientes reactivos para los filtros seleccionados. Se solicitaron {expected_total} pero solo hay {len(mock_questions)} disponibles."
+                )
             
             logger.info(f"Core API returned {len(mock_questions)} questions")
             return mock_questions
