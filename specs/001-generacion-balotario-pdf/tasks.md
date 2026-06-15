@@ -90,13 +90,32 @@
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: User Story 4 - Curaduría Manual (Priority: P1)
+
+**Goal**: Implementar la UI intermedia y operaciones de curaduría de reactivos.
+
+- [ ] T022 [P] [US4] Create RESTful endpoints en `backend-nestjs/src/materials/materials.controller.ts` para acciones de curaduría (`PUT .../remove`, `regenerate`, `complete`).
+- [ ] T023 [US4] Implement strict PostgreSQL `void` functions via TypeORM migrations para la actualización de estados de curaduría.
+- [ ] T024 [US4] Update `worker-fastapi/app/material_assembler.py` para pausar la generación física hasta recibir confirmación explícita desde la curaduría.
+
+---
+
+## Phase 7: User Story 5 - Generación Automática (Cron/Scheduler) (Priority: P1)
+
+**Goal**: Orquestar la ejecución desatendida a través de programación horaria.
+
+- [ ] T025 [P] [US5] Implement the recurrent Cron Job / worker scheduler in Laravel (o framework equivalente acordado) para disparar lotes de balotarios automáticamente.
+- [ ] T026 [US5] Implement `cycle_weeks` traversal logic garantizando la preservación estricta de las semanas nulas (NULL) en la base de datos B2B.
+
+---
+
+## Phase 8: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories.
 
-- [ ] T022 [P] Ejecutar y validar escenarios End-to-End descritos en `quickstart.md`.
-- [ ] T023 Refactorizar código del generador PDF para optimizar la inyección de estilos (CSS a PDF).
-- [ ] T024 [P] Validar Clean Architecture: asegurar que `materials.controller.ts` no contenga reglas de negocio.
+- [ ] T027 [P] Ejecutar y validar escenarios End-to-End descritos en `quickstart.md`.
+- [ ] T028 Refactorizar código del generador PDF para optimizar la inyección de estilos (CSS a PDF).
+- [ ] T029 [P] Validar Clean Architecture: asegurar que `materials.controller.ts` no contenga reglas de negocio.
 
 ---
 
@@ -118,6 +137,10 @@
 - **[FR-007/008]**: Notificación WebSocket → T014.
 - **[FR-009]**: Sílabo estructurado → T009.
 - **[FR-010]**: Tenant branding → T011.
+- **[FR-011/012]**: Curaduría Manual e Intermediate UI → T022, T023, T024.
+- **[FR-013]**: Generación Cron/Laravel automatizada → T025.
 - **[CR-001/002/003]**: Partición física de cuadernillos → T012.
+- **[CR-004]**: Semanas nulas intactas → T026.
+- **[CR-005]**: Funciones Postgres VOID → T023.
 
 ✅ Confirmación explícita: El 100% de los requisitos (FR y CR) especificados en `spec.md` cuentan con al menos una tarea atómica asignada y trazable.
