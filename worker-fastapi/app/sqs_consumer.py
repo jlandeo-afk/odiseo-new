@@ -5,6 +5,7 @@ import logging
 import time
 from .material_assembler import material_assembler
 from .ws_notifier import ws_notifier
+from .core_api_client import InsufficientQuestionsError
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +29,28 @@ class SQSConsumer:
         job_id = body.get('job_id', 'UNKNOWN')
         logger.info(f"Received SQS Event: {job_id}")
         
-        # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3)
-        download_url = material_assembler.assemble(body)
-        
-        logger.info(f"Successfully finished processing job_id: {job_id}. Download URL: {download_url}")
-        
-        # 2. Notificar por WebSocket si hay connection_id
         connection_id = body.get('notification', {}).get('websocket_connection_id')
         material_type = body.get('material_type', 'UNKNOWN')
-        ws_notifier.notify_success(connection_id, job_id, material_type, download_url)
+        
+        try:
+            # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3)
+            download_url = material_assembler.assemble(body)
+            
+            logger.info(f"Successfully finished processing job_id: {job_id}. Download URL: {download_url}")
+            
+            # 2. Notificar por WebSocket si hay connection_id
+            ws_notifier.notify_success(connection_id, job_id, material_type, download_url)
+            
+        except InsufficientQuestionsError as e:
+            logger.error(f"Data validation error for job {job_id}: {str(e)}")
+            ws_notifier.notify_failure(connection_id, job_id, str(e))
+            # No re-lanzamos porque el error es esperado (US2), el job debe ser eliminado de SQS
+            
+        except Exception as e:
+            logger.error(f"Unexpected error processing job {job_id}: {str(e)}")
+            ws_notifier.notify_failure(connection_id, job_id, "Error interno durante la generación del material.")
+            # Dependiendo de la política de reintentos, se podría relanzar aquí.
+            # Por ahora lo atrapamos para que el SQS Consumer no se caiga.
 
     def start_polling(self):
         logger.info(f"Starting SQS consumer polling on {self.queue_url}")
