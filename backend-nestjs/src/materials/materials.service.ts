@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GenerateMaterialRequestDto } from './dto/generate-material-request.dto';
@@ -19,6 +19,9 @@ export class MaterialsService {
   ) {}
 
   async generateMaterial(request: GenerateMaterialRequestDto): Promise<string> {
+    if (request.material_type === 'EXAMEN' && (!request.exam_areas || request.exam_areas.length === 0)) {
+      throw new BadRequestException('exam_areas is required when material_type is EXAMEN');
+    }
     const jobId = uuidv4();
     const tenantId = '7b89-11c2-d344'; // Mocked tenant from auth
     
@@ -81,6 +84,9 @@ export class MaterialsService {
   }
 
   async updateMaterialStatus(statusData: WebhookStatusRequestDto): Promise<void> {
+    if (!statusData.job_id || !statusData.status) {
+      throw new BadRequestException('job_id and status are required');
+    }
     this.logger.log(`Received internal webhook update for job ${statusData.job_id}: ${statusData.status}`);
     try {
       // Mocking DB update

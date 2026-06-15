@@ -10,10 +10,6 @@ export class MaterialsController {
   @Post('generate')
   @HttpCode(HttpStatus.ACCEPTED) // 202 Accepted
   async generateMaterial(@Body() request: GenerateMaterialRequestDto) {
-    if (request.material_type === 'EXAMEN' && (!request.exam_areas || request.exam_areas.length === 0)) {
-      throw new BadRequestException('exam_areas is required when material_type is EXAMEN');
-    }
-
     const jobId = await this.materialsService.generateMaterial(request);
 
     return {
@@ -26,9 +22,6 @@ export class MaterialsController {
   @Post('webhook/status')
   @HttpCode(HttpStatus.OK)
   async updateMaterialStatus(@Body() request: WebhookStatusRequestDto) {
-    if (!request.job_id || !request.status) {
-      throw new BadRequestException('job_id and status are required');
-    }
     await this.materialsService.updateMaterialStatus(request);
     return { success: true };
   }
