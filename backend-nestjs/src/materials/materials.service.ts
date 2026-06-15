@@ -94,4 +94,27 @@ export class MaterialsService {
       this.logger.error(`Failed to update MaterialRequest status: ${error.message}`);
     }
   }
+
+  async removeQuestion(jobId: string, questionId: string): Promise<void> {
+    this.logger.log(`Manual Curation: Removing question ${questionId} for job ${jobId}`);
+    // T023 will implement the strict PostgreSQL void function call here
+  }
+
+  async regenerateQuestion(jobId: string, questionId: string): Promise<any> {
+    this.logger.log(`Manual Curation: Regenerating question ${questionId} for job ${jobId}`);
+    // T023 will implement the strict PostgreSQL void function call here
+    return { question_id: 'new-mocked-q-1', content: 'Nueva pregunta generada en curaduría' };
+  }
+
+  async manualComplete(jobId: string): Promise<void> {
+    this.logger.log(`Manual Curation: Marking job ${jobId} as manual_complete`);
+    // T023 will implement the strict PostgreSQL void function call here
+    // T024: Here we would trigger the worker explicitly or send the confirmed SQS event
+  }
+
+  async autoComplete(jobId: string): Promise<void> {
+    this.logger.log(`Manual Curation: Marking job ${jobId} as auto_complete`);
+    // T023 will implement the strict PostgreSQL void function call here
+    // T024: Trigger final generation
+  }
 }

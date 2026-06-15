@@ -94,7 +94,7 @@
 
 **Goal**: Implementar la UI intermedia y operaciones de curaduría de reactivos.
 
-- [ ] T022 [P] [US4] Create RESTful endpoints en `backend-nestjs/src/materials/materials.controller.ts` para acciones de curaduría (`PUT .../remove`, `regenerate`, `complete`).
+- [x] T022 [P] [US4] Create RESTful endpoints en `backend-nestjs/src/materials/materials.controller.ts` para acciones de curaduría (`PUT .../remove`, `regenerate`, `complete`).
 - [ ] T023 [US4] Implement strict PostgreSQL `void` functions via TypeORM migrations para la actualización de estados de curaduría.
 - [ ] T024 [US4] Update `worker-fastapi/app/material_assembler.py` para pausar la generación física hasta recibir confirmación explícita desde la curaduría.
 
