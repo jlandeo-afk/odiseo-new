@@ -50,8 +50,8 @@
 - [x] T013 [US1] Integrate SQS consumer con el ensamblador y S3 subiendo el resultado final en `worker-fastapi/app/sqs_consumer.py`.
 - [x] T014 [US1] Implement WebSocket notifier (API Gateway client) en `worker-fastapi/app/ws_notifier.py` para emitir el evento `material.generation.completed`.
 - [x] T015 [P] [US1] Frontend: Implement Vue.js/Nuxt frontend listener for WebSocket events en `frontend-vue/src/stores/websocket.store.ts` para capturar la URL final.
-- [ ] T016 [P] [US1] Frontend Unit Tests: Escribir pruebas para el componente de recepción WebSocket en `frontend-vue/tests/unit/websocket.spec.ts`.
-- [ ] T017 [P] [US1] Backend Integration Tests: Escribir pruebas RESTful para `POST /api/v1/materials/generate` en `backend-nestjs/test/materials.e2e-spec.ts`.
+- [x] T016 [P] [US1] Frontend Unit Tests: Escribir pruebas para el componente de recepción WebSocket en `frontend-vue/tests/unit/websocket.spec.ts`.
+- [x] T017 [P] [US1] Backend Integration Tests: Escribir pruebas RESTful para `POST /api/v1/materials/generate` en `backend-nestjs/test/materials.e2e-spec.ts`.
 
 ---
 
@@ -64,8 +64,8 @@
 - [x] T019 [US2] Update `worker-fastapi/app/material_assembler.py` para abortar operación limpiamente ante la excepción.
 - [x] T020 [US2] Update `worker-fastapi/app/ws_notifier.py` para capturar error en consumidor y emitir evento `material.generation.failed` con la causa.
 - [x] T021 [P] [US2] Frontend: Implement Vue.js/Nuxt empty state UI en `frontend-vue/src/components/MaterialWarning.vue` para mostrar la advertencia de falta de reactivos.
-- [ ] T022 [P] [US2] Frontend Unit Tests: Escribir pruebas para el UI warning de estados vacíos en `frontend-vue/tests/unit/MaterialWarning.spec.ts`.
-- [ ] T023 [P] [US2] Backend Integration Tests: Escribir pruebas RESTful simulando falla de Core API en `backend-nestjs/test/materials-failure.e2e-spec.ts`.
+- [x] T022 [P] [US2] Frontend Unit Tests: Escribir pruebas para el UI warning de estados vacíos en `frontend-vue/tests/unit/MaterialWarning.spec.ts`.
+- [x] T023 [P] [US2] Backend Integration Tests: Escribir pruebas RESTful simulando falla de Core API en `backend-nestjs/test/materials-failure.e2e-spec.ts`.
 
 ---
 
@@ -79,8 +79,8 @@
 - [x] T026 [P] [US3] Create internal webhook endpoint `POST /api/v1/materials/webhook/status` en `backend-nestjs/src/materials/materials.controller.ts`.
 - [x] T027 [US3] Update `worker-fastapi/app/sqs_consumer.py` para invocar el webhook interno notificando éxito o error.
 - [x] T028 [P] [US3] Frontend: Implement Vue.js/Nuxt history view en `frontend-vue/src/pages/materials/history.vue` para recuperar PDFs generados offline.
-- [ ] T029 [P] [US3] Frontend Unit Tests: Escribir pruebas del historial y recuperación de estado en `frontend-vue/tests/unit/history.spec.ts`.
-- [ ] T030 [P] [US3] Backend Integration Tests: Escribir pruebas para el endpoint del webhook en `backend-nestjs/test/webhook.e2e-spec.ts`.
+- [x] T029 [P] [US3] Frontend Unit Tests: Escribir pruebas del historial y recuperación de estado en `frontend-vue/tests/unit/history.spec.ts`.
+- [x] T030 [P] [US3] Backend Integration Tests: Escribir pruebas para el endpoint del webhook en `backend-nestjs/test/webhook.e2e-spec.ts`.
 
 ---
 
@@ -93,9 +93,9 @@
 - [x] T033 [US4] Update `worker-fastapi/app/material_assembler.py` para pausar la generación física hasta recibir confirmación explícita.
 - [x] T034 [P] [US4] Frontend: Implementar las Vistas de Curaduría Manual en Vue.js/Nuxt en `frontend-vue/src/pages/materials/curation.vue`.
 - [x] T035 [P] [US4] Frontend: Implement Pinia Reactive State en `frontend-vue/src/stores/curation.store.ts` para gestionar en tiempo real las transiciones de los estados de BD (`MISSING`, `AUTO_COMPLETED`, `MANUAL_REMOVED`, `GENERATED`).
-- [ ] T036 [P] [US4] Frontend Unit Tests: Escribir pruebas del flujo interactivo de curaduría manual y el manejo del store de Pinia en `frontend-vue/tests/unit/curation.spec.ts`.
-- [ ] T037 [P] [US4] Backend Integration Tests: Escribir pruebas RESTful completas para los endpoints de curaduría en `backend-nestjs/test/curation.e2e-spec.ts`.
-- [ ] T038 [P] [US4] Database Tests: Escribir tests (vía Jest/TypeORM DB tests o pgTAP) en `backend-nestjs/test/db/curation-functions.spec.ts` garantizando que las funciones de actualización de curaduría retornan estrictamente `void`.
+- [x] T036 [P] [US4] Frontend Unit Tests: Escribir pruebas del flujo interactivo de curaduría manual y el manejo del store de Pinia en `frontend-vue/tests/unit/curation.spec.ts`.
+- [x] T037 [P] [US4] Backend Integration Tests: Escribir pruebas RESTful completas para los endpoints de curaduría en `backend-nestjs/test/curation.e2e-spec.ts`.
+- [x] T038 [P] [US4] Database Tests: Escribir tests (vía Jest/TypeORM DB tests o pgTAP) en `backend-nestjs/test/db/curation-functions.spec.ts` garantizando que las funciones de actualización de curaduría retornan estrictamente `void`.
 
 ---
 
@@ -105,8 +105,8 @@
 
 - [x] T039 [P] [US5] Implement the recurrent Cron Job / worker scheduler usando `@nestjs/schedule` para disparar lotes de balotarios automáticamente.
 - [x] T040 [US5] Implement `cycle_weeks` traversal logic garantizando la preservación estricta de las semanas nulas (NULL) en la base de datos B2B.
-- [ ] T041 [P] [US5] Backend Integration Tests: Escribir pruebas para la correcta ejecución del iterador del cron job en `backend-nestjs/test/cron.e2e-spec.ts`.
-- [ ] T042 [P] [US5] Database Tests: Escribir tests en `backend-nestjs/test/db/cycle-weeks.spec.ts` validando que el algoritmo preserve rigurosamente las semanas inactivas como registros nulos sin eliminarlas (CR-004).
+- [x] T041 [P] [US5] Backend Integration Tests: Escribir pruebas para la correcta ejecución del iterador del cron job en `backend-nestjs/test/cron.e2e-spec.ts`.
+- [x] T042 [P] [US5] Database Tests: Escribir tests en `backend-nestjs/test/db/cycle-weeks.spec.ts` validando que el algoritmo preserve rigurosamente las semanas inactivas como registros nulos sin eliminarlas (CR-004).
 
 ---
 
