@@ -3,6 +3,7 @@ import boto3
 import json
 import logging
 import time
+from .material_assembler import material_assembler
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +27,10 @@ class SQSConsumer:
         job_id = body.get('job_id', 'UNKNOWN')
         logger.info(f"Received SQS Event: {job_id}")
         
-        # Placeholder para la lógica principal
-        # Core API -> Ensamblador -> PDF -> S3 -> WS
-        time.sleep(1) # Simulación de procesamiento
+        # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3)
+        download_url = material_assembler.assemble(body)
         
-        logger.info(f"Successfully finished processing job_id: {job_id}")
+        logger.info(f"Successfully finished processing job_id: {job_id}. Download URL: {download_url}")
 
     def start_polling(self):
         logger.info(f"Starting SQS consumer polling on {self.queue_url}")
