@@ -3,6 +3,8 @@ import boto3
 import json
 import logging
 import time
+import os
+import requests
 from .material_assembler import material_assembler
 from .ws_notifier import ws_notifier
 from .core_api_client import InsufficientQuestionsError
@@ -12,6 +14,7 @@ logger = logging.getLogger(__name__)
 class SQSConsumer:
     def __init__(self):
         self.queue_url = os.getenv("AWS_SQS_QUEUE_URL", "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/odiseo-materials-queue")
+        self.b2b_webhook_url = os.getenv("B2B_WEBHOOK_URL", "http://localhost:3000/v1/materials/webhook/status")
         endpoint_url = os.getenv("AWS_SQS_ENDPOINT", "http://localhost:4566")
         region_name = os.getenv("AWS_REGION", "us-east-1")
         
@@ -20,6 +23,23 @@ class SQSConsumer:
             endpoint_url=endpoint_url,
             region_name=region_name
         )
+
+    def notify_internal_webhook(self, job_id: str, status: str, download_url: str = None, error_message: str = None):
+        payload = {
+            "job_id": job_id,
+            "status": status,
+        }
+        if download_url:
+            payload["download_url"] = download_url
+        if error_message:
+            payload["error_message"] = error_message
+            
+        try:
+            response = requests.post(self.b2b_webhook_url, json=payload, timeout=5)
+            response.raise_for_status()
+            logger.info(f"Internal webhook notified for job {job_id}: {status}")
+        except requests.RequestException as e:
+            logger.error(f"Failed to notify internal webhook for job {job_id}: {str(e)}")
 
     def process_message(self, message: dict):
         """
@@ -41,14 +61,19 @@ class SQSConsumer:
             # 2. Notificar por WebSocket si hay connection_id
             ws_notifier.notify_success(connection_id, job_id, material_type, download_url)
             
+            # 3. T021 [US3]: Notificar webhook interno B2B para persistencia
+            self.notify_internal_webhook(job_id, "completed", download_url=download_url)
+            
         except InsufficientQuestionsError as e:
             logger.error(f"Data validation error for job {job_id}: {str(e)}")
             ws_notifier.notify_failure(connection_id, job_id, str(e))
+            self.notify_internal_webhook(job_id, "failed", error_message=str(e))
             # No re-lanzamos porque el error es esperado (US2), el job debe ser eliminado de SQS
             
         except Exception as e:
             logger.error(f"Unexpected error processing job {job_id}: {str(e)}")
             ws_notifier.notify_failure(connection_id, job_id, "Error interno durante la generación del material.")
+            self.notify_internal_webhook(job_id, "failed", error_message="Error interno durante la generación del material.")
             # Dependiendo de la política de reintentos, se podría relanzar aquí.
             # Por ahora lo atrapamos para que el SQS Consumer no se caiga.
 
