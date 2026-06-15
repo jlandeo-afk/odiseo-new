@@ -116,7 +116,7 @@
 - [x] T027 [P] Ejecutar y validar escenarios End-to-End descritos en `quickstart.md`.
 - [x] T028 Refactorizar código del generador PDF para optimizar la inyección de estilos (CSS a PDF).
 - [x] T029 [P] Validar Clean Architecture: asegurar que `materials.controller.ts` no contenga reglas de negocio.
-- [ ] T030 [P] Implementar contratos OpenAPI/Swagger en `materials.controller.ts` para cumplir con el Estándar de Calidad IV de la Constitución.
+- [x] T030 [P] Implementar contratos OpenAPI/Swagger en `materials.controller.ts` para cumplir con el Estándar de Calidad IV de la Constitución.
 
 ---
 
