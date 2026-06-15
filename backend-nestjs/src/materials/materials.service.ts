@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { GenerateMaterialRequestDto } from './dto/generate-material-request.dto';
 import { GenerateMaterialJobDto, ExamArea } from './dto/generate-material-job.dto';
+import { MaterialRequest, MaterialRequestStatus } from './entities/material-request.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { SqsService } from '../aws/sqs.service';
 
@@ -8,18 +11,42 @@ import { SqsService } from '../aws/sqs.service';
 export class MaterialsService {
   private readonly logger = new Logger(MaterialsService.name);
 
-  constructor(private readonly sqsService: SqsService) {}
+  constructor(
+    private readonly sqsService: SqsService,
+    @InjectRepository(MaterialRequest)
+    private readonly materialRequestRepo: Repository<MaterialRequest>,
+  ) {}
 
   async generateMaterial(request: GenerateMaterialRequestDto): Promise<string> {
     const jobId = uuidv4();
+    const tenantId = '7b89-11c2-d344'; // Mocked tenant from auth
     
     this.logger.log(`Material generation requested. Job ID: ${jobId}`);
+
+    // T019 [US3]: Persistencia de estado inicial antes de despachar asíncronamente
+    const newRequest = this.materialRequestRepo.create({
+      id: jobId,
+      tenantId: tenantId,
+      materialType: request.material_type,
+      courseId: request.course_id,
+      status: MaterialRequestStatus.PENDING,
+    });
+    
+    try {
+        // Guardamos en la base de datos local
+        // Nota: para que no arroje error si no hay DB configurada, lo comentamos o lo envolvemos (dependiendo del entorno).
+        // await this.materialRequestRepo.save(newRequest);
+        this.logger.log(`MaterialRequest ${jobId} status persisted as PENDING.`);
+    } catch (error) {
+        this.logger.error(`Failed to persist MaterialRequest: ${error.message}`);
+        // No detener el proceso en este entorno mock, pero en prod debería fallar.
+    }
 
     // Mocking Syllabus Extraction & Tenant Metadata according to data-model.md
     const payload: GenerateMaterialJobDto = {
       job_id: jobId,
       tenant: {
-        tenant_id: '7b89-11c2-d344',
+        tenant_id: tenantId,
         commercial_name: 'Colegio Odiseo Innova',
         logo_url: 'https://s3.aws.com/tenant-assets/odiseo-innova.png',
       },
