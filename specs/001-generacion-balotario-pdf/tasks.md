@@ -51,7 +51,7 @@
 - [x] T011 [P] [US1] Implement PDF generation logic en `worker-fastapi/app/pdf_generator.py` inyectando dinámicamente metadatos del Tenant.
 - [x] T012 [US1] Implement logical segregation and booklet assembly (CR-002, CR-003) en `worker-fastapi/app/material_assembler.py` invocando el `pdf_generator` por cada `exam_area_id`.
 - [x] T013 [US1] Integrate SQS consumer con el ensamblador y S3 subiendo el resultado final en `worker-fastapi/app/sqs_consumer.py`.
-- [ ] T014 [US1] Implement WebSocket notifier (API Gateway client) en `worker-fastapi/app/ws_notifier.py` para emitir el evento `material.generation.completed`.
+- [x] T014 [US1] Implement WebSocket notifier (API Gateway client) en `worker-fastapi/app/ws_notifier.py` para emitir el evento `material.generation.completed`.
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently.
 

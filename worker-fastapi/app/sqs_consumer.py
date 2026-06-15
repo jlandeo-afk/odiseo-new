@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from .material_assembler import material_assembler
+from .ws_notifier import ws_notifier
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,11 @@ class SQSConsumer:
         download_url = material_assembler.assemble(body)
         
         logger.info(f"Successfully finished processing job_id: {job_id}. Download URL: {download_url}")
+        
+        # 2. Notificar por WebSocket si hay connection_id
+        connection_id = body.get('notification', {}).get('websocket_connection_id')
+        material_type = body.get('material_type', 'UNKNOWN')
+        ws_notifier.notify_success(connection_id, job_id, material_type, download_url)
 
     def start_polling(self):
         logger.info(f"Starting SQS consumer polling on {self.queue_url}")
