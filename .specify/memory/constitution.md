@@ -50,7 +50,7 @@ El ecosistema Odiseo se divide en dos dominios estrictamente separados:
 
 ### VII. Puntos de Control (Governance Checkpoints)
 - Las modificaciones a la estructura de la base de datos se manejan mediante migraciones automatizadas; los cambios en los esquemas B2B requieren revisión arquitectónica.
-- Toda pregunta digitalizada tiene un estado de revisión obligatorio antes de ser visible en el SaaS.
+- Toda pregunta debe ser verificada o aprobada antes de ser visible en el SaaS.
 
 ### VIII. Antipatrones (Anti-Patterns)
 - **NUNCA** compilar PDFs de materiales de forma síncrona dentro de los microservicios del SaaS.
