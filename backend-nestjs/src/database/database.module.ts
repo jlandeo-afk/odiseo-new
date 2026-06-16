@@ -17,7 +17,7 @@ import { TenantService } from './tenant.service';
         password: config.get<string>('DB_PASS', 'postgres'),
         database: config.get<string>('DB_NAME', 'odiseo'),
         autoLoadEntities: true,
-        synchronize: false, // Las migraciones se manejan aparte
+        synchronize: true, // Las migraciones se manejan aparte
         logging: ['error', 'warn'],
       }),
     }),
@@ -25,4 +25,4 @@ import { TenantService } from './tenant.service';
   providers: [TenantService],
   exports: [TenantService],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }

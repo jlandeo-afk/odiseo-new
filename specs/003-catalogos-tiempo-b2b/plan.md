@@ -21,8 +21,15 @@
 3. **AcademicTime Module (`cycle`, `cycle_weeks`)**:
    - `AcademicTimeController`: Endpoints completos `GET, POST, PATCH`. El endpoint de eliminación (`DELETE` o desactivación) solo invoca el soft-delete semántico de semanas.
 
-### Frontend (Nuxt/Vue)
-1. **Taxonomía UI (`pages/catalogs/index.vue`)**:
-   - Tabla interactiva o lista anidada. Muestra `core_name`, input editable para `local_alias` y switch/toggle para `is_active`.
-2. **Tableros de Ciclos (`pages/academic-time/index.vue`)**:
-   - Interfaz de cuadrícula. Al eliminar una semana, se muestra tachada o grisada en lugar de colapsar la tabla.
+### Frontend (Nuxt/Vue) - Feature-Sliced Design (FSD)
+Queda prohibida la estructura plana tradicional. Toda la lógica del frontend B2B se agrupará en la carpeta `src/features/`.
+
+1. **Feature: Catalogs (`features/catalogs`)**:
+   - `components/`: Tablas de taxonomía hiper-compactas, Command Palette de búsqueda.
+   - `composables/`: Lógica de Optimistic UI para actualizar `local_alias` y visibilidad.
+   - `store/`: Estado Pinia encapsulado.
+   - `pages/`: Vista base en `pages/catalogs/index.vue` que importa los componentes de la feature.
+2. **Feature: Academic Time (`features/academic-time`)**:
+   - `components/`: Matriz de Semanas hiper-compacta, Slide-overs para creación/edición de ciclos.
+   - `composables/`: Mutaciones optimistas para activar/desactivar semanas (soft-deletes).
+   - `pages/`: Vista base en `pages/academic-time/index.vue`.

@@ -1,50 +1,45 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-gray-900">Catálogo de Temas</h1>
-      <p class="text-sm text-gray-500">Ajusta los nombres locales y la visibilidad para tu institución.</p>
+  <div class="px-8 py-6 max-w-full">
+    <!-- Page header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-lg font-semibold text-gray-900">Catálogo de Cursos</h1>
+        <p class="text-xs text-gray-400 mt-0.5">
+          Personaliza nombres locales y visibilidad para tu institución.
+          Los cambios se aplican al instante.
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-400 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          Sincronizado con Banco Global
+        </span>
+      </div>
     </div>
 
-    <!-- Table of Topics (Simulated Data for now) -->
-    <UCard>
-      <UTable :rows="topics" :columns="columns">
-        <template #localAlias-data="{ row }">
-          <UInput v-model="row.localAlias" placeholder="Alias local (opcional)" @blur="updateTopic(row)" />
-        </template>
-        <template #isActive-data="{ row }">
-          <UToggle v-model="row.isActive" @change="updateTopic(row)" />
-        </template>
-      </UTable>
-    </UCard>
+    <!-- Loading skeleton -->
+    <div v-if="store.isLoading" class="space-y-2">
+      <div v-for="i in 6" :key="i" class="h-9 bg-gray-100 rounded-md animate-pulse" />
+    </div>
+
+    <!-- Table -->
+    <CatalogTable v-else />
+
+    <!-- Kbd hint -->
+    <p class="mt-5 text-xs text-gray-300 flex items-center gap-1.5">
+      <kbd class="inline-flex h-4 items-center rounded border border-gray-200 bg-gray-50 px-1 text-[10px] text-gray-400">⌘K</kbd>
+      para buscar rápidamente en todos los temas
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted } from 'vue'
+import { useCatalogsStore } from '../../features/catalogs/store'
+import CatalogTable from '../../features/catalogs/components/CatalogTable.vue'
 
-definePageMeta({
-  layout: 'b2b',
-  roles: ['admin', 'super-admin']
-});
+definePageMeta({ layout: 'b2b' })
 
-const columns = [
-  { key: 'coreName', label: 'Nombre Original (Banco Global)' },
-  { key: 'localAlias', label: 'Nombre Personalizado (Local)' },
-  { key: 'isActive', label: 'Visible' }
-];
-
-const topics = ref([
-  { id: '1', coreName: 'Álgebra Lineal', localAlias: 'Matemática I', isActive: true },
-  { id: '2', coreName: 'Geometría del Espacio', localAlias: null, isActive: true },
-  { id: '3', coreName: 'Física Cuántica', localAlias: null, isActive: false }
-]);
-
-async function updateTopic(row: any) {
-  // Aquí se enviaría el PATCH request al backend
-  console.log(`Updating topic ${row.id}: Alias=${row.localAlias}, Active=${row.isActive}`);
-  // await $fetch(`/api/v1/catalogs/topics/${row.id}`, {
-  //   method: 'PATCH',
-  //   body: { localAlias: row.localAlias, isActive: row.isActive }
-  // });
-}
+const store = useCatalogsStore()
+onMounted(() => store.fetchCourses())
 </script>

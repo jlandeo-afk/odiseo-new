@@ -1,5 +1,5 @@
 import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import { tmpdir } from 'node:os';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, getResponseStatusText } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, getResponseStatus, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getResponseStatusText } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/h3/dist/index.mjs';
 import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import crypto$1 from 'node:crypto';
@@ -8,7 +8,7 @@ import { escapeHtml } from 'file:///home/jhon/Documents/work-projects/odiseo-new
 import viteNodeEntry_mjs from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/@nuxt/vite-builder/dist/vite-node-entry.mjs';
 import { viteNodeFetch } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/@nuxt/vite-builder/dist/vite-node.mjs';
 import { createRenderer, getRequestDependencies, getPreloadLinks, getPrefetchLinks } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/vue-bundle-renderer/dist/runtime.mjs';
-import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, encodePath, joinRelativeURL } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/ufo/dist/index.mjs';
+import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, joinRelativeURL, encodePath } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/ufo/dist/index.mjs';
 import { renderToString } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/vue/server-renderer/index.mjs';
 import destr, { destr as destr$1 } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/destr/dist/index.mjs';
 import { createHooks } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/hookable/dist/index.mjs';
@@ -36,7 +36,9 @@ import { isVNode, isRef, toValue } from 'file:///home/jhon/Documents/work-projec
 import _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/@nuxt/vite-builder/dist/fix-stacktrace.mjs';
 import { promises } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname as dirname$1, resolve as resolve$1 } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/pathe/dist/index.mjs';
+import { dirname as dirname$1, resolve as resolve$1, basename } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/pathe/dist/index.mjs';
+import { getIcons } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/@iconify/utils/lib/index.mjs';
+import { collections } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/.nuxt/nuxt-icon-server-bundle.mjs';
 import { createHead as createHead$1, propsToString, renderSSRHead } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/unhead/dist/server.mjs';
 import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/unhead/dist/plugins.mjs';
 import { walkResolver } from 'file:///home/jhon/Documents/work-projects/odiseo-new/frontend-vue/node_modules/unhead/dist/utils.mjs';
@@ -622,7 +624,235 @@ function cloneWithProxy(obj, overrides) {
 const cachedEventHandler = defineCachedEventHandler;
 
 const inlineAppConfig = {
-  "nuxt": {}
+  "nuxt": {},
+  "ui": {
+    "colors": {
+      "primary": "green",
+      "secondary": "blue",
+      "success": "green",
+      "info": "blue",
+      "warning": "yellow",
+      "error": "red",
+      "neutral": "slate"
+    },
+    "icons": {
+      "arrowLeft": "i-lucide-arrow-left",
+      "arrowRight": "i-lucide-arrow-right",
+      "check": "i-lucide-check",
+      "chevronDoubleLeft": "i-lucide-chevrons-left",
+      "chevronDoubleRight": "i-lucide-chevrons-right",
+      "chevronDown": "i-lucide-chevron-down",
+      "chevronLeft": "i-lucide-chevron-left",
+      "chevronRight": "i-lucide-chevron-right",
+      "chevronUp": "i-lucide-chevron-up",
+      "close": "i-lucide-x",
+      "ellipsis": "i-lucide-ellipsis",
+      "external": "i-lucide-arrow-up-right",
+      "file": "i-lucide-file",
+      "folder": "i-lucide-folder",
+      "folderOpen": "i-lucide-folder-open",
+      "loading": "i-lucide-loader-circle",
+      "minus": "i-lucide-minus",
+      "plus": "i-lucide-plus",
+      "search": "i-lucide-search",
+      "upload": "i-lucide-upload"
+    }
+  },
+  "icon": {
+    "provider": "server",
+    "class": "",
+    "aliases": {},
+    "iconifyApiEndpoint": "https://api.iconify.design",
+    "localApiEndpoint": "/api/_nuxt_icon",
+    "fallbackToApi": true,
+    "cssSelectorPrefix": "i-",
+    "cssWherePseudo": true,
+    "cssLayer": "components",
+    "mode": "css",
+    "attrs": {
+      "aria-hidden": true
+    },
+    "collections": [
+      "academicons",
+      "akar-icons",
+      "ant-design",
+      "arcticons",
+      "basil",
+      "bi",
+      "bitcoin-icons",
+      "bpmn",
+      "brandico",
+      "bx",
+      "bxl",
+      "bxs",
+      "bytesize",
+      "carbon",
+      "catppuccin",
+      "cbi",
+      "charm",
+      "ci",
+      "cib",
+      "cif",
+      "cil",
+      "circle-flags",
+      "circum",
+      "clarity",
+      "codicon",
+      "covid",
+      "cryptocurrency",
+      "cryptocurrency-color",
+      "dashicons",
+      "devicon",
+      "devicon-plain",
+      "ei",
+      "el",
+      "emojione",
+      "emojione-monotone",
+      "emojione-v1",
+      "entypo",
+      "entypo-social",
+      "eos-icons",
+      "ep",
+      "et",
+      "eva",
+      "f7",
+      "fa",
+      "fa-brands",
+      "fa-regular",
+      "fa-solid",
+      "fa6-brands",
+      "fa6-regular",
+      "fa6-solid",
+      "fad",
+      "fe",
+      "feather",
+      "file-icons",
+      "flag",
+      "flagpack",
+      "flat-color-icons",
+      "flat-ui",
+      "flowbite",
+      "fluent",
+      "fluent-emoji",
+      "fluent-emoji-flat",
+      "fluent-emoji-high-contrast",
+      "fluent-mdl2",
+      "fontelico",
+      "fontisto",
+      "formkit",
+      "foundation",
+      "fxemoji",
+      "gala",
+      "game-icons",
+      "geo",
+      "gg",
+      "gis",
+      "gravity-ui",
+      "gridicons",
+      "grommet-icons",
+      "guidance",
+      "healthicons",
+      "heroicons",
+      "heroicons-outline",
+      "heroicons-solid",
+      "hugeicons",
+      "humbleicons",
+      "ic",
+      "icomoon-free",
+      "icon-park",
+      "icon-park-outline",
+      "icon-park-solid",
+      "icon-park-twotone",
+      "iconamoon",
+      "iconoir",
+      "icons8",
+      "il",
+      "ion",
+      "iwwa",
+      "jam",
+      "la",
+      "lets-icons",
+      "line-md",
+      "logos",
+      "ls",
+      "lucide",
+      "lucide-lab",
+      "mage",
+      "majesticons",
+      "maki",
+      "map",
+      "marketeq",
+      "material-symbols",
+      "material-symbols-light",
+      "mdi",
+      "mdi-light",
+      "medical-icon",
+      "memory",
+      "meteocons",
+      "mi",
+      "mingcute",
+      "mono-icons",
+      "mynaui",
+      "nimbus",
+      "nonicons",
+      "noto",
+      "noto-v1",
+      "octicon",
+      "oi",
+      "ooui",
+      "openmoji",
+      "oui",
+      "pajamas",
+      "pepicons",
+      "pepicons-pencil",
+      "pepicons-pop",
+      "pepicons-print",
+      "ph",
+      "pixelarticons",
+      "prime",
+      "ps",
+      "quill",
+      "radix-icons",
+      "raphael",
+      "ri",
+      "rivet-icons",
+      "si-glyph",
+      "simple-icons",
+      "simple-line-icons",
+      "skill-icons",
+      "solar",
+      "streamline",
+      "streamline-emojis",
+      "subway",
+      "svg-spinners",
+      "system-uicons",
+      "tabler",
+      "tdesign",
+      "teenyicons",
+      "token",
+      "token-branded",
+      "topcoat",
+      "twemoji",
+      "typcn",
+      "uil",
+      "uim",
+      "uis",
+      "uit",
+      "uiw",
+      "unjs",
+      "vaadin",
+      "vs",
+      "vscode-icons",
+      "websymbol",
+      "weui",
+      "whh",
+      "wi",
+      "wpf",
+      "zmdi",
+      "zondicons"
+    ],
+    "fetchTimeout": 1500
+  }
 };
 
 
@@ -680,6 +910,14 @@ const _inlineRuntimeConfig = {
       "/__nuxt_error": {
         "cache": false
       },
+      "/_fonts/**": {
+        "headers": {
+          "cache-control": "public, max-age=31536000, immutable"
+        },
+        "cache": {
+          "maxAge": 31536000
+        }
+      },
       "/_nuxt/builds/meta/**": {
         "headers": {
           "cache-control": "public, max-age=31536000, immutable"
@@ -692,7 +930,10 @@ const _inlineRuntimeConfig = {
       }
     }
   },
-  "public": {}
+  "public": {},
+  "icon": {
+    "serverKnownCssClasses": []
+  }
 };
 const envOptions = {
   prefix: "NITRO_",
@@ -714,7 +955,12 @@ function useRuntimeConfig(event) {
   event.context.nitro.runtimeConfig = runtimeConfig;
   return runtimeConfig;
 }
-_deepFreeze(klona(appConfig));
+const _sharedAppConfig = _deepFreeze(klona(appConfig));
+function useAppConfig(event) {
+  {
+    return _sharedAppConfig;
+  }
+}
 function _deepFreeze(object) {
   const propNames = Object.getOwnPropertyNames(object);
   for (const name of propNames) {
@@ -2081,7 +2327,7 @@ async function errorHandler(error, event) {
   // H3 will handle fallback
 }
 
-const script = `
+const script$1 = `
 if (!window.__NUXT_DEVTOOLS_TIME_METRIC__) {
   Object.defineProperty(window, '__NUXT_DEVTOOLS_TIME_METRIC__', {
     value: {},
@@ -2094,7 +2340,7 @@ window.__NUXT_DEVTOOLS_TIME_METRIC__.appInit = Date.now()
 
 const _fKmWKzVuYcGEwYYmMQZIN00huPDe3xTqOkWvSvRpw0 = (function(nitro) {
   nitro.hooks.hook("render:html", (htmlContext) => {
-    htmlContext.head.push(`<script>${script}<\/script>`);
+    htmlContext.head.push(`<script>${script$1}<\/script>`);
   });
 });
 
@@ -2104,7 +2350,7 @@ const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initi
 
 const appRootTag = "div";
 
-const appRootAttrs = {"id":"__nuxt"};
+const appRootAttrs = {"id":"__nuxt","class":"isolate"};
 
 const appTeleportTag = "div";
 
@@ -2199,9 +2445,18 @@ function onConsoleLog(callback) {
 	consola$1.wrapConsole();
 }
 
+const script = "\"use strict\";(()=>{const t=window,e=document.documentElement,c=[\"dark\",\"light\"],n=getStorageValue(\"localStorage\",\"nuxt-color-mode\")||\"system\";let i=n===\"system\"?u():n;const r=e.getAttribute(\"data-color-mode-forced\");r&&(i=r),l(i),t[\"__NUXT_COLOR_MODE__\"]={preference:n,value:i,getColorScheme:u,addColorScheme:l,removeColorScheme:d};function l(o){const s=\"\"+o+\"\",a=\"\";e.classList?e.classList.add(s):e.className+=\" \"+s,a&&e.setAttribute(\"data-\"+a,o)}function d(o){const s=\"\"+o+\"\",a=\"\";e.classList?e.classList.remove(s):e.className=e.className.replace(new RegExp(s,\"g\"),\"\"),a&&e.removeAttribute(\"data-\"+a)}function f(o){return t.matchMedia(\"(prefers-color-scheme\"+o+\")\")}function u(){if(t.matchMedia&&f(\"\").media!==\"not all\"){for(const o of c)if(f(\":\"+o).matches)return o}return\"light\"}})();function getStorageValue(t,e){switch(t){case\"localStorage\":return window.localStorage.getItem(e);case\"sessionStorage\":return window.sessionStorage.getItem(e);case\"cookie\":return getCookie(e);default:return null}}function getCookie(t){const c=(\"; \"+window.document.cookie).split(\"; \"+t+\"=\");if(c.length===2)return c.pop()?.split(\";\").shift()}";
+
+const _Jv0Z_4uNdnjvvHSuZA26yNnKDvHnokGLReH9MNLfuHU = (function(nitro) {
+  nitro.hooks.hook("render:html", (htmlContext) => {
+    htmlContext.head.push(`<script>${script}<\/script>`);
+  });
+});
+
 const plugins = [
   _fKmWKzVuYcGEwYYmMQZIN00huPDe3xTqOkWvSvRpw0,
 _goh8MU98oI_HZr3noRueDr7rljduzuCyCQyzMwYKcE,
+_Jv0Z_4uNdnjvvHSuZA26yNnKDvHnokGLReH9MNLfuHU,
 _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 ];
 
@@ -2212,7 +2467,7 @@ function readAsset (id) {
   return promises.readFile(resolve$1(serverDir, assets[id].path))
 }
 
-const publicAssetBases = {"/_nuxt/builds/meta/":{"maxAge":31536000},"/_nuxt/builds/":{"maxAge":1}};
+const publicAssetBases = {"/_nuxt/builds/meta/":{"maxAge":31536000},"/_nuxt/builds/":{"maxAge":1},"/_fonts/":{"maxAge":31536000}};
 
 function isPublicAssetURL(id = '') {
   if (assets[id]) {
@@ -2294,6 +2549,156 @@ const _ZrOHca = eventHandler((event) => {
   return readAsset(id);
 });
 
+function defineRenderHandler(render) {
+  const runtimeConfig = useRuntimeConfig();
+  return eventHandler(async (event) => {
+    const nitroApp = useNitroApp();
+    const ctx = { event, render, response: void 0 };
+    await nitroApp.hooks.callHook("render:before", ctx);
+    if (!ctx.response) {
+      if (event.path === `${runtimeConfig.app.baseURL}favicon.ico`) {
+        setResponseHeader(event, "Content-Type", "image/x-icon");
+        return send(
+          event,
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+        );
+      }
+      ctx.response = await ctx.render(event);
+      if (!ctx.response) {
+        const _currentStatus = getResponseStatus(event);
+        setResponseStatus(event, _currentStatus === 200 ? 500 : _currentStatus);
+        return send(
+          event,
+          "No response returned from render handler: " + event.path
+        );
+      }
+    }
+    await nitroApp.hooks.callHook("render:response", ctx.response, ctx);
+    if (ctx.response.headers) {
+      setResponseHeaders(event, ctx.response.headers);
+    }
+    if (ctx.response.statusCode || ctx.response.statusMessage) {
+      setResponseStatus(
+        event,
+        ctx.response.statusCode,
+        ctx.response.statusMessage
+      );
+    }
+    return ctx.response.body;
+  });
+}
+
+const scheduledTasks = false;
+
+const tasks = {
+  
+};
+
+const __runningTasks__ = {};
+async function runTask(name, {
+  payload = {},
+  context = {}
+} = {}) {
+  if (__runningTasks__[name]) {
+    return __runningTasks__[name];
+  }
+  if (!(name in tasks)) {
+    throw createError({
+      message: `Task \`${name}\` is not available!`,
+      statusCode: 404
+    });
+  }
+  if (!tasks[name].resolve) {
+    throw createError({
+      message: `Task \`${name}\` is not implemented!`,
+      statusCode: 501
+    });
+  }
+  const handler = await tasks[name].resolve();
+  const taskEvent = { name, payload, context };
+  __runningTasks__[name] = handler.run(taskEvent);
+  try {
+    const res = await __runningTasks__[name];
+    return res;
+  } finally {
+    delete __runningTasks__[name];
+  }
+}
+
+function buildAssetsDir() {
+	
+	return useRuntimeConfig().app.buildAssetsDir;
+}
+function buildAssetsURL(...path) {
+	return joinRelativeURL(publicAssetsURL(), buildAssetsDir(), ...path);
+}
+function publicAssetsURL(...path) {
+	
+	const app = useRuntimeConfig().app;
+	const publicBase = app.cdnURL || app.baseURL;
+	return path.length ? joinRelativeURL(publicBase, ...path) : publicBase;
+}
+
+const warnOnceSet = /* @__PURE__ */ new Set();
+const DEFAULT_ENDPOINT = "https://api.iconify.design";
+const __6at7u = defineCachedEventHandler(async (event) => {
+  const url = getRequestURL(event);
+  if (!url)
+    return createError({ status: 400, message: "Invalid icon request" });
+  const options = useAppConfig().icon;
+  const collectionName = event.context.params?.collection?.replace(/\.json$/, "");
+  const collection = collectionName ? await collections[collectionName]?.() : null;
+  const apiEndPoint = options.iconifyApiEndpoint || DEFAULT_ENDPOINT;
+  const icons = url.searchParams.get("icons")?.split(",");
+  if (collection) {
+    if (icons?.length) {
+      const data = getIcons(
+        collection,
+        icons
+      );
+      consola$1.debug(`[Icon] serving ${(icons || []).map((i) => "`" + collectionName + ":" + i + "`").join(",")} from bundled collection`);
+      return data;
+    }
+  } else {
+    if (collectionName && !warnOnceSet.has(collectionName) && apiEndPoint === DEFAULT_ENDPOINT) {
+      consola$1.warn([
+        `[Icon] Collection \`${collectionName}\` is not found locally`,
+        `We suggest to install it via \`npm i -D @iconify-json/${collectionName}\` to provide the best end-user experience.`
+      ].join("\n"));
+      warnOnceSet.add(collectionName);
+    }
+  }
+  if (options.fallbackToApi === true || options.fallbackToApi === "server-only") {
+    const apiUrl = new URL("./" + basename(url.pathname) + url.search, apiEndPoint);
+    consola$1.debug(`[Icon] fetching ${(icons || []).map((i) => "`" + collectionName + ":" + i + "`").join(",")} from iconify api`);
+    if (apiUrl.host !== new URL(apiEndPoint).host) {
+      return createError({ status: 400, message: "Invalid icon request" });
+    }
+    try {
+      const data = await $fetch(apiUrl.href);
+      return data;
+    } catch (e) {
+      consola$1.error(e);
+      if (e.status === 404)
+        return createError({ status: 404 });
+      else
+        return createError({ status: 500, message: "Failed to fetch fallback icon" });
+    }
+  }
+  return createError({ status: 404 });
+}, {
+  group: "nuxt",
+  name: "icon",
+  getKey(event) {
+    const collection = event.context.params?.collection?.replace(/\.json$/, "") || "unknown";
+    const icons = String(getQuery$1(event).icons || "");
+    return `${collection}_${icons.split(",")[0]}_${icons.length}_${hash$1(icons)}`;
+  },
+  swr: true,
+  maxAge: 60 * 60 * 24 * 7
+  // 1 week
+});
+
 const VueResolver = (_, value) => {
   return isRef(value) ? toValue(value) : value;
 };
@@ -2331,8 +2736,6 @@ function filterIslandProps(props) {
 function computeIslandHash(name, filteredProps, context, source) {
   return hash$1([name, filteredProps, context, source]).replace(/[-_]/g, "");
 }
-
-const NUXT_RUNTIME_PAYLOAD_EXTRACTION = false;
 
 // @__NO_SIDE_EFFECTS__
 function createHead(options = {}) {
@@ -2377,20 +2780,6 @@ function setSSRError(ssrContext, error) {
 	ssrContext.error = true;
 	ssrContext.payload = { error };
 	ssrContext.url = error.url;
-}
-
-function buildAssetsDir() {
-	
-	return useRuntimeConfig().app.buildAssetsDir;
-}
-function buildAssetsURL(...path) {
-	return joinRelativeURL(publicAssetsURL(), buildAssetsDir(), ...path);
-}
-function publicAssetsURL(...path) {
-	
-	const app = useRuntimeConfig().app;
-	const publicBase = app.cdnURL || app.baseURL;
-	return path.length ? joinRelativeURL(publicBase, ...path) : publicBase;
 }
 
 // @ts-expect-error private property consumed by vite-generated url helpers
@@ -2741,7 +3130,9 @@ const _lazy_tggrvX = () => Promise.resolve().then(function () { return renderer;
 const handlers = [
   { route: '', handler: _ZrOHca, lazy: false, middleware: true, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_tggrvX, lazy: true, middleware: false, method: undefined },
+  { route: '/api/_nuxt_icon/:collection', handler: __6at7u, lazy: false, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: handler$1, lazy: false, middleware: false, method: undefined },
+  { route: '/_fonts/**', handler: _lazy_tggrvX, lazy: true, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_tggrvX, lazy: true, middleware: false, method: undefined }
 ];
 
@@ -2885,82 +3276,6 @@ function useNitroApp() {
   return nitroApp$1;
 }
 runNitroPlugins(nitroApp$1);
-
-function defineRenderHandler(render) {
-  const runtimeConfig = useRuntimeConfig();
-  return eventHandler(async (event) => {
-    const nitroApp = useNitroApp();
-    const ctx = { event, render, response: void 0 };
-    await nitroApp.hooks.callHook("render:before", ctx);
-    if (!ctx.response) {
-      if (event.path === `${runtimeConfig.app.baseURL}favicon.ico`) {
-        setResponseHeader(event, "Content-Type", "image/x-icon");
-        return send(
-          event,
-          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-        );
-      }
-      ctx.response = await ctx.render(event);
-      if (!ctx.response) {
-        const _currentStatus = getResponseStatus(event);
-        setResponseStatus(event, _currentStatus === 200 ? 500 : _currentStatus);
-        return send(
-          event,
-          "No response returned from render handler: " + event.path
-        );
-      }
-    }
-    await nitroApp.hooks.callHook("render:response", ctx.response, ctx);
-    if (ctx.response.headers) {
-      setResponseHeaders(event, ctx.response.headers);
-    }
-    if (ctx.response.statusCode || ctx.response.statusMessage) {
-      setResponseStatus(
-        event,
-        ctx.response.statusCode,
-        ctx.response.statusMessage
-      );
-    }
-    return ctx.response.body;
-  });
-}
-
-const scheduledTasks = false;
-
-const tasks = {
-  
-};
-
-const __runningTasks__ = {};
-async function runTask(name, {
-  payload = {},
-  context = {}
-} = {}) {
-  if (__runningTasks__[name]) {
-    return __runningTasks__[name];
-  }
-  if (!(name in tasks)) {
-    throw createError({
-      message: `Task \`${name}\` is not available!`,
-      statusCode: 404
-    });
-  }
-  if (!tasks[name].resolve) {
-    throw createError({
-      message: `Task \`${name}\` is not implemented!`,
-      statusCode: 501
-    });
-  }
-  const handler = await tasks[name].resolve();
-  const taskEvent = { name, payload, context };
-  __runningTasks__[name] = handler.run(taskEvent);
-  try {
-    const res = await __runningTasks__[name];
-    return res;
-  } finally {
-    delete __runningTasks__[name];
-  }
-}
 
 if (!globalThis.crypto) {
   globalThis.crypto = crypto$1.webcrypto;
@@ -3150,6 +3465,7 @@ const HAS_APP_TELEPORTS = !!(appTeleportAttrs.id);
 const APP_TELEPORT_OPEN_TAG = HAS_APP_TELEPORTS ? `<${appTeleportTag}${propsToString(appTeleportAttrs)}>` : "";
 const APP_TELEPORT_CLOSE_TAG = HAS_APP_TELEPORTS ? `</${appTeleportTag}>` : "";
 const PAYLOAD_URL_RE = /^[^?]*\/_payload.json(?:\?.*)?$/ ;
+const PAYLOAD_FILENAME = "_payload.json" ;
 const handler = defineRenderHandler((event) => {
 	
 	const ssrError = event.path.startsWith("/__nuxt_error") ? getQuery$1(event) : null;
@@ -3184,13 +3500,14 @@ async function renderRoute(event, ssrError) {
 		ssrContext.noSSR = true;
 	}
 	
-	!ssrContext.noSSR && (NUXT_RUNTIME_PAYLOAD_EXTRACTION);
-	const isRenderingPayload = (routeOptions.prerender) && PAYLOAD_URL_RE.test(ssrContext.url);
+	const _PAYLOAD_EXTRACTION = !ssrContext.noSSR && ((routeOptions.isr || routeOptions.cache));
+	const isRenderingPayload = (_PAYLOAD_EXTRACTION || routeOptions.prerender) && PAYLOAD_URL_RE.test(ssrContext.url);
 	if (isRenderingPayload) {
 		const url = ssrContext.url.substring(0, ssrContext.url.lastIndexOf("/")) || "/";
 		ssrContext.url = url;
 		event._path = event.node.req.url = url;
 	}
+	const payloadURL = _PAYLOAD_EXTRACTION ? joinURL(ssrContext.runtimeConfig.app.cdnURL || ssrContext.runtimeConfig.app.baseURL, ssrContext.url.replace(/\?.*$/, ""), PAYLOAD_FILENAME) + "?" + ssrContext.runtimeConfig.app.buildId : undefined;
 	
 	const renderer = await getRenderer(ssrContext);
 	const _rendered = await renderer.renderToString(ssrContext).catch(async (error) => {
@@ -3227,6 +3544,15 @@ async function renderRoute(event, ssrError) {
 	const NO_SCRIPTS = routeOptions.noScripts;
 	
 	const { styles, scripts } = getRequestDependencies(ssrContext, renderer.rendererContext);
+	
+	if (_PAYLOAD_EXTRACTION && !NO_SCRIPTS) {
+		ssrContext.head.push({ link: [{
+			rel: "preload",
+			as: "fetch",
+			crossorigin: "anonymous",
+			href: payloadURL
+		} ] }, headEntryOptions);
+	}
 	if (ssrContext["~preloadManifest"] && !NO_SCRIPTS) {
 		ssrContext.head.push({ link: [{
 			rel: "preload",
@@ -3274,7 +3600,11 @@ async function renderRoute(event, ssrError) {
 		ssrContext.head.push({ link: getPreloadLinks(ssrContext, renderer.rendererContext) }, headEntryOptions);
 		ssrContext.head.push({ link: getPrefetchLinks(ssrContext, renderer.rendererContext) }, headEntryOptions);
 		
-		ssrContext.head.push({ script: renderPayloadJsonScript({
+		ssrContext.head.push({ script: _PAYLOAD_EXTRACTION ? renderPayloadJsonScript({
+			ssrContext,
+			data: splitPayload(ssrContext).initial,
+			src: payloadURL
+		})  : renderPayloadJsonScript({
 			ssrContext,
 			data: ssrContext.payload
 		})  }, {

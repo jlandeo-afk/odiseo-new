@@ -17,9 +17,9 @@
 - [ ] T007 [P] [US3] Backend: Crear entidades TypeORM `Cycle` y `CycleWeek` implementando forzosamente la columna `is_active`.
 - [ ] T008 [US3] Backend: Crear interfaces, Use Cases y Controllers (`AcademicTimeController`) exponiendo operaciones CRUD y restringiendo la eliminación física en favor del seteo de `is_active = false`.
 
-## Phase 4: Integración Frontend UI
-- [ ] T009 [P] [US1] Frontend: Desarrollar la vista `pages/catalogs/index.vue` usando Nuxt UI para listar catálogos permitiendo la edición inline de `local_alias` y toggle de visibilidad.
-- [ ] T010 [P] [US3] Frontend: Desarrollar la vista `pages/academic-time/index.vue` y componentes visuales para la gestión de ciclos y "Tableros de Juego", reflejando las semanas inactivas.
+## Phase 4: Integración Frontend UI (Feature-Sliced Design & Linear UI)
+- [ ] T009 [P] [US1] Frontend: Refactorizar a FSD creando `src/features/catalogs`. Implementar tabla hiper-compacta (Data-Density) para taxonomía con Optimistic UI para edición inline de `local_alias` y `is_active`. Añadir soporte de Command Palette (Cmd+K) para búsqueda rápida de temas.
+- [ ] T010 [P] [US3] Frontend: Crear `src/features/academic-time`. Implementar "Tableros de Juego" de cuadrícula fluida con auto-animate. La creación/edición de ciclos debe abrir un Slide-over no bloqueante en lugar de un Modal. Las semanas se mutan con Optimistic UI.
 
 ## Phase 5: Pruebas y Validación (Obligatorio)
 - [ ] T011 [P] Backend Unit Tests: Escribir pruebas unitarias para `CatalogUseCase` garantizando el aislamiento de la capa de persistencia (test usando Mocks de la interfaz `ICatalogRepository`).

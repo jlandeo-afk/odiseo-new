@@ -20,6 +20,8 @@
 ## Structural Constraints (Critical)
 - **CR-001**: Los Casos de Uso (Use Cases) en NestJS tienen estrictamente prohibido interactuar con el ORM directamente. Solo pueden interactuar con las interfaces abstractas de los repositorios.
 - **CR-002**: Se debe emplear una Estrategia de Persistencia Híbrida: Raw SQL para la actualización masiva/batch del Consumer SQS y TypeORM para el CRUD estándar y resolución de `search_path`.
+- **CR-003**: Frontend UX (Velocidad Absoluta): Obligatorio implementar Optimistic UI para todas las mutaciones, un Command Palette (Cmd+K) global, y usar Slide-overs en lugar de Modales bloqueantes.
+- **CR-004**: Frontend UI (Diseño B2B Moderno): Estilo tipo Linear/Stripe. Uso de tipografía geométrica (Inter/Geist), diseño hiper-compacto (Data-Density) para matrices, y micro-interacciones sin saltos en el DOM.
 
 ## Success Criteria
 - **SC-001**: Los catálogos pueden personalizarse visualmente en el UI, mostrando `local_alias` si existe, o cayendo a `core_name` si no.
