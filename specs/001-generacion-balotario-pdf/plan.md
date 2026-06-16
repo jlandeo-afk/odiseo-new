@@ -10,8 +10,8 @@ Implementación de la generación asíncrona de balotarios y exámenes en PDF. E
 
 ## Technical Context
 
-**Language/Version**: TypeScript (NestJS), Python 3.11 (FastAPI Worker)
-**Primary Dependencies**: AWS SDK (SQS, S3), WebSocket Gateway, PDF Generation Lib (FastAPI)
+**Language/Version**: TypeScript (NestJS / Nuxt 3), Python 3.11 (FastAPI Worker)
+**Primary Dependencies**: Tailwind CSS, Shadcn-Vue/Nuxt UI, Pinia, AWS SDK (SQS, S3), WebSocket Gateway, PDF Generation Lib (FastAPI)
 **Storage**: PostgreSQL (B2B SaaS y Core API), Amazon S3 (Object Storage)
 **Testing**: Jest (NestJS), Pytest (FastAPI Worker)
 **Target Platform**: AWS Fargate (Worker), AWS API Gateway
@@ -28,7 +28,18 @@ Implementación de la generación asíncrona de balotarios y exámenes en PDF. E
 - [x] **Tech Stack**: Se cumple la orquestación SQS + ECS Fargate para el cómputo aislado intensivo de PDFs.
 - [x] **Antipatrones Evitados**: Cero compilación síncrona en microservicios del SaaS B2B.
 
+## Clean Architecture en Vue (Frontend)
+
+El frontend B2B adoptará una Clean Architecture estricta:
+1. **Capa UI (Components/Pages)**: Componentes "tontos" construidos con Tailwind CSS y Shadcn-Vue/Nuxt UI. No contienen lógica de negocio, solo emiten eventos y reciben props.
+2. **Capa de Dominio/Estado (Pinia/Composables)**: Contiene la lógica de negocio, consumos a la API, hidratación de roles (Spatie), y manejo de errores. Separa completamente la vista de los datos.
+
 ## Architecture Flow
+
+0. **Autenticación y Aislamiento B2B**:
+   - El usuario accede al subdominio (ej. `colegio.odiseo.com`). El frontend consulta la tabla `clientes_empresas` para resolver el branding visual.
+   - El login emite credenciales; el backend cruza la tabla `users` para garantizar que el `company_id` coincide con el del entorno actual (aislamiento estricto).
+   - Se devuelve la sesión y Nuxt hidrata el estado con los roles y permisos del usuario provenientes de Spatie (`roles`, `permissions`).
 
 1. **Request (SaaS B2B - NestJS)**:
    - El admin solicita generar un material o examen a través de la API REST.

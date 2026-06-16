@@ -10,6 +10,22 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
+### User Story 0 - Autenticación B2B y Aislamiento Multi-Tenant (Priority: P0)
+
+Como administrador de colegio, quiero acceder a la plataforma mediante un subdominio personalizado (ej. `colegio.odiseo.com`), visualizar el branding de mi institución, y autenticarme de forma segura para garantizar que mi sesión esté estrictamente asilada y mis permisos determinen qué componentes visualizo.
+
+**Why this priority**: La seguridad y la identidad corporativa son pilares del modelo SaaS B2B Enterprise. Es crítico prevenir fugas de información entre tenants.
+
+**Independent Test**: Can be fully tested by attempting to log in via `colegio.odiseo.com`, verifying that the correct logo/colors are loaded, ensuring a user with a different `company_id` is rejected, and confirming that UI elements are rendered based on Spatie roles.
+
+**Acceptance Scenarios**:
+
+1. **Given** que un usuario ingresa a un subdominio específico, **When** carga la página de login, **Then** el sistema consulta `clientes_empresas.subdominio` y carga dinámicamente el branding correspondiente.
+2. **Given** que el usuario ingresa sus credenciales, **When** el sistema autentica la petición, **Then** valida estrictamente que el `company_id` del usuario coincide con el de la empresa activa del subdominio.
+3. **Given** que el usuario ha iniciado sesión con éxito, **When** carga el frontend, **Then** el estado de Nuxt se hidrata con los roles y permisos (ecosistema Spatie), mostrando/ocultando elementos (ej. botón "Generar Examen").
+
+---
+
 ### User Story 1 - Generación Exitosa de Balotario (Priority: P1)
 
 Como usuario administrador (colegio), quiero seleccionar los parámetros de mi curso (dificultad, temas, subtemas) y solicitar un balotario en PDF, para que el sistema lo genere en segundo plano y me notifique cuando esté listo para descargar, sin bloquear mi trabajo en la plataforma.
@@ -88,6 +104,10 @@ Como administrador del sistema, quiero que el sistema dispare de forma automatiz
 
 ### Functional Requirements
 
+- **FR-000**: UI/UX Moderna y Limpia. El frontend MUST utilizar Tailwind CSS junto con un Design System moderno orientado a SaaS (Shadcn-Vue o Nuxt UI). La arquitectura de Vue MUST ser "Clean Architecture", separando la UI (components) de la lógica de negocio consumida por Composables/Pinia. El diseño MUST incluir estados de carga (skeletons), manejo de errores amigable, y ser totalmente responsive (grado Enterprise).
+- **FR-000b**: Multi-Tenant Login. El sistema MUST resolver el contexto del cliente en base al subdominio de acceso, consultando la tabla `clientes_empresas` (columna `subdominio`), personalizando la vista de login ANTES de autenticar.
+- **FR-000c**: Aislamiento Estricto. La autenticación MUST validar de forma estricta que el `company_id` de la tabla `users` coincide con el esquema/tenant activo del subdominio.
+- **FR-000d**: RBAC Hydration. La sesión devuelta MUST hidratar el estado del frontend con el ecosistema integrado de Spatie (`roles`, `permissions`, `users_roles`, `roles_permissions`) para gestionar dinámicamente la visibilidad de componentes UI.
 - **FR-001**: System MUST allow the admin to select a course, difficulty level, and a specific set of topics and subtopics.
 - **FR-002**: System MUST register the request and release the web interface immediately upon submission, offloading the work.
 - **FR-003**: System MUST send the generation event to an asynchronous queue for processing.
@@ -112,6 +132,9 @@ Como administrador del sistema, quiero que el sistema dispare de forma automatiz
 
 ### Key Entities
 
+- **clientes_empresas**: Identifica al Tenant (colegio), su `subdominio` y metadatos de branding (logo, colores).
+- **users**: Contiene la identidad del administrador y está estrictamente ligada a un `company_id`.
+- **roles / permissions**: Entidades del ecosistema Spatie para la gestión de acceso basado en roles (RBAC).
 - **MaterialRequest**: Represents the asynchronous job requested by the admin. Contains status (pending, processing, completed, failed), filters (course, difficulty, topics), and the final `file_url`.
 - **QuestionReference**: Logical reference (`question_id`) pointing to the global Core API.
 

@@ -37,6 +37,20 @@
 
 ---
 
+## Phase 2.5: User Story 0 - Autenticación B2B y Design System (Priority: P0)
+
+**Goal**: Establecer el Design System Enterprise y asegurar el flujo de autenticación aislado por tenant.
+
+- [ ] T007a [P] [US0] Frontend: Instalar y configurar Tailwind CSS, Nuxt UI o Shadcn-Vue en `frontend-vue` asegurando soporte para theming B2B.
+- [ ] T007b [P] [US0] Frontend: Implementar Layout B2B base separando componentes tontos (UI) de lógica (Clean Architecture).
+- [ ] T007c [US0] Frontend: Implementar vista de Login (`login.vue`) que capture el subdominio y consulte `clientes_empresas` para cargar el branding dinámico.
+- [ ] T007d [US0] Backend: Implementar endpoint de Login con aislamiento estricto validando el `company_id` de la tabla `users` con el contexto del subdominio.
+- [ ] T007e [US0] Frontend: Implementar hidratación del state de Pinia con los roles y permisos de Spatie devueltos por la sesión.
+- [ ] T007f [US0] Frontend: Implementar Middleware de Nuxt (`auth.global.ts`) para proteger rutas y redirigir según estado de autenticación y roles.
+- [ ] T007g [P] [US0] Testing: Escribir pruebas E2E validando que un usuario del Tenant A no pueda autenticarse ni visualizar el subdominio del Tenant B.
+
+---
+
 ## Phase 3: User Story 1 - Generación Exitosa de Balotario (Priority: P1) 🎯 MVP
 
 **Goal**: Permitir al administrador solicitar un balotario/examen, procesarlo asíncronamente y notificar la URL vía WebSocket.
