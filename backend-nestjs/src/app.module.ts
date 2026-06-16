@@ -1,15 +1,29 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ScheduleModule } from '@nestjs/schedule';
-import { AwsModule } from './aws/aws.module';
-import { MaterialsModule } from './materials/materials.module';
 import { AuthModule } from './auth/auth.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { DatabaseModule } from './database/database.module';
+import { ClsModule } from 'nestjs-cls';
+import { ConfigModule } from '@nestjs/config';
+import { TenantMiddleware } from './database/tenant.middleware';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), AwsModule, MaterialsModule, AuthModule, TenantsModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true },
+    }),
+    DatabaseModule,
+    AuthModule, 
+    TenantsModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantMiddleware).forRoutes('*');
+  }
+}

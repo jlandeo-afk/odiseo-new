@@ -2,17 +2,51 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, HttpStatus } from '@nestjs/common';
 import * as requestModule from 'supertest';
 const request = requestModule.default || requestModule;
-import { AuthModule } from '../src/auth/auth.module';
-import { TenantsModule } from '../src/tenants/tenants.module';
-import { TenantsModule } from '../src/tenants/tenants.module';
+import { AppModule } from '../src/app.module';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Tenant } from '../src/tenants/entities/tenant.entity';
+import { User } from '../src/auth/entities/user.entity';
 
 describe('B2B Auth Isolation (E2E)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
+    const mockTenantRepo = {
+      findOne: jest.fn().mockImplementation(async ({ where: { subdominio } }) => {
+        if (subdominio === 'colegio') {
+          return {
+            subdominio: 'colegio',
+            companyId: 'uuid-company-A',
+            commercialName: 'Colegio A',
+            primaryColor: '#1e88e5',
+            logoUrl: 'https://via.placeholder.com/150/1e88e5/ffffff?text=ColegioA',
+          };
+        }
+        if (subdominio === 'escuela') {
+          return {
+            subdominio: 'escuela',
+            companyId: 'uuid-company-B',
+            commercialName: 'Escuela B',
+            primaryColor: '#e53935',
+            logoUrl: 'https://via.placeholder.com/150/e53935/ffffff?text=EscuelaB',
+          };
+        }
+        return null;
+      }),
+    };
+
+    const mockUserRepo = {
+      findOne: jest.fn(),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthModule, TenantsModule],
-    }).compile();
+      imports: [AppModule],
+    })
+      .overrideProvider(getRepositoryToken(Tenant))
+      .useValue(mockTenantRepo)
+      .overrideProvider(getRepositoryToken(User))
+      .useValue(mockUserRepo)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');

@@ -1,30 +1,33 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Tenant } from './entities/tenant.entity';
 
 @Controller('v1/tenants')
 export class TenantsController {
   
-  private readonly brandingDb = {
-    'colegio': {
-      commercialName: 'Colegio A',
-      logoUrl: 'https://via.placeholder.com/150/1e88e5/ffffff?text=ColegioA',
-      primaryColor: '#1e88e5'
-    },
-    'escuela': {
-      commercialName: 'Escuela B',
-      logoUrl: 'https://via.placeholder.com/150/e53935/ffffff?text=EscuelaB',
-      primaryColor: '#e53935'
-    }
-  };
+  constructor(
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>
+  ) {}
 
   @Get('branding')
-  getBranding(@Query('subdomain') subdomain: string) {
-    const branding = this.brandingDb[subdomain];
-    if (!branding) {
+  async getBranding(@Query('subdomain') subdomain: string) {
+    const tenant = await this.tenantRepository.findOne({
+      where: { subdominio: subdomain }
+    });
+
+    if (!tenant) {
       return {
         commercialName: 'Odiseo B2B Default',
-        primaryColor: '#000000'
+        primaryColor: '#000000',
+        logoUrl: null
       };
     }
-    return branding;
+    return {
+      commercialName: tenant.commercialName,
+      logoUrl: tenant.logoUrl,
+      primaryColor: tenant.primaryColor
+    };
   }
 }
