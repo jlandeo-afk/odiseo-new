@@ -7,6 +7,8 @@ import { DatabaseModule } from './database/database.module';
 import { ClsModule } from 'nestjs-cls';
 import { ConfigModule } from '@nestjs/config';
 import { TenantMiddleware } from './database/tenant.middleware';
+import { CatalogsModule } from './catalogs/catalogs.module';
+import { AcademicTimeModule } from './academic-time/academic-time.module';
 
 @Module({
   imports: [
@@ -17,7 +19,7 @@ import { TenantMiddleware } from './database/tenant.middleware';
     }),
     DatabaseModule,
     AuthModule, 
-    TenantsModule
+    TenantsModule, CatalogsModule, AcademicTimeModule
   ],
   controllers: [AppController],
   providers: [AppService],
