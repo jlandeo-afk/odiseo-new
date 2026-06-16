@@ -3,6 +3,6 @@
     <NuxtPage />
     <!-- Global Command Palette -->
     <AppCommandPalette />
-    <UNotifications />
+    <UToaster />
   </NuxtLayout>
 </template>

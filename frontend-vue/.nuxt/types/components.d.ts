@@ -14,6 +14,7 @@ type HydrationStrategies = {
 type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {}, {}, { hydrated: () => void }> & T
 
 interface _GlobalComponents {
+  AppCommandPalette: typeof import("../../src/components/AppCommandPalette.vue")['default']
   MaterialWarning: typeof import("../../src/components/MaterialWarning.vue")['default']
   SharedAppCommandPalette: typeof import("../../src/components/shared/AppCommandPalette.vue")['default']
   UAccordion: typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue")['default']
@@ -100,6 +101,7 @@ interface _GlobalComponents {
   Html: typeof import("../../node_modules/nuxt/dist/head/runtime/components")['Html']
   Body: typeof import("../../node_modules/nuxt/dist/head/runtime/components")['Body']
   NuxtIsland: typeof import("../../node_modules/nuxt/dist/app/components/nuxt-island")['default']
+  LazyAppCommandPalette: LazyComponent<typeof import("../../src/components/AppCommandPalette.vue")['default']>
   LazyMaterialWarning: LazyComponent<typeof import("../../src/components/MaterialWarning.vue")['default']>
   LazySharedAppCommandPalette: LazyComponent<typeof import("../../src/components/shared/AppCommandPalette.vue")['default']>
   LazyUAccordion: LazyComponent<typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue")['default']>

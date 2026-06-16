@@ -126,7 +126,7 @@
 import { ref, computed } from 'vue'
 import { useCatalogsStore } from '../store'
 import type { CatalogCourse, CatalogTopic } from '../types'
-import { useToast } from '#imports'
+import { useToast } from '@nuxt/ui'
 
 const store = useCatalogsStore()
 const toast = useToast()

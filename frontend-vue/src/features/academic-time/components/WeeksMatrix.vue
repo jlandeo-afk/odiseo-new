@@ -95,7 +95,7 @@
 <script setup lang="ts">
 import { useAcademicTimeStore } from '../store'
 import type { Cycle, CycleWeek } from '../types'
-import { useToast } from '#imports'
+import { useToast } from '@nuxt/ui'
 
 const store = useAcademicTimeStore()
 const toast = useToast()
