@@ -1,0 +1,125 @@
+# Feature Specification: Generación y Revisión de Materiales PDF
+
+**Feature Branch**: `004-generacion-revision-materiales`
+
+**Created**: 2026-06-16
+
+**Status**: Draft
+
+## Context
+
+Este módulo permite a los administradores generar materiales educativos (balotarios, exámenes) en formato PDF a partir de la distribución del sílabo. El flujo es completamente asíncrono: el SaaS B2B envía un payload a Amazon SQS, un Worker FastAPI en AWS Fargate procesa la solicitud (consulta al Core API, ensambla el documento, genera el PDF y lo sube a S3), y notifica al usuario por WebSocket cuando está listo.
+
+Opcionalmente, el administrador puede solicitar una **revisión del material** antes de la generación final del PDF, permitiéndole ver las preguntas seleccionadas en el orden del documento, gestionar vacíos y aprobar o ajustar el contenido.
+
+## Clarifications
+
+### Session 2026-06-16
+
+- Q: ¿De dónde viene el `syllabus_distribution` real? → A: De la tabla `syllabus_distribution` en el esquema del tenant, configurada previamente por el coordinador (Spec 003).
+- Q: ¿Qué es "curaduría"? → A: Se renombra a "Revisión de Material". Es una vista donde el admin ve las preguntas en el orden que aparecerán en el PDF, gestiona las encontradas y los vacíos (preguntas insuficientes). No es un flujo separado — es una sección del módulo de materiales.
+- Q: ¿Cómo se manejan preguntas insuficientes? → A: El admin puede continuar con inconsistencias (generando el PDF parcial) con advertencias visibles, o buscar reemplazos.
+- Q: ¿Motor PDF? → A: WeasyPrint (HTML/CSS → PDF). Buena calidad, rápido, flexible para templates con branding.
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Solicitud de Generación de Material (Priority: P1)
+
+Como administrador del tenant, quiero solicitar la generación de un material educativo (balotario o examen) para un curso y semana específicos, utilizando la distribución del sílabo como insumo, para obtener un documento PDF con preguntas del banco de reactivos.
+
+**Independent Test**: Solicitud de generación de un balotario para "Álgebra", semana 3. Verificación de HTTP 202 Accepted. Verificación de que el payload correcto se envió a SQS con la distribución del sílabo.
+
+**Acceptance Scenarios**:
+
+1. **Given** un sílabo configurado con distribución para una semana, **When** el admin solicita generar un material seleccionando tipo (BALOTARIO/EXAMEN), curso y semana, **Then** el backend lee la distribución del sílabo, arma el payload con los datos del tenant (branding) y la distribución, y lo envía a SQS retornando HTTP 202 con el `job_id`.
+2. **Given** una solicitud de material tipo EXAMEN, **When** el admin especifica las áreas de examen, **Then** el payload incluye el array de `exam_areas` para que el Worker genere cuadernillos segregados por área.
+3. **Given** que el admin solicita generación con revisión, **When** marca la opción `requires_review = true`, **Then** el Worker pausa después de obtener las preguntas y notifica `REVIEW_REQUIRED` al frontend para que el admin revise antes de generar el PDF.
+
+---
+
+### User Story 2 - Procesamiento Asíncrono por el Worker (Priority: P1)
+
+Como sistema, necesito que el Worker FastAPI en AWS Fargate procese los mensajes de SQS, obtenga las preguntas del Core API según la distribución, genere el PDF con WeasyPrint, lo suba a S3 y notifique al usuario.
+
+**Independent Test**: Envío manual de un mensaje a SQS con distribución de 3 topics. Verificación de que el Worker procesó el mensaje, generó el PDF, lo subió a S3 con URL válida, y emitió notificación por WebSocket.
+
+**Acceptance Scenarios**:
+
+1. **Given** un mensaje en SQS con distribución del sílabo, **When** el Worker lo procesa, **Then** llama al Core API para obtener las preguntas de cada topic/subtopic según las cantidades solicitadas, genera el PDF usando WeasyPrint con el branding del tenant (logo, nombre), sube el archivo a S3 y notifica vía WebSocket al usuario con el `download_url`.
+2. **Given** un material tipo EXAMEN con múltiples áreas, **When** el Worker procesa el mensaje, **Then** genera un PDF separado por cada área, los empaqueta en un ZIP y sube el archivo único a S3.
+3. **Given** que el Core API retorna menos preguntas de las solicitadas para algunos subtemas, **When** el Worker detecta la insuficiencia, **Then** registra el desglose de faltantes (ej. "Faltan 3 de Ecuaciones Lineales") y continúa con las preguntas disponibles, marcando los vacíos en el resultado.
+
+---
+
+### User Story 3 - Revisión de Material (Priority: P1)
+
+Como administrador, quiero revisar las preguntas seleccionadas para un material antes de generar el PDF final, viendo el listado en el orden que aparecerán en el documento, pudiendo gestionar tanto las preguntas encontradas como los espacios vacíos donde no hubo preguntas suficientes.
+
+**Independent Test**: Solicitud de material con `requires_review = true`. Verificación de que el frontend muestra la vista de revisión con las preguntas en orden. Reemplazo de una pregunta y verificación del cambio. Aprobación y verificación de que el PDF se genera con las preguntas finales.
+
+**Acceptance Scenarios**:
+
+1. **Given** un material con estado `REVIEW_REQUIRED`, **When** el admin accede a la vista de revisión, **Then** se muestra el listado de preguntas en el orden que aparecerán en el PDF, agrupadas por tema/subtema, con indicadores claros de preguntas encontradas vs. vacíos.
+2. **Given** un vacío en la distribución (preguntas insuficientes), **When** el admin visualiza la revisión, **Then** el vacío se muestra con un indicador visual prominente y las opciones: (a) buscar pregunta de reemplazo del banco, (b) marcar como aceptable y continuar, o (c) eliminar el slot.
+3. **Given** una revisión completa (con o sin inconsistencias), **When** el admin aprueba el material, **Then** el sistema dispara la generación del PDF final con las preguntas aprobadas y notifica por WebSocket cuando está listo.
+4. **Given** una revisión con inconsistencias, **When** el admin elige "continuar con inconsistencias", **Then** el PDF se genera con las preguntas disponibles y una advertencia visible en el documento indicando los vacíos.
+
+---
+
+### User Story 4 - Notificación en Tiempo Real (Priority: P1)
+
+Como administrador conectado al panel B2B, quiero recibir una notificación visual en tiempo real cuando mi material esté listo para descargar, sin necesidad de recargar la página.
+
+**Independent Test**: Solicitud de generación de material. Verificación de que la notificación WebSocket llega al frontend y se muestra un toast/alerta con el link de descarga.
+
+**Acceptance Scenarios**:
+
+1. **Given** un material en procesamiento, **When** el Worker completa la generación y sube el PDF a S3, **Then** emite un evento WebSocket (`material.generation.completed`) que el frontend captura y muestra como notificación en la UI con el link de descarga.
+2. **Given** un error durante el procesamiento, **When** el Worker falla, **Then** emite un evento WebSocket (`material.generation.failed`) con un mensaje de error descriptivo que el frontend muestra al usuario.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: El backend MUST leer la distribución del sílabo (tabla `syllabus_distribution`) al recibir una solicitud de generación, armando el payload con los `topic_id`, `subtopic_id` y `requested_quantity` correspondientes a la semana seleccionada.
+- **FR-002**: El backend MUST persistir cada solicitud de material en la tabla `material_requests` con estado `PENDING` antes de enviar el mensaje a SQS.
+- **FR-003**: El Worker MUST usar WeasyPrint (HTML/CSS → PDF) como motor de generación de documentos, aplicando templates que incluyan el branding del tenant (logo, nombre comercial).
+- **FR-004**: Cuando el Core API retorna menos preguntas de las solicitadas, el Worker MUST NO abortar — MUST continuar con las preguntas disponibles, registrar un desglose detallado de faltantes por tema/subtema, y marcar el material como `COMPLETED_WITH_WARNINGS`.
+- **FR-005**: La vista de revisión MUST mostrar las preguntas en el orden exacto que aparecerán en el PDF, agrupadas por tema/subtema, con indicadores visuales claros para preguntas encontradas vs. vacíos.
+- **FR-006**: El sistema MUST soportar dos modos de generación: (a) generación directa (sin revisión) y (b) generación con revisión previa (`requires_review = true`).
+- **FR-007**: Las URLs de descarga de S3 MUST ser URLs pre-firmadas (presigned URLs) con expiración temporal para seguridad.
+- **FR-008**: Para materiales tipo EXAMEN con múltiples áreas, el Worker MUST generar cuadernillos separados por área y empaquetarlos en un ZIP.
+
+### Structural Constraints (Critical)
+
+- **CR-001**: La generación de PDF NUNCA debe ocurrir de forma síncrona dentro del backend NestJS. Todo procesamiento intensivo MUST ser despachado al Worker FastAPI vía SQS.
+- **CR-002**: El Worker FastAPI es un servicio aislado que NO tiene acceso directo a la base de datos del SaaS B2B. Toda la información necesaria viaja en el payload de SQS.
+- **CR-003**: Las notificaciones WebSocket se gestionan a través de AWS API Gateway WebSockets, no mediante conexiones directas Socket.io.
+
+### Key Entities
+
+- **material_requests**: Solicitud de material. Campos: `id` (uuid), `tenant_id` (string), `material_type` (enum: BALOTARIO, EXAMEN), `course_id` (FK), `syllabus_id` (FK), `week_number` (number), `status` (enum: PENDING, PROCESSING, REVIEW_REQUIRED, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED), `download_url` (string, nullable), `warnings` (jsonb, nullable — desglose de faltantes), `requires_review` (boolean), `created_by` (FK → user), `created_at` (timestamp).
+- **material_review_questions**: Preguntas de revisión. Campos: `id` (uuid), `material_request_id` (FK), `question_id` (string — referencia al Core API), `topic_id` (FK), `subtopic_id` (FK), `position` (number — orden en el PDF), `status` (enum: FOUND, EMPTY, REPLACED, REMOVED).
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: Un material puede ser solicitado, procesado asincrónicamente, y descargado desde S3 exitosamente end-to-end.
+- **SC-002**: La vista de revisión muestra las preguntas en el orden correcto y permite gestionar vacíos sin pérdida de datos.
+- **SC-003**: Las notificaciones WebSocket llegan al frontend en tiempo real (< 2 segundos después de que el Worker completa).
+- **SC-004**: Materiales tipo EXAMEN con N áreas generan exactamente N cuadernillos empaquetados en un ZIP.
+
+## Edge Cases
+
+- **EC-001**: Si la cola SQS está temporalmente inaccesible al momento de enviar el mensaje, el backend MUST reintentar con backoff exponencial (hasta 3 intentos) antes de fallar con HTTP 503.
+- **EC-002**: Si el Core API retorna 0 preguntas para toda la distribución (banco completamente vacío para ese curso), el Worker MUST marcar el material como FAILED con mensaje descriptivo, sin generar un PDF vacío.
+- **EC-003**: Si un material está en estado `REVIEW_REQUIRED` por más de 24 horas sin acción del admin, el sistema MUST NO auto-expirar — permanece en revisión hasta acción explícita.
+- **EC-004**: Si el admin solicita un material para una semana que no tiene distribución en el sílabo, el backend MUST rechazar con HTTP 400 y mensaje: "No hay distribución configurada para la semana seleccionada".
+
+## Assumptions
+
+- Se asume que el Core API (Banco de Preguntas) expone endpoints REST para obtener preguntas filtradas por course_id, topic_id, subtopic_id y dificultad.
+- Se asume que el Worker FastAPI corre en AWS ECS (Fargate) con acceso a SQS, S3 y al Core API.
+- Se asume que las preguntas del Core API incluyen contenido completo (texto, imágenes, alternativas) necesario para renderizar el PDF.
+- Se asume que el Historial y las reglas anti-repetición de preguntas se definirán en la Spec 005.
