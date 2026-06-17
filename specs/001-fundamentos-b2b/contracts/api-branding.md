@@ -35,4 +35,4 @@ GET /api/v1/tenants/branding?subdomain={subdomain}
 ## Notes
 
 - This endpoint NEVER returns 404. Unknown subdomains get default branding.
-- Queried from `public.clientes_empresas` table.
+- Queried from `public.companies` table.

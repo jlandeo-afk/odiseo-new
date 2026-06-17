@@ -17,7 +17,7 @@ Guía de validación end-to-end del flujo de autenticación y multi-tenant.
 # Crear la base de datos
 createdb odiseo_b2b
 
-# El esquema public se usa para datos globales (clientes_empresas)
+# El esquema public se usa para datos globales (companies)
 # Los schemas de tenant se crean automáticamente via API
 ```
 
@@ -55,8 +55,8 @@ npm run dev
 curl -X POST http://localhost:3000/api/v1/admin/companies \
   -H "Content-Type: application/json" \
   -d '{
-    "subdominio": "colegio",
-    "nombre_comercial": "Colegio Innovador",
+    "subdomain": "colegio",
+    "commercial_name": "Colegio Innovador",
     "logo_url": "https://via.placeholder.com/150",
     "primary_color": "#1e88e5"
   }'

@@ -12,7 +12,7 @@
 
 ### Decisión 2: Resolución de Tenant en Middleware (CLS)
 
-- **Decisión**: El `TenantMiddleware` consulta `clientes_empresas` en esquema `public` para traducir subdomain → company_id → `tenant_<company_id>` y lo almacena en CLS (Continuation Local Storage).
+- **Decisión**: El `TenantMiddleware` consulta `companies` en esquema `public` para traducir subdomain → company_id → `tenant_<company_id>` y lo almacena en CLS (Continuation Local Storage).
 - **Rationale**: Una sola consulta por request, antes de que cualquier controller se ejecute. CLS (via `nestjs-cls`) propaga el contexto a través de la cadena de middlewares/guards/services sin pasar parámetros explícitos.
 - **Alternativas consideradas**:
   - Resolver en Guard post-auth: No funciona para endpoints públicos (branding). Descartado.

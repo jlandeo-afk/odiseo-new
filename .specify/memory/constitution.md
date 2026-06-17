@@ -39,6 +39,7 @@ El ecosistema Odiseo se divide en dos dominios estrictamente separados:
 
 ### IV. Estándares de Calidad (Quality Standards)
 - Las funciones de base de datos en PostgreSQL DEBEN retornar tipos exactos (específicamente `void` al ejecutar funciones de actualización) y contar con cobertura de pruebas.
+- **Convención de nombres en BD**: Todas las tablas, columnas, índices, constraints y funciones en PostgreSQL DEBEN nombrarse exclusivamente en inglés (snake_case). Queda prohibido el uso de nombres en español u otros idiomas en la capa de datos.
 - Contratos de API estrictamente definidos mediante OpenAPI/Swagger para la comunicación entre el SaaS y el Core.
 
 ### V. Restricciones de Integración (Integration Constraints)

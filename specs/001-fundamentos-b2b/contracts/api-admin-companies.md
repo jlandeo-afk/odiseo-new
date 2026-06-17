@@ -12,8 +12,8 @@ Content-Type: application/json
 
 ```json
 {
-  "subdominio": "nuevo-colegio",
-  "nombre_comercial": "Colegio Nuevo Horizonte",
+  "subdomain": "nuevo-colegio",
+  "commercial_name": "Colegio Nuevo Horizonte",
   "logo_url": "https://s3.aws.com/tenant-assets/nuevo-horizonte.png",
   "primary_color": "#4caf50"
 }
@@ -21,8 +21,8 @@ Content-Type: application/json
 
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
-| subdominio | string | Yes | Unique, lowercase, alphanumeric + hyphens, 3-30 chars |
-| nombre_comercial | string | Yes | 1-200 chars |
+| subdomain | string | Yes | Unique, lowercase, alphanumeric + hyphens, 3-30 chars |
+| commercial_name | string | Yes | 1-200 chars |
 | logo_url | string | No | Valid URL format |
 | primary_color | string | No | Hex color format `#RRGGBB`, defaults to `#6366f1` |
 
@@ -31,8 +31,8 @@ Content-Type: application/json
 ```json
 {
   "id": "uuid-company-new",
-  "subdominio": "nuevo-colegio",
-  "nombre_comercial": "Colegio Nuevo Horizonte",
+  "subdomain": "nuevo-colegio",
+  "commercial_name": "Colegio Nuevo Horizonte",
   "logo_url": "https://s3.aws.com/tenant-assets/nuevo-horizonte.png",
   "primary_color": "#4caf50",
   "schema_name": "tenant_uuid-company-new",
@@ -45,7 +45,7 @@ Content-Type: application/json
 ```json
 {
   "statusCode": 409,
-  "message": "El subdominio 'nuevo-colegio' ya está registrado",
+  "message": "The subdomain 'nuevo-colegio' is already registered",
   "error": "Conflict"
 }
 ```
@@ -62,7 +62,7 @@ Content-Type: application/json
 
 ## Side Effects
 
-1. Creates record in `public.clientes_empresas`
+1. Creates record in `public.companies`
 2. Executes `CREATE SCHEMA tenant_<company_id>`
 3. Runs base tenant migrations (users, roles, permissions tables)
 4. Seeds default V1 role `admin` with all permissions

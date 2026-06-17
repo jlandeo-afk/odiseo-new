@@ -24,9 +24,9 @@
 
 **Purpose**: Infraestructura multi-tenant que bloquea todas las user stories.
 
-- [ ] T004 Create database migration for `public.clientes_empresas` table with columns: `id` (uuid PK), `subdominio` (unique), `nombre_comercial`, `logo_url`, `primary_color`, `is_active`, timestamps. File: `backend-nestjs/src/migrations/`
+- [ ] T004 Create database migration for `public.companies` table with columns: `id` (uuid PK), `subdomain` (unique), `commercial_name`, `logo_url`, `primary_color`, `is_active`, timestamps. File: `backend-nestjs/src/migrations/`
 - [ ] T005 Create database migration for tenant schema base tables: `users`, `roles`, `permissions`, `model_has_roles`, `role_has_permissions` per data-model.md. File: `backend-nestjs/src/migrations/`
-- [ ] T006 Fix `TenantMiddleware` in `backend-nestjs/src/database/tenant.middleware.ts` to resolve subdomain → company_id by querying `public.clientes_empresas`, then set `tenantSchema = tenant_<company_id>` in CLS. Currently only stores subdomain.
+- [ ] T006 Fix `TenantMiddleware` in `backend-nestjs/src/database/tenant.middleware.ts` to resolve subdomain → company_id by querying `public.companies`, then set `tenantSchema = tenant_<company_id>` in CLS. Currently only stores subdomain.
 - [ ] T007 Update `TenantService.runInTenant()` in `backend-nestjs/src/database/tenant.service.ts` to read `tenantSchema` from CLS (verify compatibility with fixed middleware)
 
 ## Phase 3: User Story 1 — Aislamiento Físico y Multi-tenant (P1)
@@ -68,10 +68,10 @@
 
 **Goal**: Super-admin puede crear empresas y provisionar schemas automáticamente.
 
-**Independent Test**: POST /admin/companies crea registro en public.clientes_empresas y schema PostgreSQL.
+**Independent Test**: POST /admin/companies creates record in public.companies and provisions PostgreSQL schema.
 
 - [ ] T022 [P] [US4] Write unit test for `TenantsService.createCompany()` in `backend-nestjs/src/tenants/tenants.service.spec.ts`: test schema creation, duplicate subdomain rejection, migration execution
-- [ ] T023 [US4] Create `TenantsService` in `backend-nestjs/src/tenants/tenants.service.ts` with `createCompany()` method: INSERT into `public.clientes_empresas`, execute `CREATE SCHEMA tenant_<company_id>`, run base migrations, seed V1 admin role with all permissions
+- [ ] T023 [US4] Create `TenantsService` in `backend-nestjs/src/tenants/tenants.service.ts` with `createCompany()` method: INSERT into `public.companies`, execute `CREATE SCHEMA tenant_<company_id>`, run base migrations, seed V1 admin role with all permissions
 - [ ] T024 [US4] Create `CreateCompanyDto` in `backend-nestjs/src/tenants/dto/create-company.dto.ts` with validation per contract `api-admin-companies.md`
 - [ ] T025 [US4] Update `TenantsController` in `backend-nestjs/src/tenants/tenants.controller.ts` to add `POST /admin/companies` endpoint protected by `JwtAuthGuard` + super-admin role check
 - [ ] T026 [US4] Write E2E test in `backend-nestjs/test/companies.e2e-spec.ts`: create company, verify schema exists, verify branding returns for new subdomain, verify duplicate subdomain returns 409

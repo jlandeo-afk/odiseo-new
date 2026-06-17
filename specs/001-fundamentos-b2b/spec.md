@@ -11,7 +11,7 @@
 ### Session 2026-06-16
 
 - Q: ¿Cómo se provisiona un nuevo tenant (schema)? → A: Automático — un endpoint `POST /api/v1/admin/companies` crea la empresa y provisiona el schema PostgreSQL automáticamente.
-- Q: ¿Dónde se traduce subdomain → tenantSchema? → A: En el TenantMiddleware de NestJS. Consulta `clientes_empresas` en esquema `public` y setea `tenantSchema` en CLS.
+- Q: ¿Dónde se traduce subdomain → tenantSchema? → A: En el TenantMiddleware de NestJS. Consulta `companies` en esquema `public` y setea `tenantSchema` en CLS.
 - Q: ¿Se usa JWT o sesiones? → A: JWT con cookie httpOnly. Access token en cookie httpOnly (seguro contra XSS), stateless.
 - Q: ¿Catálogo de roles RBAC? → A: V1 solo con rol `admin` que tiene todos los permisos. Se expandirá en iteraciones futuras.
 - Q: ¿La sesión persiste tras page refresh? → A: Sí, cookie httpOnly + endpoint `GET /auth/me` para rehidratar Pinia al cargar la app.
@@ -39,7 +39,7 @@ Como usuario administrador de un colegio, quiero acceder a mi panel B2B mediante
 
 **Acceptance Scenarios**:
 
-1. **Given** que un usuario ingresa la URL de un subdominio específico de cliente, **When** la aplicación Frontend (Nuxt) carga la vista de Login, **Then** invoca una consulta al esquema global y muestra dinámicamente el branding (nombre, logo, colores) de dicho subdominio consultando la tabla `clientes_empresas`.
+1. **Given** que un usuario ingresa la URL de un subdominio específico de cliente, **When** la aplicación Frontend (Nuxt) carga la vista de Login, **Then** invoca una consulta al esquema global y muestra dinámicamente el branding (nombre, logo, colores) de dicho subdominio consultando la tabla `companies`.
 2. **Given** que el usuario introduce sus credenciales, **When** el backend autentica la petición, **Then** verifica incondicionalmente que el `company_id` del usuario (tabla `users`) coincida de forma exacta con la empresa dueña del subdominio activo.
 3. **Given** un login exitoso, **When** el backend genera la respuesta, **Then** MUST emitir un JWT como cookie httpOnly (Secure, SameSite=Strict) con los claims del usuario (id, company_id, roles, permissions) y retornar el payload del usuario en el cuerpo de la respuesta.
 
@@ -66,7 +66,7 @@ Como super-administrador de la plataforma Odiseo, quiero crear y gestionar empre
 
 **Acceptance Scenarios**:
 
-1. **Given** un super-administrador autenticado en el panel central, **When** crea una nueva empresa proporcionando subdominio, nombre comercial, logo y color primario, **Then** el backend registra la empresa en la tabla `clientes_empresas` del esquema `public` y ejecuta automáticamente `CREATE SCHEMA tenant_<company_id>` con las migraciones base del tenant.
+1. **Given** un super-administrador autenticado en el panel central, **When** crea una nueva empresa proporcionando subdominio, nombre comercial, logo y color primario, **Then** el backend registra la empresa en la tabla `companies` del esquema `public` y ejecuta automáticamente `CREATE SCHEMA tenant_<company_id>` con las migraciones base del tenant.
 2. **Given** una empresa recién creada, **When** un usuario navega al subdominio de esa empresa, **Then** el endpoint de branding retorna los datos configurados durante la creación.
 
 ---
@@ -93,8 +93,8 @@ Como usuario autenticado, quiero que mi sesión se mantenga activa al recargar l
 - **FR-005**: El proceso de login MUST integrar una validación de aislamiento cruzando rigurosamente el `company_id` del usuario con el de la empresa activa del subdominio solicitado.
 - **FR-006**: La respuesta de login exitoso MUST retornar un JWT como cookie httpOnly (Secure, SameSite=Strict) y un payload con los atributos de acceso del usuario incluyendo roles y permisos bajo el estándar del ecosistema de Spatie en Laravel (adaptado a NestJS).
 - **FR-007**: El backend MUST proveer un endpoint autenticado `GET /api/v1/auth/me` que valide el JWT de la cookie httpOnly y retorne los datos actualizados del usuario, roles y permisos, permitiendo rehidratar la sesión del frontend tras un page refresh.
-- **FR-008**: El `TenantMiddleware` MUST resolver la traducción de subdominio a `tenantSchema` consultando la tabla `clientes_empresas` en el esquema `public` y seteando el valor en CLS (Continuation Local Storage) para que `TenantService.runInTenant()` pueda operar correctamente.
-- **FR-009**: El backend MUST exponer un endpoint protegido `POST /api/v1/admin/companies` (accesible solo por super-administradores) para crear nuevas empresas. Este endpoint MUST registrar la empresa en `clientes_empresas` y ejecutar automáticamente la provisión del schema PostgreSQL (`CREATE SCHEMA tenant_<company_id>`) con las migraciones base del tenant.
+- **FR-008**: El `TenantMiddleware` MUST resolver la traducción de subdominio a `tenantSchema` consultando la tabla `companies` en el esquema `public` y seteando el valor en CLS (Continuation Local Storage) para que `TenantService.runInTenant()` pueda operar correctamente.
+- **FR-009**: El backend MUST exponer un endpoint protegido `POST /api/v1/admin/companies` (accesible solo por super-administradores) para crear nuevas empresas. Este endpoint MUST registrar la empresa en `companies` y ejecutar automáticamente la provisión del schema PostgreSQL (`CREATE SCHEMA tenant_<company_id>`) con las migraciones base del tenant.
 - **FR-010**: Para la versión 1, el sistema MUST operar con un único rol `admin` que posea todos los permisos del sistema. La expansión a roles granulares (coordinador, docente, etc.) queda diferida a una iteración futura.
 
 ### Structural Constraints (Critical)
@@ -103,7 +103,7 @@ Como usuario autenticado, quiero que mi sesión se mantenga activa al recargar l
 
 ### Key Entities
 
-- **clientes_empresas**: (Esquema público) Entidad que registra el `subdominio`, `nombre_comercial`, `logo_url` y `primary_color` de los tenants. Es la fuente de verdad para resolver subdominios y branding.
+- **companies**: (Esquema público) Entidad que registra el `subdomain`, `commercial_name`, `logo_url` y `primary_color` de los tenants. Es la fuente de verdad para resolver subdominios y branding.
 - **users**: (Esquema del tenant) Contiene las credenciales e identidad administrativa, estrictamente vinculada a un `company_id`.
 - **roles / permissions / model_has_roles**: (Esquema del tenant) Tablas del estándar Spatie para el mapeo RBAC (Role-Based Access Control). En V1, solo existirá el rol `admin`.
 

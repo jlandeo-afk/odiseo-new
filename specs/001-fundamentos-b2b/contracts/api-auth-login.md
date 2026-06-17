@@ -58,14 +58,14 @@ Set-Cookie: jwt=eyJhbGci...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=
 ```json
 {
   "statusCode": 401,
-  "message": "Credenciales inválidas o acceso no autorizado para este subdominio",
+  "message": "Invalid credentials or unauthorized access for this subdomain",
   "error": "Unauthorized"
 }
 ```
 
 ## Validation Logic
 
-1. Resolve `company_id` from `subdomain` via `public.clientes_empresas`
+1. Resolve `company_id` from `subdomain` via `public.companies`
 2. Set `search_path` to tenant schema
 3. Find user by `email` in tenant schema
 4. Validate password with bcrypt

@@ -4,16 +4,16 @@
 
 ```mermaid
 erDiagram
-    CLIENTES_EMPRESAS ||--o{ USERS : "company_id"
+    COMPANIES ||--o{ USERS : "company_id"
     USERS ||--o{ MODEL_HAS_ROLES : "user_id"
     ROLES ||--o{ MODEL_HAS_ROLES : "role_id"
     ROLES ||--o{ ROLE_HAS_PERMISSIONS : "role_id"
     PERMISSIONS ||--o{ ROLE_HAS_PERMISSIONS : "permission_id"
 
-    CLIENTES_EMPRESAS {
+    COMPANIES {
         uuid id PK
-        string subdominio UK "Unique subdomain identifier"
-        string nombre_comercial "Display name"
+        string subdomain UK "Unique subdomain identifier"
+        string commercial_name "Display name"
         string logo_url "URL to logo asset"
         string primary_color "Hex color code"
         boolean is_active "Tenant active status"
@@ -26,7 +26,7 @@ erDiagram
         string email UK "Within tenant schema"
         string password_hash "bcrypt hashed"
         string name
-        uuid company_id FK "References clientes_empresas.id"
+        uuid company_id FK "References companies.id"
         boolean is_active
         timestamp created_at
         timestamp updated_at
@@ -64,7 +64,7 @@ erDiagram
 
 | Entidad | Schema | Razón |
 |---------|--------|-------|
-| `clientes_empresas` | `public` | Datos globales, consultados antes del auth para branding |
+| `companies` | `public` | Global data, queried before auth for branding |
 | `users` | `tenant_<company_id>` | Aislamiento físico por tenant |
 | `roles` | `tenant_<company_id>` | Roles pueden variar por tenant en futuro |
 | `permissions` | `tenant_<company_id>` | Permisos pueden variar por tenant en futuro |
@@ -75,8 +75,8 @@ erDiagram
 
 | Campo | Regla |
 |-------|-------|
-| `clientes_empresas.subdominio` | UNIQUE, lowercase, alphanumeric + hyphens, 3-30 chars |
-| `clientes_empresas.primary_color` | Hex color format: `#RRGGBB` |
+| `companies.subdomain` | UNIQUE, lowercase, alphanumeric + hyphens, 3-30 chars |
+| `companies.primary_color` | Hex color format: `#RRGGBB` |
 | `users.email` | UNIQUE within tenant schema, valid email format |
 | `users.password_hash` | bcrypt hash, min 8 chars raw password |
 | `roles.name` | UNIQUE within tenant schema |
