@@ -9,13 +9,16 @@ import { TenantService } from '../../database/tenant.service';
 export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
   constructor(private readonly tenantService: TenantService) {}
 
-  async getCycles(): Promise<Cycle[]> {
+  async getCycles(limit: number = 20, offset: number = 0): Promise<{ data: Cycle[], total: number }> {
     return this.tenantService.runInTenant(async (manager) => {
-      return manager.find(Cycle, {
+      const [data, total] = await manager.findAndCount(Cycle, {
         relations: ['weeks'],
         where: { deletedAt: IsNull() },
         order: { startDate: 'DESC', weeks: { weekNumber: 'ASC' } },
+        take: limit,
+        skip: offset,
       });
+      return { data, total };
     });
   }
 

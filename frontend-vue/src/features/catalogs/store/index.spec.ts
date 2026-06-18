@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 describe('Catalogs Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-    global.fetch = vi.fn();
+    global.$fetch = vi.fn();
   });
 
   it('toggles topic visibility optimistically', async () => {
@@ -22,22 +22,19 @@ describe('Catalogs Store', () => {
       }
     ];
 
-    // Mock API response
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: 't1', isActive: false })
-    });
+    // Mock API response for $fetch
+    (global.$fetch as any).mockResolvedValue({ id: 't1', isActive: false });
 
     await store.toggleVisibility('t1', false);
 
     // Verify optimistic update
     const topic = store.courses[0].topics[0];
     expect(topic.isActive).toBe(false);
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(global.$fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/catalogs/topics/t1/visibility'),
       expect.objectContaining({
         method: 'PATCH',
-        body: JSON.stringify({ isActive: false })
+        body: { isActive: false }
       })
     );
   });

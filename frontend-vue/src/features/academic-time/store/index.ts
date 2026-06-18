@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useAuthStore } from '@/stores/auth.store'
 
 export interface CycleWeek {
   id: string;
@@ -26,16 +27,43 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   const cycles = ref<Cycle[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  
+  const totalCycles = ref(0)
+  const currentOffset = ref(0)
+  const limit = 20
 
-  async function fetchCycles() {
-    isLoading.value = true
-    error.value = null
+  const hasMore = computed(() => cycles.value.length < totalCycles.value)
+
+  async function fetchCycles(loadMore = false) {
+    if (isLoading.value) return;
+    isLoading.value = true;
+    error.value = null;
+
+    if (!loadMore) {
+      currentOffset.value = 0;
+    }
+
     try {
-      // In dev, use mock or real fetch
-      // const response = await $fetch('/api/v1/academic-time/cycles');
-      // cycles.value = response as Cycle[];
-      await new Promise(r => setTimeout(r, 400))
-      cycles.value = [] // Mock empty for now
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      // @ts-ignore
+      const response = await $fetch(`/api/v1/academic-time/cycles?limit=${limit}&offset=${currentOffset.value}`, {
+        headers: { 'x-subdomain': subdomain }
+      });
+      
+      const { data, total } = response as { data: Cycle[], total: number };
+      
+      if (loadMore) {
+        // Prevent duplicate keys in Vue v-for by filtering existing IDs
+        const existingIds = new Set(cycles.value.map(c => c.id));
+        const newCycles = data.filter(c => !existingIds.has(c.id));
+        cycles.value = [...cycles.value, ...newCycles];
+      } else {
+        cycles.value = data;
+      }
+      
+      totalCycles.value = total;
+      currentOffset.value += data.length;
     } catch (e: any) {
       error.value = e.message || 'Error fetching cycles'
     } finally {
@@ -45,9 +73,12 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
 
   async function createCycle(data: { name: string; year: number; startDate: string; daysPerWeek: number; totalWeeks: number }) {
     try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
       // @ts-ignore
       await $fetch('/api/v1/academic-time/cycles', {
         method: 'POST',
+        headers: { 'x-subdomain': subdomain },
         body: data
       })
       await fetchCycles()
@@ -62,9 +93,12 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
     const prev = cycle.isActive
     cycle.isActive = isActive
     try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
       // @ts-ignore
       await $fetch(`/api/v1/academic-time/cycles/${id}/visibility`, {
         method: 'PATCH',
+        headers: { 'x-subdomain': subdomain },
         body: { isActive }
       })
     } catch {
@@ -83,9 +117,12 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
     const prev = targetWeek.isActive
     targetWeek.isActive = isActive
     try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
       // @ts-ignore
       await $fetch(`/api/v1/academic-time/weeks/${id}/visibility`, {
         method: 'PATCH',
+        headers: { 'x-subdomain': subdomain },
         body: { isActive }
       })
     } catch {
@@ -96,8 +133,13 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
 
   async function deleteCycle(id: string) {
     try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
       // @ts-ignore
-      await $fetch(`/api/v1/academic-time/cycles/${id}`, { method: 'DELETE' })
+      await $fetch(`/api/v1/academic-time/cycles/${id}`, { 
+        method: 'DELETE',
+        headers: { 'x-subdomain': subdomain }
+      })
       await fetchCycles()
     } catch (e: any) {
       if (e.status === 409) {
@@ -107,5 +149,5 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
     }
   }
 
-  return { cycles, isLoading, error, fetchCycles, createCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle }
+  return { cycles, isLoading, error, fetchCycles, createCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle, hasMore }
 })

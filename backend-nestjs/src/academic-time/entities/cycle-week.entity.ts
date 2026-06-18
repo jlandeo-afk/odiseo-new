@@ -39,9 +39,6 @@ export class CycleWeek {
   @DeleteDateColumn({ type: 'timestamptz', name: 'deleted_at' })
   deletedAt: Date;
 
-  @Column({ name: 'deleted_by', type: 'uuid', nullable: true })
-  deletedBy: string;
-
   @ManyToOne(() => Cycle, (cycle) => cycle.weeks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'cycle_id' })
   cycle: Cycle;

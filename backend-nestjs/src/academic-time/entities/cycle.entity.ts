@@ -44,9 +44,6 @@ export class Cycle {
   @DeleteDateColumn({ type: 'timestamptz', name: 'deleted_at' })
   deletedAt: Date;
 
-  @Column({ name: 'deleted_by', type: 'uuid', nullable: true })
-  deletedBy: string;
-
   @OneToMany(() => CycleWeek, (week) => week.cycle)
   weeks: CycleWeek[];
 }

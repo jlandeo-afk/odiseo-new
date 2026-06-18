@@ -33,9 +33,15 @@
               />
             </div>
           </div>
+          <button
+            @click="toggleCycleExpand(cycle.id)"
+            class="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+          >
+            {{ expandedCycles.has(cycle.id) ? 'Ocultar Semanas' : 'Ver Semanas' }}
+          </button>
           <button 
             @click="onDeleteCycle(cycle.id)"
-            class="text-xs text-red-500 hover:text-red-700"
+            class="text-xs text-red-500 hover:text-red-700 ml-2"
           >
             Eliminar
           </button>
@@ -43,7 +49,7 @@
       </div>
 
       <!-- Weeks grid -->
-      <div class="p-4">
+      <div v-if="expandedCycles.has(cycle.id)" class="p-4 bg-white">
         <div class="grid gap-1.5" :style="`grid-template-columns: repeat(${Math.min(cycle.weeks.length, 12)}, minmax(0, 1fr))`">
           <button
             v-for="week in cycle.weeks"
@@ -84,21 +90,56 @@
       </div>
     </div>
 
-    <div v-if="store.cycles.length === 0" class="py-20 text-center">
+    <!-- Infinite Scroll Trigger -->
+    <div ref="loadMoreTrigger" class="h-10 flex items-center justify-center">
+      <span v-if="store.isLoading && store.cycles.length > 0" class="text-sm text-gray-400">Cargando más ciclos...</span>
+    </div>
+
+    <div v-if="store.cycles.length === 0 && !store.isLoading" class="py-20 text-center">
       <p class="text-sm text-gray-400">No hay ciclos académicos configurados aún.</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAcademicTimeStore } from '../store'
 import type { Cycle, CycleWeek } from '../store/index'
+import { useIntersectionObserver } from '@vueuse/core'
 
 const store = useAcademicTimeStore()
 const toast = useToast()
 
 const pendingWeeks = ref(new Set<string>())
+const expandedCycles = ref(new Set<string>())
+const loadMoreTrigger = ref<HTMLElement | null>(null)
+
+const targetIsVisible = ref(false)
+
+// Infinite scroll trigger logic
+useIntersectionObserver(
+  loadMoreTrigger,
+  ([{ isIntersecting }]) => {
+    targetIsVisible.value = isIntersecting
+    if (isIntersecting && store.hasMore && !store.isLoading && !store.error) {
+      store.fetchCycles(true)
+    }
+  },
+  { threshold: 0.1 }
+)
+
+// In case the screen is large and 1 page doesn't push the trigger out of view,
+// fetch more as soon as loading finishes and it's still visible
+watch(() => store.isLoading, (loading) => {
+  if (!loading && targetIsVisible.value && store.hasMore && !store.error) {
+    store.fetchCycles(true)
+  }
+})
+
+function toggleCycleExpand(id: string) {
+  if (expandedCycles.value.has(id)) expandedCycles.value.delete(id)
+  else expandedCycles.value.add(id)
+}
 
 function activeWeekCount(cycle: Cycle) {
   return cycle.weeks.filter(w => w.isActive).length

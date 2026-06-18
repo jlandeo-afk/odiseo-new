@@ -3,7 +3,7 @@ import { Cycle } from '../entities/cycle.entity';
 export const IAcademicTimeRepository = Symbol('IAcademicTimeRepository');
 
 export interface IAcademicTimeRepository {
-  getCycles(): Promise<Cycle[]>;
+  getCycles(limit?: number, offset?: number): Promise<{ data: Cycle[], total: number }>;
   createCycle(data: any): Promise<void>;
   updateCycleVisibility(id: string, isActive: boolean): Promise<void>;
   updateWeekVisibility(id: string, isActive: boolean): Promise<void>;

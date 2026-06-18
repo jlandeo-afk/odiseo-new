@@ -1,0 +1,46 @@
+{
+"select * from subtopic order by id": [
+	{
+		"id" : 1,
+		"code" : "01",
+		"name" : "RAZON ARITMÉTICA: TERMINOS",
+		"topic_id" : 1
+	},
+	{
+		"id" : 2,
+		"code" : "02",
+		"name" : "RAZON ARITMÉTICA: VALOR DE LA RAZON",
+		"topic_id" : 1
+	},
+	{
+		"id" : 3,
+		"code" : "03",
+		"name" : "RAZON ARITMÉTICA: PROPIEDADES",
+		"topic_id" : 1
+	},
+	{
+		"id" : 4,
+		"code" : "04",
+		"name" : "RAZON GEOMÉTRICA TERMINOS",
+		"topic_id" : 1
+	},
+	{
+		"id" : 10,
+		"code" : "01",
+		"name" : "PROPORCIÓN ARITMÉTICA: TERMINOS",
+		"topic_id" : 2
+	},
+	{
+		"id" : 11,
+		"code" : "03",
+		"name" : "PROPORCIÓN ARITMÉTICA CONTINUA",
+		"topic_id" : 2
+	},
+	{
+		"id" : 12,
+		"code" : "04",
+		"name" : "PROPORCIÓN ARITMÉTICA: PROPIEDADES",
+		"topic_id" : 2
+	}
+]
+}

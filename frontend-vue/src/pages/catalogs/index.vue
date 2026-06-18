@@ -18,12 +18,12 @@
     </div>
 
     <!-- Loading skeleton -->
-    <div v-if="store.isLoading" class="space-y-2">
+    <div v-if="store.isLoading && store.courses.length === 0" class="space-y-2">
       <div v-for="i in 6" :key="i" class="h-9 bg-gray-100 rounded-md animate-pulse" />
     </div>
 
     <!-- Table -->
-    <CatalogTable v-else />
+    <CatalogTable v-show="store.courses.length > 0 || !store.isLoading" />
 
     <!-- Kbd hint -->
     <p class="mt-5 text-xs text-gray-300 flex items-center gap-1.5">

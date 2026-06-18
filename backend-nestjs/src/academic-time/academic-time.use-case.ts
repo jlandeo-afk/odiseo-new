@@ -9,8 +9,8 @@ export class AcademicTimeUseCase {
     private readonly repository: IAcademicTimeRepository,
   ) {}
 
-  async getCycles() {
-    return this.repository.getCycles();
+  async getCycles(limit?: number, offset?: number) {
+    return this.repository.getCycles(limit, offset);
   }
 
   async createCycle(dto: {

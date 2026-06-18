@@ -1,0 +1,46 @@
+{
+"select * from topic order by id": [
+	{
+		"id" : 1,
+		"code" : "01",
+		"name" : "RAZONES Y SERIE DE RAZONES",
+		"course_id" : 1
+	},
+	{
+		"id" : 2,
+		"code" : "02",
+		"name" : "PROPORCIÓN",
+		"course_id" : 1
+	},
+	{
+		"id" : 3,
+		"code" : "03",
+		"name" : "MAGNITUDES PROPORCIONALES",
+		"course_id" : 1
+	},
+	{
+		"id" : 4,
+		"code" : "04",
+		"name" : "APLICACIONES DE LAS MAGNITUDES PROPORCIONALES",
+		"course_id" : 1
+	},
+	{
+		"id" : 5,
+		"code" : "05",
+		"name" : "TANTO POR CIENTO",
+		"course_id" : 1
+	},
+	{
+		"id" : 28,
+		"code" : "01",
+		"name" : "LEYES DE EXPONENTES: POTENCIACIÓN",
+		"course_id" : 2
+	},
+	{
+		"id" : 29,
+		"code" : "03",
+		"name" : "ECUACIONES EXPONENCIALES",
+		"course_id" : 2
+	}
+]
+}

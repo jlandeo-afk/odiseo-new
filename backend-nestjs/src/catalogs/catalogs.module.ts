@@ -19,9 +19,16 @@ const providers: any[] = [
 ];
 
 import { ConfigModule } from '@nestjs/config';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Course, Topic, Subtopic]), ConfigModule],
+  imports: [
+    TypeOrmModule.forFeature([Course, Topic, Subtopic]),
+    ConfigModule,
+    CacheModule.register({
+      ttl: 60 * 10 * 1000, // 10 minutes default
+    }),
+  ],
   controllers: [CatalogsController],
   providers,
 })

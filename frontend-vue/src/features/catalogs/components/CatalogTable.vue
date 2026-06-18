@@ -62,7 +62,17 @@
 
             <!-- Topic rows -->
             <template v-if="expanded.has(course.id)">
+              <tr v-if="loadingCourses.has(course.id)">
+                <td colspan="4" class="px-6 py-4">
+                  <div class="space-y-3">
+                    <USkeleton class="h-4 w-[250px]" />
+                    <USkeleton class="h-4 w-[200px]" />
+                    <USkeleton class="h-4 w-[300px]" />
+                  </div>
+                </td>
+              </tr>
               <tr
+                v-else
                 v-for="topic in filteredTopics(course)"
                 :key="topic.id"
                 class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group"
@@ -114,6 +124,7 @@
 import { ref, computed } from 'vue'
 import { useCatalogsStore } from '../store'
 import type { CatalogCourse, CatalogTopic } from '../store/index'
+import { watchDebounced } from '@vueuse/core'
 
 const store = useCatalogsStore()
 const toast = useToast()
@@ -121,7 +132,13 @@ const toast = useToast()
 const localSearch = ref('')
 const filterStatus = ref('all')
 const pendingTopics = ref(new Set<string>())
-const expanded = ref(new Set<string>(store.courses.map(c => c.id)))
+const loadingCourses = ref(new Set<string>())
+const expanded = ref(new Set<string>())
+
+// Server-side search with debounce
+watchDebounced(localSearch, (val) => {
+  store.fetchCourses(val)
+}, { debounce: 400 })
 
 const statusOptions = [
   { label: 'Todos', value: 'all' },
@@ -133,13 +150,11 @@ const filteredCourses = computed(() => {
   return store.courses.map(course => ({
     ...course,
     topics: (course.topics || []).filter(t => {
-      const matchSearch = !localSearch.value ||
-        t.name.toLowerCase().includes(localSearch.value.toLowerCase())
       const matchStatus = filterStatus.value === 'all' ||
         (filterStatus.value === 'active' ? t.isActive : !t.isActive)
-      return matchSearch && matchStatus
+      return matchStatus
     })
-  })).filter(c => c.topics.length > 0)
+  }))
 })
 
 function filteredTopics(course: CatalogCourse) {
@@ -147,15 +162,24 @@ function filteredTopics(course: CatalogCourse) {
 }
 
 const totalCount = computed(() =>
-  store.courses.flatMap(c => c.topics || []).length
+  store.courses.reduce((acc, c) => acc + (c.topicsCount || 0), 0)
 )
 const visibleCount = computed(() =>
   filteredCourses.value.flatMap(c => c.topics || []).length
 )
 
-function toggleCourse(id: string) {
-  if (expanded.value.has(id)) expanded.value.delete(id)
-  else expanded.value.add(id)
+async function toggleCourse(id: string) {
+  if (expanded.value.has(id)) {
+    expanded.value.delete(id)
+  } else {
+    expanded.value.add(id)
+    const course = store.courses.find(c => c.id === id)
+    if (course && course.topics.length === 0 && (course.topicsCount || 0) > 0) {
+      loadingCourses.value.add(id)
+      await store.fetchCourseTopics(id)
+      loadingCourses.value.delete(id)
+    }
+  }
 }
 
 async function onToggleActive(topic: CatalogTopic) {

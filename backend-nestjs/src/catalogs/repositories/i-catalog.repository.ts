@@ -10,9 +10,15 @@ export interface ICatalogRepository {
   getActiveHierarchy(): Promise<Course[]>;
 
   /**
-   * Obtiene la jerarquía completa sin importar su estado, para administración local.
+   * Obtiene la lista de cursos paginada o completa (son pocos)
    */
-  getFullHierarchy(): Promise<Course[]>;
+  getCourses(search?: string): Promise<Course[]>;
+
+  /**
+   * Obtiene los temas y subtemas de un curso específico,
+   * interceptado con la visibilidad del tenant actual.
+   */
+  getCourseTopics(courseId: string, search?: string): Promise<any[]>;
 
   /**
    * Actualiza la visibilidad de un Tema insertando o actualizando

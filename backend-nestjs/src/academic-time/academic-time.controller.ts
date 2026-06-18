@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { AcademicTimeUseCase } from './academic-time.use-case';
 
@@ -14,8 +15,13 @@ export class AcademicTimeController {
   constructor(private readonly academicTimeUseCase: AcademicTimeUseCase) {}
 
   @Get('cycles')
-  async getCycles() {
-    return this.academicTimeUseCase.getCycles();
+  async getCycles(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
+    const parsedOffset = offset ? parseInt(offset, 10) : 0;
+    return this.academicTimeUseCase.getCycles(parsedLimit, parsedOffset);
   }
 
   @Post('cycles')

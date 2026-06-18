@@ -1,0 +1,104 @@
+{
+"select * from course order by id": [
+	{
+		"id" : 1,
+		"code" : "01",
+		"name" : "ARITMÉTICA"
+	},
+	{
+		"id" : 2,
+		"code" : "02",
+		"name" : "ÁLGEBRA"
+	},
+	{
+		"id" : 3,
+		"code" : "03",
+		"name" : "GEOMETRÍA"
+	},
+	{
+		"id" : 4,
+		"code" : "04",
+		"name" : "TRIGONOMETRÍA"
+	},
+	{
+		"id" : 5,
+		"code" : "05",
+		"name" : "RAZONAMIENTO MATEMÁTICO"
+	},
+	{
+		"id" : 6,
+		"code" : "06",
+		"name" : "RAZONAMIENTO VERBAL"
+	},
+	{
+		"id" : 7,
+		"code" : "07",
+		"name" : "FÍSICA"
+	},
+	{
+		"id" : 8,
+		"code" : "08",
+		"name" : "QUÍMICA"
+	},
+	{
+		"id" : 9,
+		"code" : "09",
+		"name" : "BIOLOGÍA"
+	},
+	{
+		"id" : 10,
+		"code" : "10",
+		"name" : "ANATOMÍA"
+	},
+	{
+		"id" : 11,
+		"code" : "11",
+		"name" : "LENGUAJE"
+	},
+	{
+		"id" : 12,
+		"code" : "12",
+		"name" : "LITERATURA"
+	},
+	{
+		"id" : 13,
+		"code" : "13",
+		"name" : "INGLÉS"
+	},
+	{
+		"id" : 14,
+		"code" : "14",
+		"name" : "HISTORIA DEL PERÚ"
+	},
+	{
+		"id" : 15,
+		"code" : "15",
+		"name" : "HISTORIA UNIVERSAL"
+	},
+	{
+		"id" : 16,
+		"code" : "16",
+		"name" : "GEOGRAFÍA"
+	},
+	{
+		"id" : 17,
+		"code" : "17",
+		"name" : "ECONOMÍA"
+	},
+	{
+		"id" : 18,
+		"code" : "18",
+		"name" : "EDUCACIÓN CÍVICA"
+	},
+	{
+		"id" : 19,
+		"code" : "19",
+		"name" : "PSICOLOGÍA"
+	},
+	{
+		"id" : 20,
+		"code" : "20",
+		"name" : "FILOSOFÍA Y LÓGICA"
+	}
+]
+}

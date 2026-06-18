@@ -83,6 +83,38 @@ async function seed() {
         permission_id UUID NOT NULL REFERENCES "${schemaName}".permissions(id) ON DELETE CASCADE,
         PRIMARY KEY (role_id, permission_id)
       );
+
+      CREATE TABLE IF NOT EXISTS "${schemaName}".tenant_topic_visibility (
+        topic_id UUID PRIMARY KEY REFERENCES public.topics(id) ON DELETE CASCADE,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS "${schemaName}".cycles (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        year INTEGER NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        days_per_week INTEGER NOT NULL DEFAULT 5,
+        total_weeks INTEGER NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        deleted_at TIMESTAMP WITH TIME ZONE
+      );
+
+      CREATE TABLE IF NOT EXISTS "${schemaName}".cycle_weeks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        cycle_id UUID NOT NULL REFERENCES "${schemaName}".cycles(id) ON DELETE CASCADE,
+        week_number INTEGER NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        deleted_at TIMESTAMP WITH TIME ZONE
+      );
     `);
     console.log(`✅ Tenant tables provisioned successfully.`);
 

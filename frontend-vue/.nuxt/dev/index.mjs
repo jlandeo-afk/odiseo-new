@@ -910,6 +910,12 @@ const _inlineRuntimeConfig = {
       "/__nuxt_error": {
         "cache": false
       },
+      "/api/**": {
+        "proxy": {
+          "to": "http://localhost:3000/api/**",
+          "_proxyStripBase": "/api"
+        }
+      },
       "/_fonts/**": {
         "headers": {
           "cache-control": "public, max-age=31536000, immutable"

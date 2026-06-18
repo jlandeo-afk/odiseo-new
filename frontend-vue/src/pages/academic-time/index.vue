@@ -20,7 +20,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="store.isLoading" class="space-y-4">
+    <div v-if="store.isLoading && store.cycles.length === 0" class="space-y-4">
       <div v-for="i in 2" :key="i" class="border border-gray-100 rounded-lg overflow-hidden">
         <div class="h-10 bg-gray-50 border-b border-gray-100 animate-pulse" />
         <div class="p-4 grid grid-cols-8 gap-1.5">
@@ -30,7 +30,7 @@
     </div>
 
     <!-- Weeks matrix -->
-    <WeeksMatrix v-else />
+    <WeeksMatrix v-show="store.cycles.length > 0 || !store.isLoading" />
 
     <!-- Slide-over (non-blocking) -->
     <CycleSlideOver v-model="showCreateSlide" @created="onCreated" />

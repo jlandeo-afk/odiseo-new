@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useAuthStore } from '@/stores/auth.store'
 
 export interface CatalogSubtopic {
   id: string;
@@ -16,6 +17,7 @@ export interface CatalogTopic {
 export interface CatalogCourse {
   id: string;
   name: string;
+  topicsCount?: number;
   topics: CatalogTopic[];
 }
 
@@ -34,19 +36,39 @@ export const useCatalogsStore = defineStore('catalogs', () => {
     )
   )
 
-  async function fetchCourses() {
-    isLoading.value = true
-    error.value = null
+  async function fetchCourses(search?: string) {
+    isLoading.value = true;
+    error.value = null;
     try {
-      // In dev, use fetch API - Replace mock when backend is ready
-      // const response = await $fetch('/api/v1/catalogs');
-      // courses.value = response as CatalogCourse[];
-      await new Promise(r => setTimeout(r, 400))
-      courses.value = getMockData()
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const url = search ? `/api/v1/catalogs/courses?search=${encodeURIComponent(search)}` : '/api/v1/catalogs/courses';
+      const response = await $fetch(url, {
+        headers: { 'x-subdomain': subdomain }
+      });
+      courses.value = (response as CatalogCourse[]).map(c => ({
+        ...c,
+        topics: [] // Initialize empty
+      }));
     } catch (e: any) {
       error.value = e.message || 'Error fetching catalogs'
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function fetchCourseTopics(courseId: string) {
+    const course = courses.value.find(c => c.id === courseId)
+    if (!course) return;
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const response = await $fetch(`/api/v1/catalogs/courses/${courseId}/topics`, {
+        headers: { 'x-subdomain': subdomain }
+      });
+      course.topics = response as CatalogTopic[];
+    } catch (e: any) {
+      error.value = e.message || 'Error fetching course topics'
     }
   }
 
@@ -68,9 +90,12 @@ export const useCatalogsStore = defineStore('catalogs', () => {
 
     try {
       // 3. Persist
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
       // @ts-ignore - Assuming $fetch is available globally in Nuxt
       await $fetch(`/api/v1/catalogs/topics/${topicId}/visibility`, {
         method: 'PATCH',
+        headers: { 'x-subdomain': subdomain },
         body: { isActive }
       })
     } catch {
@@ -80,7 +105,7 @@ export const useCatalogsStore = defineStore('catalogs', () => {
     }
   }
 
-  return { courses, allTopics, isLoading, error, fetchCourses, toggleVisibility }
+  return { courses, allTopics, isLoading, error, fetchCourses, fetchCourseTopics, toggleVisibility }
 })
 
 // --- Mock data for development ---

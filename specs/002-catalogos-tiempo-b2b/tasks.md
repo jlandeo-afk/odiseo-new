@@ -83,9 +83,9 @@
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T027 [P] Ejecutar Linter y Prettier en ambos repositorios (`backend-nestjs` y `frontend-vue`).
-- [ ] T028 Ejecutar `npm run build:icons` si se añadieron nuevos íconos de Remix Icons.
-- [ ] T029 Ejecutar todos los tests unitarios localmente (`pnpm vitest run` y `npm run test`) para garantizar cobertura.
+- [x] T027 [P] Ejecutar Linter y Prettier en ambos repositorios (`backend-nestjs` y `frontend-vue`).
+- [x] T028 Ejecutar `npm run build:icons` si se añadieron nuevos íconos de Remix Icons.
+- [x] T029 Ejecutar todos los tests unitarios localmente (`pnpm vitest run` y `npm run test`) para garantizar cobertura.
 
 ---
 

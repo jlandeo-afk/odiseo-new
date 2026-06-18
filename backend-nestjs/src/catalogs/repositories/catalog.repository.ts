@@ -63,8 +63,66 @@ export class CatalogRepositoryImpl implements ICatalogRepository {
     });
   }
 
-  async getFullHierarchy(): Promise<Course[]> {
-    return []; // Not used in this iteration
+  async getCourses(search?: string): Promise<Course[]> {
+    return this.tenantService.runInTenant(async (manager) => {
+      let query = `
+        SELECT c.id, c.name, COUNT(DISTINCT t.id) as topics_count
+        FROM public.courses c
+        LEFT JOIN public.topics t ON t.course_id = c.id
+      `;
+      const params: any[] = [];
+      if (search) {
+        query += ` LEFT JOIN public.subtopics s ON s.topic_id = t.id `;
+        query += ` WHERE c.name ILIKE $1 OR t.name ILIKE $1 OR s.name ILIKE $1 `;
+        params.push(`%${search}%`);
+      }
+      query += ` GROUP BY c.id, c.name ORDER BY c.name;`;
+      
+      return manager.query(query, params);
+    });
+  }
+
+  async getCourseTopics(courseId: string, search?: string): Promise<any[]> {
+    return this.tenantService.runInTenant(async (manager) => {
+      let query = `
+        SELECT 
+          t.id AS topic_id, t.name AS topic_name,
+          COALESCE(ttv.is_active, true) AS is_active,
+          s.id AS subtopic_id, s.name AS subtopic_name
+        FROM public.topics t
+        LEFT JOIN tenant_topic_visibility ttv ON ttv.topic_id = t.id
+        LEFT JOIN public.subtopics s ON s.topic_id = t.id
+        WHERE t.course_id = $1
+      `;
+      const params: any[] = [courseId];
+      if (search) {
+        query += ` AND (t.name ILIKE $2 OR s.name ILIKE $2) `;
+        params.push(`%${search}%`);
+      }
+      query += ` ORDER BY t.name, s.name;`;
+      
+      const rows = await manager.query(query, params);
+
+      const topicsMap = new Map();
+      for (const row of rows) {
+        if (!topicsMap.has(row.topic_id)) {
+          topicsMap.set(row.topic_id, {
+            id: row.topic_id,
+            name: row.topic_name,
+            isActive: row.is_active,
+            subtopics: [],
+          });
+        }
+        if (row.subtopic_id) {
+          topicsMap.get(row.topic_id).subtopics.push({
+            id: row.subtopic_id,
+            name: row.subtopic_name,
+          });
+        }
+      }
+
+      return Array.from(topicsMap.values());
+    });
   }
 
   async updateTopicLocalVisibility(

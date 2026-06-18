@@ -6,6 +6,9 @@ export default defineNuxtConfig({
   devServer: {
     port: 3001
   },
+  routeRules: {
+    '/api/**': { proxy: 'http://localhost:3000/api/**' }
+  },
   alias: {
     '@': '/home/jhon/Documents/work-projects/odiseo-new/frontend-vue/src'
   },
