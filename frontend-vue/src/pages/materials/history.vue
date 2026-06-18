@@ -80,19 +80,29 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth.store';
 import type { MaterialRequest, MaterialRequestStatus } from '@/types/materials';
+
+definePageMeta({
+  layout: 'b2b',
+  permissions: ['generate_material']
+});
 
 const materials = ref<MaterialRequest[]>([]);
 const loading = ref(true);
+const authStore = useAuthStore();
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3000/api';
 
 onMounted(async () => {
+  const subdomain = authStore.getSubdomain();
   try {
     const response = await fetch(`${API_BASE}/v1/materials/history`, {
+      method: 'GET',
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        'x-subdomain': subdomain,
       },
+      credentials: 'include',
     });
     if (response.ok) {
       materials.value = await response.json();

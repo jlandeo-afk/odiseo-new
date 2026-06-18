@@ -1,6 +1,12 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-@Entity('users') // Esto residirá en el esquema del tenant
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -8,17 +14,17 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column({ name: 'password_hash' })
+  passwordHash: string;
+
   @Column()
-  password_hash: string;
+  name: string;
 
   @Column({ name: 'company_id' })
   companyId: string;
 
-  @Column({ name: 'first_name' })
-  firstName: string;
-
-  @Column({ name: 'last_name' })
-  lastName: string;
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

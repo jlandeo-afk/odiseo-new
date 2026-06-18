@@ -6,6 +6,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { setActivePinia, createPinia } from 'pinia';
 import HistoryView from '@/pages/materials/history.vue';
 import type { MaterialRequest } from '@/types/materials';
 
@@ -35,6 +36,7 @@ const mockMaterials: MaterialRequest[] = [
 
 describe('History View', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.restoreAllMocks();
   });
 

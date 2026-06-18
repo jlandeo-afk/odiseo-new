@@ -30,6 +30,7 @@ export { requestIdleCallback, cancelIdleCallback } from '#app/compat/idle-callba
 export { setInterval } from '#app/compat/interval';
 export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composables';
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
+export { useTableData, TableConfig } from '../src/composables/useTableData';
 export { useAuthStore, Branding, User } from '../src/stores/auth.store';
 export { useCurationStore } from '../src/stores/curation.store';
 export { useWebSocketStore } from '../src/stores/websocket.store';

@@ -5,5 +5,9 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "setupFiles": ["<rootDir>/jest-setup.ts"],
+  "moduleNameMapper": {
+    "^uuid$": "<rootDir>/mocks/uuid.js"
   }
 }

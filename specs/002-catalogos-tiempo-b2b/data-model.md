@@ -1,85 +1,75 @@
-# Data Model: Catálogos y Tiempo Académico
+# Data Model: Catálogos Simplificados y Tiempo Académico
 
-## Entity Relationship Diagram
+## Esquema Público (`public`)
+Contiene la taxonomía inmutable y global, sincronizada vía Cron Job desde el Core API.
 
-```mermaid
-erDiagram
-    COURSES ||--o{ TOPICS : "course_id"
-    TOPICS ||--o{ SUBTOPICS : "topic_id"
-    CYCLES ||--o{ CYCLE_WEEKS : "cycle_id"
+### `public.courses`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador único del curso |
+| `name` | VARCHAR(255) | NOT NULL | Nombre oficial del curso (ej. Álgebra) |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de creación |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de última actualización |
 
-    COURSES {
-        uuid id PK
-        string core_name "Readonly - from Core API"
-        boolean is_active "Default true"
-        timestamp created_at
-        timestamp updated_at
-    }
+### `public.topics`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador único del tema |
+| `course_id` | UUID | FK -> courses.id | Curso al que pertenece |
+| `name` | VARCHAR(255) | NOT NULL | Nombre oficial del tema |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de creación |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de última actualización |
 
-    TOPICS {
-        uuid id PK
-        uuid course_id FK
-        string core_name "Readonly - from Core API"
-        string local_alias "Nullable - tenant customization"
-        boolean is_active "Default true - toggleable"
-        timestamp created_at
-        timestamp updated_at
-    }
+### `public.subtopics`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador único del subtema |
+| `topic_id` | UUID | FK -> topics.id | Tema al que pertenece |
+| `name` | VARCHAR(255) | NOT NULL | Nombre oficial del subtema |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de creación |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de última actualización |
 
-    SUBTOPICS {
-        uuid id PK
-        uuid topic_id FK
-        string core_name "Readonly - from Core API"
-        boolean is_active "Default true"
-        timestamp created_at
-        timestamp updated_at
-    }
+---
 
-    CYCLES {
-        uuid id PK
-        string name "e.g. Ciclo 2026-I"
-        integer year
-        date start_date "Input by admin"
-        date end_date "Auto-calculated"
-        integer days_per_week "e.g. 5, 6, 7"
-        integer total_weeks "e.g. 16"
-        boolean is_active "Default true"
-        timestamp created_at
-        timestamp updated_at
-    }
+## Esquema del Tenant (`tenant_xyz`)
+Contiene los datos transaccionales específicos de cada colegio.
 
-    CYCLE_WEEKS {
-        uuid id PK
-        uuid cycle_id FK
-        integer week_number "Sequential 1..N"
-        date start_date "Calculated from cycle"
-        date end_date "Calculated from cycle"
-        boolean is_active "Default true - soft delete"
-        timestamp created_at
-        timestamp updated_at
-    }
-```
+### `tenant_xyz.tenant_topic_visibility`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `topic_id` | UUID | PK, FK -> public.topics.id | El tema que se está modificando |
+| `is_active` | BOOLEAN | NOT NULL, DEFAULT FALSE | Solo existen registros si el tenant decidió ocultar el tema |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Fecha de actualización |
 
-## Schema Distribution
+*(Nota: Si no existe registro para un topic_id, se asume is_active = true por defecto en la UI)*
 
-Todas las entidades residen en el schema del tenant (`tenant_<company_id>`).
+### `tenant_xyz.cycles`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador del ciclo |
+| `name` | VARCHAR(255) | NOT NULL | Ej. "Ciclo Verano 2026" |
+| `year` | INTEGER | NOT NULL | Año académico |
+| `start_date` | DATE | NOT NULL | Fecha de inicio del ciclo |
+| `end_date` | DATE | NOT NULL | Fecha fin (calculada automáticamente) |
+| `days_per_week` | INTEGER | NOT NULL | Días efectivos de clases (ej. 5 o 6) |
+| `total_weeks` | INTEGER | NOT NULL | Total de semanas del ciclo |
+| `is_active` | BOOLEAN | DEFAULT TRUE | Estado del ciclo (Soft delete) |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
-## Validation Rules
+### `tenant_xyz.cycle_weeks`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador de la semana |
+| `cycle_id` | UUID | FK -> cycles.id | Ciclo padre |
+| `week_number` | INTEGER | NOT NULL | Semana 1, 2, 3... |
+| `start_date` | DATE | NOT NULL | Calculado: cycle.start + (N-1)*7 |
+| `end_date` | DATE | NOT NULL | Calculado: start_date + days - 1 |
+| `is_active` | BOOLEAN | DEFAULT TRUE | Si es false, representa un feriado/semana muerta |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
-| Campo | Regla |
-|-------|-------|
-| `topics.local_alias` | Nullable, max 200 chars. Si null, UI muestra `core_name` |
-| `subtopics` | No tiene `local_alias` — read-only |
-| `cycles.days_per_week` | Integer 1-7 |
-| `cycles.total_weeks` | Integer 1-52 |
-| `cycles.start_date` | Valid date, not in the past |
-| `cycles.end_date` | Auto-calculated: `start_date + (total_weeks × days_per_week) days` |
-| `cycle_weeks.is_active` | Cannot DELETE row, only toggle is_active |
+## Reglas de Integridad y Triggers
 
-## Display Name Resolution (Frontend)
-
-```
-displayName = topic.local_alias ?? topic.core_name
-```
-
-For subtopics: always `subtopic.core_name` (no alias).
+1. **Delete Protection**: Un ciclo no puede ser eliminado (física o lógicamente) si existen IDs de `cycles` registrados en la tabla de `syllabus` (fuera del alcance de este módulo, pero clave para la arquitectura).
+2. **Cascada**: Si un ciclo se marca `is_active = false`, sus `cycle_weeks` no cambian en base de datos, pero la lógica de negocio las considerará inactivas heredando el estado del padre.

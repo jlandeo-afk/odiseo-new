@@ -1,37 +1,48 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Cycle } from './cycle.entity';
 
-@Entity('cycle_weeks')
+@Entity({ name: 'cycle_weeks' })
 export class CycleWeek {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
-  @Column({ name: 'week_number' })
+  @Column({ name: 'cycle_id', type: 'uuid' })
+  cycleId: string;
+
+  @Column({ name: 'week_number', type: 'integer' })
   weekNumber: number;
 
   @Column({ name: 'start_date', type: 'date' })
-  startDate: Date;
+  startDate: Date | string;
 
   @Column({ name: 'end_date', type: 'date' })
-  endDate: Date;
+  endDate: Date | string;
 
-  /**
-   * REGLA INMUTABLE:
-   * Las semanas marcadas como inactivas (vacaciones/feriados) NO deben ser eliminadas con DELETE.
-   */
-  @Column({ name: 'is_active', default: true })
+  @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ name: 'cycle_id' })
-  cycleId: string;
-
-  @ManyToOne(() => Cycle, cycle => cycle.weeks)
-  @JoinColumn({ name: 'cycle_id' })
-  cycle: Cycle;
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', name: 'deleted_at' })
+  deletedAt: Date;
+
+  @Column({ name: 'deleted_by', type: 'uuid', nullable: true })
+  deletedBy: string;
+
+  @ManyToOne(() => Cycle, (cycle) => cycle.weeks, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'cycle_id' })
+  cycle: Cycle;
 }

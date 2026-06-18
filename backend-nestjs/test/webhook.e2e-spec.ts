@@ -77,13 +77,14 @@ describe('POST /api/v1/materials/webhook/status (E2E)', () => {
         .send({
           job_id: `job-rapid-${i}`,
           status: i % 2 === 0 ? 'COMPLETED' : 'FAILED',
-          download_url: i % 2 === 0 ? `https://s3.aws.com/materials/${i}.pdf` : undefined,
+          download_url:
+            i % 2 === 0 ? `https://s3.aws.com/materials/${i}.pdf` : undefined,
           error_message: i % 2 !== 0 ? 'Error' : undefined,
         }),
     );
 
     const responses = await Promise.all(promises);
-    responses.forEach(res => {
+    responses.forEach((res) => {
       expect(res.status).toBe(HttpStatus.OK);
     });
   });

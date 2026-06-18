@@ -44,7 +44,10 @@ import WeeksMatrix from '../../features/academic-time/components/WeeksMatrix.vue
 import CycleSlideOver from '../../features/academic-time/components/CycleSlideOver.vue'
 import { useToast } from '#imports'
 
-definePageMeta({ layout: 'b2b' })
+definePageMeta({
+  layout: 'b2b',
+  permissions: ['view_catalogs'],
+})
 
 const store = useAcademicTimeStore()
 const showCreateSlide = ref(false)

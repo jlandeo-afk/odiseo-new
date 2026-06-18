@@ -14,9 +14,11 @@ export class TenantService {
    * Utiliza SET LOCAL search_path dentro de una transacción para garantizar
    * el aislamiento físico a nivel de base de datos.
    */
-  async runInTenant<T>(operation: (manager: EntityManager) => Promise<T>): Promise<T> {
+  async runInTenant<T>(
+    operation: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
     const tenantSchema = this.cls.get('tenantSchema');
-    
+
     if (!tenantSchema) {
       throw new Error('Tenant Schema no está definido en el contexto actual');
     }
@@ -31,7 +33,10 @@ export class TenantService {
   /**
    * Helper para cuando se necesita pasar un schema explícito (ej. procesos background)
    */
-  async runInSchema<T>(schema: string, operation: (manager: EntityManager) => Promise<T>): Promise<T> {
+  async runInSchema<T>(
+    schema: string,
+    operation: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
     return this.dataSource.transaction(async (manager) => {
       await manager.query(`SET LOCAL search_path TO "${schema}", public`);
       return operation(manager);

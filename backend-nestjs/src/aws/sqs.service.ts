@@ -13,7 +13,9 @@ export class SqsService {
       region: process.env.AWS_REGION || 'us-east-1',
       endpoint: process.env.AWS_SQS_ENDPOINT || 'http://localhost:4566',
     });
-    this.queueUrl = process.env.AWS_SQS_QUEUE_URL || 'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/odiseo-materials-queue';
+    this.queueUrl =
+      process.env.AWS_SQS_QUEUE_URL ||
+      'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/odiseo-materials-queue';
   }
 
   async sendGenerateMaterialJob(job: GenerateMaterialJobDto): Promise<void> {
@@ -24,9 +26,14 @@ export class SqsService {
 
     try {
       const response = await this.sqsClient.send(command);
-      this.logger.log(`Message sent to SQS successfully. MessageId: ${response.MessageId}`);
+      this.logger.log(
+        `Message sent to SQS successfully. MessageId: ${response.MessageId}`,
+      );
     } catch (error: any) {
-      this.logger.error(`Failed to send message to SQS: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to send message to SQS: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

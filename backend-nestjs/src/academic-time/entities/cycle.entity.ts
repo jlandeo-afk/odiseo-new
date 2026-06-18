@@ -1,29 +1,52 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { CycleWeek } from './cycle-week.entity';
 
-@Entity('cycles')
+@Entity({ name: 'cycles' })
 export class Cycle {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id: string;
 
-  @Column({ name: 'name' })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
+  @Column({ type: 'integer' })
+  year: number;
+
   @Column({ name: 'start_date', type: 'date' })
-  startDate: Date;
+  startDate: Date | string;
 
   @Column({ name: 'end_date', type: 'date' })
-  endDate: Date;
+  endDate: Date | string;
 
-  @Column({ name: 'is_active', default: true })
+  @Column({ name: 'days_per_week', type: 'integer' })
+  daysPerWeek: number;
+
+  @Column({ name: 'total_weeks', type: 'integer' })
+  totalWeeks: number;
+
+  @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  @OneToMany(() => CycleWeek, week => week.cycle)
-  weeks: CycleWeek[];
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', name: 'deleted_at' })
+  deletedAt: Date;
+
+  @Column({ name: 'deleted_by', type: 'uuid', nullable: true })
+  deletedBy: string;
+
+  @OneToMany(() => CycleWeek, (week) => week.cycle)
+  weeks: CycleWeek[];
 }

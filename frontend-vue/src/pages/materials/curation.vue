@@ -133,6 +133,11 @@ import { ref } from 'vue';
 import { useCurationStore } from '@/stores/curation.store';
 import { CurationQuestionStatus } from '@/types/materials';
 
+definePageMeta({
+  layout: 'b2b',
+  permissions: ['generate_material'],
+});
+
 const store = useCurationStore();
 const showConfirmModal = ref(false);
 

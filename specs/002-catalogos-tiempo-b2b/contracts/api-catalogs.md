@@ -3,8 +3,9 @@
 ## GET /api/v1/catalogs
 
 **Type**: Authenticated
+**Permissions**: `view_catalogs`
 
-Returns the full taxonomy hierarchy for the tenant.
+Returns the full taxonomy hierarchy for the tenant, fetching data from the `public` schema and intersecting it with the tenant's `tenant_topic_visibility` to determine the `isActive` state.
 
 ### Response 200 OK
 
@@ -14,19 +15,15 @@ Returns the full taxonomy hierarchy for the tenant.
     {
       "id": "uuid-course-1",
       "name": "Álgebra",
-      "isActive": true,
       "topics": [
         {
           "id": "uuid-topic-1",
-          "coreName": "Ecuaciones Diferenciales",
-          "localAlias": "ED",
-          "displayName": "ED",
+          "name": "Ecuaciones Diferenciales",
           "isActive": true,
           "subtopics": [
             {
               "id": "uuid-sub-1",
-              "coreName": "Resolución Básica",
-              "isActive": true
+              "name": "Resolución Básica"
             }
           ]
         }
@@ -36,35 +33,33 @@ Returns the full taxonomy hierarchy for the tenant.
 }
 ```
 
-## PATCH /api/v1/catalogs/topics/:id
+## PATCH /api/v1/catalogs/topics/:id/visibility
 
-**Type**: Authenticated (requires `edit_catalogs` permission)
+**Type**: Authenticated
+**Permissions**: `edit_catalogs`
 
-Updates local alias and/or visibility of a topic.
+Updates the local visibility of a topic for the current tenant. This creates or updates a record in the `tenant_topic_visibility` table.
 
 ### Request
 
 ```json
 {
-  "localAlias": "Ecuaciones Diferenciales Ordinarias",
   "isActive": false
 }
 ```
-
-Both fields are optional — only provided fields are updated.
 
 ### Response 200 OK
 
 ```json
 {
   "id": "uuid-topic-1",
-  "coreName": "Ecuaciones Diferenciales",
-  "localAlias": "Ecuaciones Diferenciales Ordinarias",
+  "name": "Ecuaciones Diferenciales",
   "isActive": false
 }
 ```
 
 ### Notes
 
-- Subtopics do NOT have a PATCH endpoint — they are read-only.
-- Setting `localAlias` to `null` removes the alias (falls back to `coreName`).
+- Subtopics do NOT have a PATCH endpoint — they are read-only and inherit their parent's inactivity in the UI.
+- Courses do NOT have a PATCH endpoint.
+- Names cannot be edited via any endpoint.

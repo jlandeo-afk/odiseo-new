@@ -3,6 +3,9 @@ export default defineNuxtConfig({
   srcDir: 'src/',
   modules: ['@pinia/nuxt', '@nuxt/ui'],
   devtools: { enabled: true },
+  devServer: {
+    port: 3001
+  },
   alias: {
     '@': '/home/jhon/Documents/work-projects/odiseo-new/frontend-vue/src'
   },

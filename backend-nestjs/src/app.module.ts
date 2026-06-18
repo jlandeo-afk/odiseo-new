@@ -1,4 +1,5 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -13,13 +14,16 @@ import { AcademicTimeModule } from './academic-time/academic-time.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ClsModule.forRoot({
       global: true,
       middleware: { mount: true },
     }),
     DatabaseModule,
-    AuthModule, 
-    TenantsModule, CatalogsModule, AcademicTimeModule
+    AuthModule,
+    TenantsModule,
+    CatalogsModule,
+    AcademicTimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

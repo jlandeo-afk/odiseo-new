@@ -38,7 +38,8 @@ describe('PostgreSQL Curation Functions — Strict VOID Return (CR-005)', () => 
 
   CURATION_FUNCTIONS.forEach((fnName) => {
     it(`should confirm ${fnName} returns VOID in pg_proc`, async () => {
-      const result = await dataSource.query(`
+      const result = await dataSource.query(
+        `
         SELECT
           p.proname AS function_name,
           pg_catalog.format_type(p.prorettype, NULL) AS return_type
@@ -46,7 +47,9 @@ describe('PostgreSQL Curation Functions — Strict VOID Return (CR-005)', () => 
         JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
         WHERE p.proname = $1
           AND n.nspname = 'public'
-      `, [fnName]);
+      `,
+        [fnName],
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].return_type).toBe('void');
@@ -65,7 +68,7 @@ describe('PostgreSQL Curation Functions — Strict VOID Return (CR-005)', () => 
 
     expect(result).toHaveLength(4);
     const names = result.map((r: any) => r.function_name);
-    CURATION_FUNCTIONS.forEach(fn => {
+    CURATION_FUNCTIONS.forEach((fn) => {
       expect(names).toContain(fn);
     });
   });

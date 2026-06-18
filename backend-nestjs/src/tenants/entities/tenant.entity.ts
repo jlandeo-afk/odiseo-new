@@ -1,24 +1,30 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-@Entity('clientes_empresas', { schema: 'public' })
-export class Tenant {
+@Entity('companies', { schema: 'public' })
+export class Company {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'company_id', unique: true })
-  companyId: string;
-
   @Column({ unique: true })
-  subdominio: string;
+  subdomain: string;
 
-  @Column({ name: 'nombre_comercial' })
+  @Column({ name: 'commercial_name' })
   commercialName: string;
 
   @Column({ name: 'logo_url', nullable: true })
   logoUrl: string;
 
-  @Column({ name: 'primary_color', default: '#000000' })
+  @Column({ name: 'primary_color', default: '#6366f1' })
   primaryColor: string;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

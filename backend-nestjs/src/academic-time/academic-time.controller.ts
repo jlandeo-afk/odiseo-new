@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Patch, Param, Body, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Delete,
+} from '@nestjs/common';
 import { AcademicTimeUseCase } from './academic-time.use-case';
 
 @Controller('v1/academic-time')
@@ -11,25 +19,40 @@ export class AcademicTimeController {
   }
 
   @Post('cycles')
-  async createCycle(@Body() body: { name: string; startDate: string; endDate: string }) {
-    return this.academicTimeUseCase.createCycle(body.name, new Date(body.startDate), new Date(body.endDate));
+  async createCycle(
+    @Body()
+    body: {
+      name: string;
+      year: number;
+      startDate: string;
+      daysPerWeek: number;
+      totalWeeks: number;
+    },
+  ) {
+    return this.academicTimeUseCase.createCycle(body);
   }
 
-  @Post('cycles/:cycleId/weeks')
-  async createWeeks(@Param('cycleId') cycleId: string, @Body() body: { weeks: any[] }) {
-    return this.academicTimeUseCase.createWeeks(cycleId, body.weeks);
+  @Patch('cycles/:id/visibility')
+  async toggleCycleVisibility(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    await this.academicTimeUseCase.toggleCycleVisibility(id, body.isActive);
+    return { success: true };
   }
 
-  @Delete('weeks/:id')
-  async deleteWeek(@Param('id') id: string) {
-    // RESTRICTED: Physical deletion is prohibited. Delegating to deactivation.
-    await this.academicTimeUseCase.deactivateWeek(id);
-    return { success: true, message: 'Week deactivated' };
+  @Patch('weeks/:id/visibility')
+  async toggleWeekVisibility(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    await this.academicTimeUseCase.toggleWeekVisibility(id, body.isActive);
+    return { success: true };
   }
 
-  @Patch('weeks/:id/restore')
-  async restoreWeek(@Param('id') id: string) {
-    await this.academicTimeUseCase.activateWeek(id);
-    return { success: true, message: 'Week activated' };
+  @Delete('cycles/:id')
+  async deleteCycle(@Param('id') id: string) {
+    await this.academicTimeUseCase.deleteCycle(id);
+    return { success: true };
   }
 }

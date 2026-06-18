@@ -1,101 +1,111 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Cycle, CreateCyclePayload } from '../types'
+
+export interface CycleWeek {
+  id: string;
+  cycleId: string;
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
+export interface Cycle {
+  id: string;
+  name: string;
+  year: number;
+  startDate: string;
+  endDate: string;
+  daysPerWeek: number;
+  totalWeeks: number;
+  isActive: boolean;
+  weeks: CycleWeek[];
+}
 
 export const useAcademicTimeStore = defineStore('academicTime', () => {
   const cycles = ref<Cycle[]>([])
   const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
   async function fetchCycles() {
     isLoading.value = true
+    error.value = null
     try {
+      // In dev, use mock or real fetch
+      // const response = await $fetch('/api/v1/academic-time/cycles');
+      // cycles.value = response as Cycle[];
       await new Promise(r => setTimeout(r, 400))
-      cycles.value = getMockCycles()
+      cycles.value = [] // Mock empty for now
+    } catch (e: any) {
+      error.value = e.message || 'Error fetching cycles'
     } finally {
       isLoading.value = false
     }
   }
 
-  async function createCycle(payload: CreateCyclePayload) {
-    // Optimistic insert
-    const tempId = `temp-${Date.now()}`
-    const optimisticCycle: Cycle = {
-      id: tempId,
-      name: payload.name,
-      startDate: payload.startDate,
-      endDate: payload.endDate,
-      isActive: true,
-      weeks: []
-    }
-    cycles.value.unshift(optimisticCycle)
-
+  async function createCycle(data: { name: string; year: number; startDate: string; daysPerWeek: number; totalWeeks: number }) {
     try {
-      const created = await $fetch<Cycle>('/api/v1/academic-time/cycles', {
+      // @ts-ignore
+      await $fetch('/api/v1/academic-time/cycles', {
         method: 'POST',
-        body: payload
+        body: data
       })
-      // Replace temp with real
-      const idx = cycles.value.findIndex(c => c.id === tempId)
-      if (idx !== -1) cycles.value[idx] = created
-    } catch {
-      // Revert
-      cycles.value = cycles.value.filter(c => c.id !== tempId)
-      throw new Error('No se pudo crear el ciclo.')
+      await fetchCycles()
+    } catch (e: any) {
+      throw new Error(e.message || 'Error al crear el ciclo')
     }
   }
 
-  // Optimistic soft-delete for a week
-  async function toggleWeek(cycleId: string, weekId: string) {
-    const cycle = cycles.value.find(c => c.id === cycleId)
-    const week = cycle?.weeks.find(w => w.id === weekId)
-    if (!week) return
-
-    const prevState = week.isActive
-    week.isActive = !prevState
-    week._pending = true
-
+  async function toggleCycleVisibility(id: string, isActive: boolean) {
+    const cycle = cycles.value.find(c => c.id === id)
+    if (!cycle) return
+    const prev = cycle.isActive
+    cycle.isActive = isActive
     try {
-      const endpoint = prevState
-        ? `/api/v1/academic-time/weeks/${weekId}` // DELETE → deactivate
-        : `/api/v1/academic-time/weeks/${weekId}/restore`
-      await $fetch(endpoint, { method: prevState ? 'DELETE' : 'PATCH' })
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/cycles/${id}/visibility`, {
+        method: 'PATCH',
+        body: { isActive }
+      })
     } catch {
-      week.isActive = prevState
-      week._error = true
-      setTimeout(() => { if (week) week._error = false }, 1500)
-    } finally {
-      if (week) week._pending = false
+      cycle.isActive = prev
+      throw new Error('No se pudo guardar la visibilidad del ciclo.')
     }
   }
 
-  return { cycles, isLoading, fetchCycles, createCycle, toggleWeek }
-})
-
-function getMockCycles(): Cycle[] {
-  return [
-    {
-      id: 'cy1', name: 'Ciclo Verano 2026', startDate: '2026-01-10',
-      endDate: '2026-03-10', isActive: true,
-      weeks: [
-        { id: 'w1', weekNumber: 1, startDate: '2026-01-10', endDate: '2026-01-16', isActive: true, cycleId: 'cy1' },
-        { id: 'w2', weekNumber: 2, startDate: '2026-01-17', endDate: '2026-01-23', isActive: true, cycleId: 'cy1' },
-        { id: 'w3', weekNumber: 3, startDate: '2026-01-24', endDate: '2026-01-30', isActive: false, cycleId: 'cy1' },
-        { id: 'w4', weekNumber: 4, startDate: '2026-01-31', endDate: '2026-02-06', isActive: true, cycleId: 'cy1' },
-        { id: 'w5', weekNumber: 5, startDate: '2026-02-07', endDate: '2026-02-13', isActive: true, cycleId: 'cy1' },
-        { id: 'w6', weekNumber: 6, startDate: '2026-02-14', endDate: '2026-02-20', isActive: true, cycleId: 'cy1' },
-        { id: 'w7', weekNumber: 7, startDate: '2026-02-21', endDate: '2026-02-27', isActive: false, cycleId: 'cy1' },
-        { id: 'w8', weekNumber: 8, startDate: '2026-02-28', endDate: '2026-03-06', isActive: true, cycleId: 'cy1' },
-      ]
-    },
-    {
-      id: 'cy2', name: 'Ciclo Otoño 2026', startDate: '2026-03-20',
-      endDate: '2026-06-10', isActive: true,
-      weeks: [
-        { id: 'w9', weekNumber: 1, startDate: '2026-03-20', endDate: '2026-03-26', isActive: true, cycleId: 'cy2' },
-        { id: 'w10', weekNumber: 2, startDate: '2026-03-27', endDate: '2026-04-02', isActive: true, cycleId: 'cy2' },
-        { id: 'w11', weekNumber: 3, startDate: '2026-04-03', endDate: '2026-04-09', isActive: false, cycleId: 'cy2' },
-        { id: 'w12', weekNumber: 4, startDate: '2026-04-10', endDate: '2026-04-16', isActive: true, cycleId: 'cy2' },
-      ]
+  async function toggleWeekVisibility(id: string, isActive: boolean) {
+    let targetWeek: CycleWeek | undefined;
+    for (const cycle of cycles.value) {
+      targetWeek = cycle.weeks.find(w => w.id === id);
+      if (targetWeek) break;
     }
-  ]
-}
+    if (!targetWeek) return
+    const prev = targetWeek.isActive
+    targetWeek.isActive = isActive
+    try {
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/weeks/${id}/visibility`, {
+        method: 'PATCH',
+        body: { isActive }
+      })
+    } catch {
+      targetWeek.isActive = prev
+      throw new Error('No se pudo guardar la visibilidad de la semana.')
+    }
+  }
+
+  async function deleteCycle(id: string) {
+    try {
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/cycles/${id}`, { method: 'DELETE' })
+      await fetchCycles()
+    } catch (e: any) {
+      if (e.status === 409) {
+        throw new Error('No se puede eliminar el ciclo porque tiene sílabos asociados. Desactívalo en su lugar.')
+      }
+      throw new Error('Error al eliminar el ciclo.')
+    }
+  }
+
+  return { cycles, isLoading, error, fetchCycles, createCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle }
+})

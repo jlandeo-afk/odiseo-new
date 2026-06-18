@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { useRequestHeaders } from '#app';
 
 export interface Branding {
   commercialName: string;
@@ -20,55 +21,144 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const branding = ref<Branding | null>(null);
   const isAuthenticated = ref(false);
+  const isInitialized = ref(false);
 
-  async function fetchBranding(subdomain: string) {
+  const API_BASE = 'http://localhost:3000/api';
+
+  function getSubdomain() {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const parts = host.split('.');
+      if (parts.length >= 2 && parts[0] !== 'www' && parts[0] !== 'localhost') {
+        return parts[0];
+      }
+    } else {
+      // Server-side: extract subdomain from request host header
+      const headers = useRequestHeaders(['host']);
+      const host = headers.host || '';
+      const parts = host.split('.');
+      if (parts.length >= 2 && parts[0] !== 'www' && parts[0] !== 'localhost') {
+        return parts[0];
+      }
+    }
+    return 'default';
+  }
+
+  async function fetchBranding(subdomainParam?: string) {
+    const subdomain = subdomainParam || getSubdomain();
     try {
-      // API call to the backend
-      const { data, error } = await useFetch(`/api/v1/tenants/branding?subdomain=${subdomain}`);
-      if (data.value) {
-        branding.value = data.value as Branding;
+      const res = await fetch(`${API_BASE}/v1/tenants/branding?subdomain=${subdomain}`);
+      if (res.ok) {
+        const data = await res.json() as Branding;
+        branding.value = data;
       }
     } catch (error) {
       console.error('Failed to fetch branding', error);
     }
   }
 
-  async function login(credentials: any, subdomain: string) {
+  async function login(credentials: any, subdomainParam?: string) {
+    const subdomain = subdomainParam || getSubdomain();
     try {
-      const { data, error } = await useFetch('/api/v1/auth/login', {
+      const res = await fetch(`${API_BASE}/v1/auth/login`, {
         method: 'POST',
-        body: { ...credentials, subdomain }
+        headers: {
+          'Content-Type': 'application/json',
+          'x-subdomain': subdomain,
+        },
+        body: JSON.stringify({ ...credentials, subdomain }),
+        credentials: 'include',
       });
       
-      if (error.value) throw new Error('Login failed');
-      if (data.value) {
-          user.value = data.value.user as User;
+      if (res.ok) {
+        const response = await res.json() as { user: User };
+        if (response && response.user) {
+          user.value = response.user;
           isAuthenticated.value = true;
-          // Hydrate roles and permissions
-          if (data.value.user.roles) user.value.roles = data.value.user.roles;
-          if (data.value.user.permissions) user.value.permissions = data.value.user.permissions;
           return true;
+        }
       }
       return false;
     } catch (error) {
-      console.error(error);
+      console.error('Login failed:', error);
       return false;
     }
   }
 
-  function logout() {
+  async function fetchMe() {
+    const subdomain = getSubdomain();
+    const reqHeaders = typeof process !== 'undefined' && process.server ? useRequestHeaders(['cookie']) : {};
+    
+    const headers: Record<string, string> = {
+      'x-subdomain': subdomain,
+      ...(reqHeaders as Record<string, string>),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/v1/auth/me`, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const response = await res.json() as { user: User };
+        if (response && response.user) {
+          user.value = response.user;
+          isAuthenticated.value = true;
+          return;
+        }
+      }
+      user.value = null;
+      isAuthenticated.value = false;
+    } catch (error) {
+      user.value = null;
+      isAuthenticated.value = false;
+    } finally {
+      isInitialized.value = true;
+    }
+  }
+
+  async function logout() {
     user.value = null;
     isAuthenticated.value = false;
-    useRouter().push('/login');
+
+    const subdomain = getSubdomain();
+    try {
+      await fetch(`${API_BASE}/v1/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'x-subdomain': subdomain,
+        },
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
   }
 
   function hasPermission(permission: string): boolean {
-    return user.value?.permissions.includes(permission) || false;
+    return user.value?.permissions?.includes(permission) || false;
   }
 
   function hasRole(role: string): boolean {
-    return user.value?.roles.includes(role) || false;
+    return user.value?.roles?.includes(role) || false;
   }
 
-  return { user, branding, isAuthenticated, fetchBranding, login, logout, hasPermission, hasRole };
+  return {
+    user,
+    branding,
+    isAuthenticated,
+    isInitialized,
+    fetchBranding,
+    login,
+    fetchMe,
+    logout,
+    hasPermission,
+    hasRole,
+    getSubdomain,
+  };
 });

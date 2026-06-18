@@ -4,13 +4,13 @@
 
 **Type**: Authenticated (requires `manage_academic_time` permission)
 
-Creates a new cycle with auto-generated weeks.
+Creates a new cycle with auto-generated weeks based on the exact 7-day cadence calculation.
 
 ### Request
 
 ```json
 {
-  "name": "Ciclo 2026-I",
+  "name": "Ciclo Regular 2026",
   "year": 2026,
   "startDate": "2026-03-01",
   "totalWeeks": 16,
@@ -23,7 +23,7 @@ Creates a new cycle with auto-generated weeks.
 ```json
 {
   "id": "uuid-cycle-1",
-  "name": "Ciclo 2026-I",
+  "name": "Ciclo Regular 2026",
   "year": 2026,
   "startDate": "2026-03-01",
   "endDate": "2026-06-20",
@@ -31,23 +31,25 @@ Creates a new cycle with auto-generated weeks.
   "daysPerWeek": 5,
   "isActive": true,
   "weeks": [
-    { "id": "uuid-w1", "weekNumber": 1, "startDate": "2026-03-01", "endDate": "2026-03-07", "isActive": true },
-    { "id": "uuid-w2", "weekNumber": 2, "startDate": "2026-03-08", "endDate": "2026-03-14", "isActive": true }
+    { "id": "uuid-w1", "weekNumber": 1, "startDate": "2026-03-01", "endDate": "2026-03-05", "isActive": true },
+    { "id": "uuid-w2", "weekNumber": 2, "startDate": "2026-03-08", "endDate": "2026-03-12", "isActive": true }
   ]
 }
 ```
+
+*(Note: Week 2 starts exactly 7 days after Week 1. End dates are calculated as start_date + daysPerWeek - 1)*
 
 ## GET /api/v1/academic-time/cycles
 
 **Type**: Authenticated
 
-Returns all cycles for the tenant.
+Returns all cycles for the tenant, including overlapping ones.
 
-## PATCH /api/v1/academic-time/weeks/:id
+## PATCH /api/v1/academic-time/cycles/:id/visibility
 
 **Type**: Authenticated (requires `manage_academic_time`)
 
-Soft-delete (deactivate) a week.
+Deactivate a cycle (soft delete equivalent).
 
 ### Request
 
@@ -55,10 +57,36 @@ Soft-delete (deactivate) a week.
 { "isActive": false }
 ```
 
-### Response 200 OK
+## PATCH /api/v1/academic-time/weeks/:id/visibility
+
+**Type**: Authenticated (requires `manage_academic_time`)
+
+Soft-delete (deactivate) a specific week.
+
+### Request
 
 ```json
-{ "id": "uuid-w8", "weekNumber": 8, "isActive": false }
+{ "isActive": false }
+```
+
+## DELETE /api/v1/academic-time/cycles/:id
+
+**Type**: Authenticated (requires `manage_academic_time`)
+
+Deletes a cycle ONLY if it has no related syllabus.
+
+### Response 200 OK (Success)
+```json
+{ "success": true, "message": "Ciclo eliminado" }
+```
+
+### Response 409 Conflict (Failed due to relations)
+```json
+{
+  "statusCode": 409,
+  "message": "No se puede eliminar el ciclo porque ya tiene sílabos asociados. Puede desactivarlo en su lugar.",
+  "error": "Conflict"
+}
 ```
 
 ## DELETE /api/v1/academic-time/weeks/:id

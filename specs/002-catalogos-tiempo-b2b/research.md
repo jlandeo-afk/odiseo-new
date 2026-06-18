@@ -1,32 +1,30 @@
-# Research Phase: Catálogos y Tiempo Académico
+# Research & Decisions: Catálogos Simplificados y Tiempo Académico
 
-## Decisiones Arquitectónicas y Rationale
+## 1. Estrategia de Sincronización del Banco Global
+- **Decision**: API Polling con Cron Job (`@nestjs/schedule`) centralizado en el esquema `public`.
+- **Rationale**: Los catálogos (cursos, temas) cambian muy raramente. Usar SQS era sobreingeniería y requería levantar infraestructura en AWS. Un Cron Job que descargue el catálogo y lo guarde en el esquema `public` compartido por todos los tenants es mucho más eficiente, robusto y fácil de mantener.
+- **Alternatives considered**: 
+  - *SQS / Eventos Push*: Requiere Worker 24/7 y DLQ. Demasiada complejidad para datos estáticos.
+  - *Logical Replication*: Acopla rígidamente los esquemas de bases de datos entre el Core y el B2B.
 
-### Decisión 1: Subtopics son Read-Only (sin local_alias)
+## 2. Gestión de Nombres Locales (Alias)
+- **Decision**: Eliminar por completo el concepto de `local_alias`.
+- **Rationale**: Simplifica radicalmente la base de datos y la UI. Garantiza que la taxonomía del B2B sea 100% idéntica a la del Banco Core, asegurando consistencia global sin esfuerzo manual por parte de los coordinadores.
+- **Alternatives considered**: 
+  - *Alias editables*: Fue la propuesta original de la especificación 001, pero se descartó interactivamente por complejidad innecesaria.
 
-- **Decisión**: Los subtopics NO tienen `local_alias` editable. Solo los topics permiten personalización local.
-- **Rationale**: Los subtopics provienen del banco base (Core API) y representan la granularidad más fina de la taxonomía. Editarlos crearía inconsistencias con el Core al momento de solicitar preguntas. Los topics sí tienen alias porque representan la agrupación que cada colegio puede nombrar según su currícula.
-- **Alternativas consideradas**: Alias en subtopics — descartado por riesgo de desincronización con el Core API.
+## 3. Visibilidad de Temas por Colegio (Tenant)
+- **Decision**: Tabla `tenant_topic_visibility` en el esquema de cada tenant.
+- **Rationale**: Como los catálogos ahora residen en el esquema `public` para todos, la única forma de que un colegio oculte un tema (`is_active = false`) es guardar esa preferencia en su propio esquema.
+- **Alternatives considered**: 
+  - *Duplicar el catálogo en cada tenant*: Altamente ineficiente y difícil de actualizar cuando el banco corrige un nombre.
 
-### Decisión 2: Persistencia Híbrida (TypeORM + Raw SQL)
+## 4. Fechas de Ciclos y Semanas
+- **Decision**: Fórmula matemática estricta basada en semanas naturales de 7 días.
+  - Semana N inicio = `start_date` + (N-1)*7
+  - Semana N fin = inicio + `days_per_week` - 1
+- **Rationale**: Mantiene las semanas académicas sincronizadas con el calendario del mundo real y automatiza la creación de la cuadrícula de planificación al instante.
 
-- **Decisión**: 80% TypeORM para CRUD estándar, 20% Raw SQL para operaciones SQS.
-- **Rationale**: TypeORM maneja bien el CRUD con search_path dinámico. Pero `INSERT ... ON CONFLICT DO UPDATE` con preservación selectiva de columnas es más limpio y performante en Raw SQL que con QueryBuilder.
-- **Alternativas consideradas**: 100% TypeORM con `upsert()` — no preserva `local_alias` elegantemente.
-
-### Decisión 3: Auto-generación de semanas al crear ciclo
-
-- **Decisión**: Al crear un ciclo con `total_weeks` y `days_per_week`, el sistema calcula `end_date` y genera N registros de `cycle_weeks` automáticamente.
-- **Rationale**: Mejor UX — el admin no tiene que crear 16 semanas una por una. El cálculo de fechas es determinístico: `end_date = start_date + (total_weeks × days_per_week) días`.
-- **Alternativas consideradas**: Creación manual de semanas — descartado por UX pobre.
-
-### Decisión 4: Dead Letter Queue para SQS
-
-- **Decisión**: Configurar DLQ con `maxReceiveCount = 3`. Mensajes que fallen 3 veces van a la DLQ.
-- **Rationale**: Garantiza que ningún evento de sincronización se pierda silenciosamente. Los mensajes en DLQ pueden ser auditados y reprocesados.
-- **Alternativas consideradas**: Log + skip — pierde mensajes silenciosamente. Descartado.
-
-### Decisión 5: Optimistic UI para mutaciones frontend
-
-- **Decisión**: Todas las mutaciones (alias edit, visibility toggle, week deactivation) usan Optimistic UI con rollback en error.
-- **Rationale**: Data-density alta con micro-interacciones requiere respuesta instantánea. Rollback visual mantiene la integridad si el backend falla.
+## 5. Reglas de Eliminación y Solapamiento de Ciclos
+- **Decision**: Se permite solapar fechas de ciclos activos. La eliminación es Soft Delete (`is_active = false`) y bloqueada si existen sílabos atados.
+- **Rationale**: Las instituciones suelen tener ciclos paralelos (ej. Mañana vs Noche, Regular vs Intensivo). El soft delete previene la pérdida catastrófica de historial académico.

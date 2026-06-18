@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TenantService } from './tenant.service';
+import { Company } from '../tenants/entities/tenant.entity';
 
 @Global()
 @Module({
@@ -17,12 +18,14 @@ import { TenantService } from './tenant.service';
         password: config.get<string>('DB_PASS', 'postgres'),
         database: config.get<string>('DB_NAME', 'odiseo'),
         autoLoadEntities: true,
-        synchronize: true, // Las migraciones se manejan aparte
+        synchronize: true,
         logging: ['error', 'warn'],
       }),
     }),
+    // Company entity needed by TenantMiddleware (global scope)
+    TypeOrmModule.forFeature([Company]),
   ],
   providers: [TenantService],
-  exports: [TenantService],
+  exports: [TenantService, TypeOrmModule],
 })
-export class DatabaseModule { }
+export class DatabaseModule {}

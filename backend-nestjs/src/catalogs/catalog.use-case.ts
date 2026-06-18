@@ -1,6 +1,5 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { ICatalogRepository } from './repositories/i-catalog.repository';
-import { Course } from './entities/course.entity';
 
 @Injectable()
 export class CatalogUseCase {
@@ -10,38 +9,35 @@ export class CatalogUseCase {
   ) {}
 
   /**
-   * Retorna los catálogos listos para ser mostrados en la UI (activos).
-   * Se procesa la jerarquía aplicando las reglas de alias.
+   * Retorna los catálogos listos para ser mostrados en la UI.
+   * Internamente hace el JOIN con la tabla de visibilidad.
    */
-  async getUIHierarchy(): Promise<any[]> {
+  async getHierarchy(): Promise<any[]> {
     const courses = await this.catalogRepository.getActiveHierarchy();
-    
-    // Mapeo simple a DTO (esto abstrae aún más a la UI de las entidades)
-    return courses.map(course => ({
+
+    // Mapeo simple a DTO. Subtopics hereda el isActive del Topic.
+    return courses.map((course: any) => ({
       id: course.id,
-      name: course.localAlias || course.coreName,
-      topics: course.topics?.filter(t => t.isActive).map(topic => ({
+      name: course.name,
+      topics: (course.topics || []).map((topic: any) => ({
         id: topic.id,
-        name: topic.localAlias || topic.coreName,
-        subtopics: topic.subtopics?.filter(s => s.isActive).map(subtopic => ({
+        name: topic.name,
+        isActive: topic.isActive,
+        subtopics: (topic.subtopics || []).map((subtopic: any) => ({
           id: subtopic.id,
-          name: subtopic.localAlias || subtopic.coreName,
-        })) || []
-      })) || []
+          name: subtopic.name,
+        })),
+      })),
     }));
   }
 
   /**
-   * Retorna toda la jerarquía para la vista de Administración de Tenant
+   * Actualiza la visibilidad de un Topic insertando en la tabla tenant
    */
-  async getAdminHierarchy(): Promise<Course[]> {
-    return this.catalogRepository.getFullHierarchy();
-  }
-
-  /**
-   * Actualiza propiedades locales de un Topic
-   */
-  async updateTopicLocalInfo(topicId: string, localAlias?: string, isActive?: boolean): Promise<void> {
-    await this.catalogRepository.updateTopicLocalData(topicId, { localAlias, isActive });
+  async updateTopicVisibility(
+    topicId: string,
+    isActive: boolean,
+  ): Promise<void> {
+    await this.catalogRepository.updateTopicLocalVisibility(topicId, isActive);
   }
 }

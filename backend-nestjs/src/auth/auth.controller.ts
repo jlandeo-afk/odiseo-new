@@ -1,5 +1,19 @@
-import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Res,
+  Req,
+  UnauthorizedException,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
+import * as express from 'express';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './auth.guard';
 
 @Controller('v1/auth')
 export class AuthController {
@@ -7,28 +21,68 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: any) {
-    const { email, password, subdomain } = body;
-    
-    if (!email || !password || !subdomain) {
-      throw new UnauthorizedException('Missing credentials or subdomain');
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const result = await this.authService.validateUser(
+      loginDto.email,
+      loginDto.password,
+      loginDto.subdomain,
+    );
+
+    if (!result) {
+      throw new UnauthorizedException(
+        'Invalid credentials or unauthorized access for this subdomain',
+      );
     }
 
-    const user = await this.authService.validateUser(email, password, subdomain);
-    if (!user) {
-      throw new UnauthorizedException('Credenciales inválidas o acceso denegado para esta institución.');
-    }
+    // Generate JWT
+    const token = this.authService.generateToken({
+      sub: result.user.id,
+      companyId: result.companyId,
+      roles: result.roles,
+      permissions: result.permissions,
+    });
+
+    // Set JWT as httpOnly cookie
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
 
     return {
-      message: 'Login successful',
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        companyId: user.companyId,
-        roles: user.roles || [],
-        permissions: user.permissions || [],
-      }
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        companyId: result.companyId,
+        roles: result.roles,
+        permissions: result.permissions,
+      },
     };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@Req() req: express.Request) {
+    const payload = (req as any).user;
+    const userData = await this.authService.getUserFromToken(payload);
+    return { user: userData };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: express.Response) {
+    res.clearCookie('jwt', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+    return { message: 'Logged out successfully' };
   }
 }

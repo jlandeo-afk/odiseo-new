@@ -38,7 +38,10 @@ import { onMounted } from 'vue'
 import { useCatalogsStore } from '../../features/catalogs/store'
 import CatalogTable from '../../features/catalogs/components/CatalogTable.vue'
 
-definePageMeta({ layout: 'b2b' })
+definePageMeta({
+  layout: 'b2b',
+  permissions: ['view_catalogs'],
+})
 
 const store = useCatalogsStore()
 onMounted(() => store.fetchCourses())

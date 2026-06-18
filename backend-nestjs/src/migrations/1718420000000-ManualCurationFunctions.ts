@@ -51,9 +51,17 @@ export class ManualCurationFunctions1718420000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_manual_curation_remove(uuid, varchar);`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_manual_curation_regenerate(uuid, varchar);`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_manual_curation_complete(uuid);`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_auto_curation_complete(uuid);`);
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS fn_manual_curation_remove(uuid, varchar);`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS fn_manual_curation_regenerate(uuid, varchar);`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS fn_manual_curation_complete(uuid);`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS fn_auto_curation_complete(uuid);`,
+    );
   }
 }

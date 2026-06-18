@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { IsNull } from 'typeorm';
 import { IAcademicTimeRepository } from './i-academic-time.repository';
 import { Cycle } from '../entities/cycle.entity';
 import { CycleWeek } from '../entities/cycle-week.entity';
@@ -12,34 +13,52 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
     return this.tenantService.runInTenant(async (manager) => {
       return manager.find(Cycle, {
         relations: ['weeks'],
-        order: { startDate: 'DESC', weeks: { weekNumber: 'ASC' } }
+        where: { deletedAt: IsNull() },
+        order: { startDate: 'DESC', weeks: { weekNumber: 'ASC' } },
       });
     });
   }
 
-  async createCycle(data: Partial<Cycle>): Promise<Cycle> {
+  async createCycle(data: any): Promise<void> {
     return this.tenantService.runInTenant(async (manager) => {
-      const cycle = manager.create(Cycle, data);
-      return manager.save(cycle);
+      const { weeks, ...cycleData } = data;
+      const cycle = manager.create(Cycle, cycleData);
+      await manager.save(cycle);
+
+      const cycleWeeks = weeks.map((w: any) => manager.create(CycleWeek, w));
+      await manager.save(cycleWeeks);
     });
   }
 
-  async createWeeks(cycleId: string, weeksData: Partial<CycleWeek>[]): Promise<CycleWeek[]> {
+  async updateCycleVisibility(id: string, isActive: boolean): Promise<void> {
+    await this.tenantService.runInTenant(async (manager) => {
+      await manager.update(Cycle, id, { isActive });
+    });
+  }
+
+  async updateWeekVisibility(id: string, isActive: boolean): Promise<void> {
+    await this.tenantService.runInTenant(async (manager) => {
+      await manager.update(CycleWeek, id, { isActive });
+    });
+  }
+
+  async getCycleWithSyllabus(id: string): Promise<any> {
     return this.tenantService.runInTenant(async (manager) => {
-      const weeks = weeksData.map(w => manager.create(CycleWeek, { ...w, cycleId }));
-      return manager.save(weeks);
+      const cycle = await manager.findOne(Cycle, { where: { id } });
+      if (!cycle) return null;
+
+      // Mock relation check: If there were a syllabuses table
+      // const count = await manager.count(Syllabus, { where: { cycleId: id } });
+      const hasSyllabus = false; // Mocked for now
+
+      return { ...cycle, hasSyllabus };
     });
   }
 
-  async deactivateWeek(weekId: string): Promise<void> {
+  async softDeleteCycle(id: string): Promise<void> {
     await this.tenantService.runInTenant(async (manager) => {
-      await manager.update(CycleWeek, weekId, { isActive: false });
-    });
-  }
-
-  async activateWeek(weekId: string): Promise<void> {
-    await this.tenantService.runInTenant(async (manager) => {
-      await manager.update(CycleWeek, weekId, { isActive: true });
+      await manager.softDelete(Cycle, id);
+      await manager.softDelete(CycleWeek, { cycle: { id } });
     });
   }
 }

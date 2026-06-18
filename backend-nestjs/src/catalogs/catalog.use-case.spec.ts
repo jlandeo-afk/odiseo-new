@@ -11,15 +11,24 @@ describe('CatalogUseCase', () => {
       getActiveHierarchy: jest.fn().mockResolvedValue([
         {
           id: 'course-1',
-          coreName: 'Course 1',
-          localAlias: null,
+          name: 'Course 1',
           topics: [
-            { id: 'topic-1', coreName: 'Topic 1', localAlias: 'Local Topic 1', isActive: true, subtopics: [] },
-            { id: 'topic-2', coreName: 'Topic 2', localAlias: null, isActive: false, subtopics: [] }
-          ]
-        }
+            {
+              id: 'topic-1',
+              name: 'Topic 1',
+              isActive: true,
+              subtopics: [],
+            },
+            {
+              id: 'topic-2',
+              name: 'Topic 2',
+              isActive: false,
+              subtopics: [],
+            },
+          ],
+        },
       ]),
-      updateTopicLocalData: jest.fn().mockResolvedValue(undefined),
+      updateTopicLocalVisibility: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -39,21 +48,22 @@ describe('CatalogUseCase', () => {
     expect(useCase).toBeDefined();
   });
 
-  it('debería retornar la jerarquía mapeada correctamente usando alias si existe', async () => {
-    const result = await useCase.getUIHierarchy();
-    
+  it('debería retornar la jerarquía correctamente', async () => {
+    const result = await useCase.getHierarchy();
+
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('Course 1');
-    expect(result[0].topics).toHaveLength(1); // topic-2 is inactive
-    expect(result[0].topics[0].name).toBe('Local Topic 1');
+    expect(result[0].topics).toHaveLength(2);
+    expect(result[0].topics[0].name).toBe('Topic 1');
+    expect(result[0].topics[0].isActive).toBe(true);
   });
 
   it('debería aislar la actualización local en el repositorio', async () => {
-    await useCase.updateTopicLocalInfo('topic-1', 'New Alias', false);
-    
-    expect(mockCatalogRepository.updateTopicLocalData).toHaveBeenCalledWith('topic-1', {
-      localAlias: 'New Alias',
-      isActive: false
-    });
+    await useCase.updateTopicVisibility('topic-1', false);
+
+    expect(mockCatalogRepository.updateTopicLocalVisibility).toHaveBeenCalledWith(
+      'topic-1',
+      false,
+    );
   });
 });

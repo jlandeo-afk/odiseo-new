@@ -1,26 +1,27 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Topic } from './topic.entity';
 
-@Entity('courses')
+@Entity({ schema: 'public', name: 'courses' })
 export class Course {
   @PrimaryColumn('uuid')
   id: string;
 
-  @Column({ name: 'core_name' })
-  coreName: string;
+  @Column({ type: 'varchar', length: 255 })
+  name: string;
 
-  @Column({ name: 'local_alias', nullable: true })
-  localAlias: string | null;
-
-  @Column({ name: 'is_active', default: true })
-  isActive: boolean;
-
-  @OneToMany(() => Topic, topic => topic.course)
-  topics: Topic[];
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt: Date;
+
+  @OneToMany(() => Topic, (topic) => topic.course)
+  topics: Topic[];
 }

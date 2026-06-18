@@ -29,17 +29,16 @@
         <thead class="bg-gray-50/70 border-b border-gray-100">
           <tr>
             <th class="text-left w-12 text-center">#</th>
-            <th class="text-left">Nombre Original (Banco Global)</th>
-            <th class="text-left">Alias Local del Colegio</th>
-            <th class="text-left w-24">Curso</th>
-            <th class="text-center w-20">Visible</th>
+            <th class="text-left">Nombre de Tema (Banco Global)</th>
+            <th class="text-left w-32">Curso</th>
+            <th class="text-center w-24">Visible</th>
           </tr>
         </thead>
         <tbody>
           <template v-for="course in filteredCourses" :key="course.id">
             <!-- Course row header -->
             <tr class="bg-gray-50/50 border-b border-gray-100">
-              <td colspan="5" class="px-3 py-1.5">
+              <td colspan="4" class="px-3 py-1.5">
                 <div class="flex items-center gap-2">
                   <button
                     class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -54,14 +53,14 @@
                     </svg>
                   </button>
                   <span class="text-xs font-semibold text-gray-700">
-                    {{ course.localAlias || course.coreName }}
+                    {{ course.name }}
                   </span>
                   <span class="text-xs text-gray-400">({{ course.topics?.length || 0 }} temas)</span>
                 </div>
               </td>
             </tr>
 
-            <!-- Topic rows with AutoAnimate -->
+            <!-- Topic rows -->
             <template v-if="expanded.has(course.id)">
               <tr
                 v-for="topic in filteredTopics(course)"
@@ -71,37 +70,26 @@
               >
                 <td class="text-center text-gray-300 text-xs pl-6">·</td>
 
-                <!-- Core name (read-only) -->
-                <td>
-                  <span class="text-gray-900" :class="!topic.isActive && 'opacity-40 line-through'">
-                    {{ topic.coreName }}
-                  </span>
-                </td>
-
-                <!-- Alias input (editable) -->
+                <!-- Name (read-only) -->
                 <td class="py-1">
-                  <input
-                    :value="topic.localAlias || ''"
-                    type="text"
-                    :placeholder="topic.coreName"
-                    class="w-full bg-transparent text-sm text-gray-700 placeholder:text-gray-300 outline-none rounded px-1 py-0.5 focus:bg-white focus:ring-1 focus:ring-blue-200 focus:border-blue-300 border border-transparent hover:border-gray-200 transition-all"
-                    @blur="onAliasBlur(course.id, topic, $event)"
-                  />
+                  <span class="text-sm text-gray-900 font-medium" :class="!topic.isActive && 'opacity-40 line-through'">
+                    {{ topic.name }}
+                  </span>
                 </td>
 
                 <!-- Course badge -->
                 <td>
-                  <span class="text-[11px] text-gray-400 truncate block max-w-[100px]">
-                    {{ course.localAlias || course.coreName }}
+                  <span class="text-[11px] text-gray-400 truncate block max-w-[120px]">
+                    {{ course.name }}
                   </span>
                 </td>
 
                 <!-- Visibility toggle -->
-                <td class="text-center">
+                <td class="text-center py-1">
                   <button
                     class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors duration-200 focus:outline-none"
                     :class="topic.isActive ? 'bg-blue-500' : 'bg-gray-200'"
-                    @click="onToggleActive(course.id, topic)"
+                    @click="onToggleActive(topic)"
                   >
                     <span
                       class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200"
@@ -125,8 +113,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useCatalogsStore } from '../store'
-import type { CatalogCourse, CatalogTopic } from '../types'
-import { useToast } from '@nuxt/ui'
+import type { CatalogCourse, CatalogTopic } from '../store/index'
 
 const store = useCatalogsStore()
 const toast = useToast()
@@ -143,11 +130,11 @@ const statusOptions = [
 ]
 
 const filteredCourses = computed(() => {
-  return store.courses.filter(c => c.isActive).map(course => ({
+  return store.courses.map(course => ({
     ...course,
     topics: (course.topics || []).filter(t => {
       const matchSearch = !localSearch.value ||
-        (t.localAlias || t.coreName).toLowerCase().includes(localSearch.value.toLowerCase())
+        t.name.toLowerCase().includes(localSearch.value.toLowerCase())
       const matchStatus = filterStatus.value === 'all' ||
         (filterStatus.value === 'active' ? t.isActive : !t.isActive)
       return matchSearch && matchStatus
@@ -171,25 +158,10 @@ function toggleCourse(id: string) {
   else expanded.value.add(id)
 }
 
-async function onAliasBlur(courseId: string, topic: CatalogTopic, event: FocusEvent) {
-  const newAlias = (event.target as HTMLInputElement).value.trim() || null
-  if (newAlias === topic.localAlias) return
-
+async function onToggleActive(topic: CatalogTopic) {
   pendingTopics.value.add(topic.id)
   try {
-    await store.patchTopic(courseId, topic.id, { localAlias: newAlias })
-    toast.add({ title: 'Alias guardado', color: 'success', timeout: 2000 })
-  } catch (e: any) {
-    toast.add({ title: e.message, color: 'error', timeout: 3000 })
-  } finally {
-    pendingTopics.value.delete(topic.id)
-  }
-}
-
-async function onToggleActive(courseId: string, topic: CatalogTopic) {
-  pendingTopics.value.add(topic.id)
-  try {
-    await store.patchTopic(courseId, topic.id, { isActive: !topic.isActive })
+    await store.toggleVisibility(topic.id, !topic.isActive)
   } catch (e: any) {
     toast.add({ title: e.message, color: 'error', timeout: 3000 })
   } finally {

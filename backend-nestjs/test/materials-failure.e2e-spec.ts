@@ -39,7 +39,8 @@ describe('Material Generation Failure Flow (E2E)', () => {
       .send({
         job_id: 'job-fail-001',
         status: 'FAILED',
-        error_message: 'No hay suficientes reactivos disponibles para los filtros seleccionados.',
+        error_message:
+          'No hay suficientes reactivos disponibles para los filtros seleccionados.',
       })
       .expect(HttpStatus.OK);
 

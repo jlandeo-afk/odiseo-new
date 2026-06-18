@@ -1,34 +1,37 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 import { Course } from './course.entity';
 import { Subtopic } from './subtopic.entity';
 
-@Entity('topics')
+@Entity({ schema: 'public', name: 'topics' })
 export class Topic {
   @PrimaryColumn('uuid')
   id: string;
 
-  @Column({ name: 'core_name' })
-  coreName: string;
-
-  @Column({ name: 'local_alias', nullable: true })
-  localAlias: string | null;
-
-  @Column({ name: 'is_active', default: true })
-  isActive: boolean;
-
-  @Column({ name: 'course_id' })
+  @Column({ name: 'course_id', type: 'uuid' })
   courseId: string;
 
-  @ManyToOne(() => Course, course => course.topics)
+  @Column({ type: 'varchar', length: 255 })
+  name: string;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updatedAt: Date;
+
+  @ManyToOne(() => Course, (course) => course.topics, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'course_id' })
   course: Course;
 
-  @OneToMany(() => Subtopic, subtopic => subtopic.topic)
+  @OneToMany(() => Subtopic, (subtopic) => subtopic.topic)
   subtopics: Subtopic[];
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }

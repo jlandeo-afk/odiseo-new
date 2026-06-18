@@ -206,9 +206,7 @@ const stats = [
 ];
 
 onMounted(async () => {
-  const host = window.location.hostname;
-  const parts = host.split('.');
-  subdomain.value = parts.length >= 2 ? parts[0] : 'default';
+  subdomain.value = authStore.getSubdomain();
 
   isBrandingLoading.value = true;
   try {

@@ -38,10 +38,8 @@ describe('Catalog SQS Sync Isolation (E2E)', () => {
     const fakeMessage = {
       Body: JSON.stringify({
         eventType: 'TopicsSynced',
-        data: [
-          { id: 't1', coreName: 'Nuevo Nombre Núcleo', courseId: 'c1' }
-        ]
-      })
+        data: [{ id: 't1', coreName: 'Nuevo Nombre Núcleo', courseId: 'c1' }],
+      }),
     };
 
     // Simulando el hook de SQS
@@ -49,7 +47,7 @@ describe('Catalog SQS Sync Isolation (E2E)', () => {
 
     // Se afirma que el repositorio fue llamado aislando el local_alias
     expect(mockCatalogRepository.upsertTopicsFromCore).toHaveBeenCalledWith([
-      { id: 't1', coreName: 'Nuevo Nombre Núcleo', courseId: 'c1' }
+      { id: 't1', coreName: 'Nuevo Nombre Núcleo', courseId: 'c1' },
     ]);
   });
 });

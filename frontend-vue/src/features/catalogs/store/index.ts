@@ -1,6 +1,23 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { CatalogCourse, TopicPatch } from '../types'
+
+export interface CatalogSubtopic {
+  id: string;
+  name: string;
+}
+
+export interface CatalogTopic {
+  id: string;
+  name: string;
+  isActive: boolean;
+  subtopics: CatalogSubtopic[];
+}
+
+export interface CatalogCourse {
+  id: string;
+  name: string;
+  topics: CatalogTopic[];
+}
 
 export const useCatalogsStore = defineStore('catalogs', () => {
   const courses = ref<CatalogCourse[]>([])
@@ -12,7 +29,7 @@ export const useCatalogsStore = defineStore('catalogs', () => {
     courses.value.flatMap(c =>
       (c.topics || []).map(t => ({
         ...t,
-        courseName: c.localAlias || c.coreName
+        courseName: c.name
       }))
     )
   )
@@ -21,73 +38,78 @@ export const useCatalogsStore = defineStore('catalogs', () => {
     isLoading.value = true
     error.value = null
     try {
-      // In dev, use mock data - replace with $fetch('/api/v1/catalogs')
+      // In dev, use fetch API - Replace mock when backend is ready
+      // const response = await $fetch('/api/v1/catalogs');
+      // courses.value = response as CatalogCourse[];
       await new Promise(r => setTimeout(r, 400))
       courses.value = getMockData()
     } catch (e: any) {
-      error.value = e.message
+      error.value = e.message || 'Error fetching catalogs'
     } finally {
       isLoading.value = false
     }
   }
 
   // Optimistic UI: update topic immediately, revert on error
-  async function patchTopic(courseId: string, topicId: string, patch: TopicPatch) {
+  async function toggleVisibility(topicId: string, isActive: boolean) {
     // 1. Find topic and snapshot previous state
-    const course = courses.value.find(c => c.id === courseId)
-    const topic = course?.topics?.find(t => t.id === topicId)
-    if (!topic) return
+    let targetTopic: CatalogTopic | undefined;
+    for (const course of courses.value) {
+      targetTopic = course.topics.find(t => t.id === topicId);
+      if (targetTopic) break;
+    }
+    
+    if (!targetTopic) return
 
-    const prev = { localAlias: topic.localAlias, isActive: topic.isActive }
+    const prevIsActive = targetTopic.isActive
 
     // 2. Apply immediately (optimistic)
-    if (patch.localAlias !== undefined) topic.localAlias = patch.localAlias
-    if (patch.isActive !== undefined) topic.isActive = patch.isActive
+    targetTopic.isActive = isActive
 
     try {
       // 3. Persist
-      await $fetch(`/api/v1/catalogs/topics/${topicId}`, {
+      // @ts-ignore - Assuming $fetch is available globally in Nuxt
+      await $fetch(`/api/v1/catalogs/topics/${topicId}/visibility`, {
         method: 'PATCH',
-        body: patch
+        body: { isActive }
       })
     } catch {
       // 4. Revert on error
-      topic.localAlias = prev.localAlias
-      topic.isActive = prev.isActive
-      throw new Error('No se pudo guardar el cambio. Intenta nuevamente.')
+      targetTopic.isActive = prevIsActive
+      throw new Error('No se pudo guardar el cambio de visibilidad. Intenta nuevamente.')
     }
   }
 
-  return { courses, allTopics, isLoading, error, fetchCourses, patchTopic }
+  return { courses, allTopics, isLoading, error, fetchCourses, toggleVisibility }
 })
 
 // --- Mock data for development ---
 function getMockData(): CatalogCourse[] {
   return [
     {
-      id: 'c1', coreName: 'Matemáticas', localAlias: null, isActive: true,
+      id: 'c1', name: 'Matemáticas',
       topics: [
-        { id: 't1', coreName: 'Álgebra Lineal', localAlias: 'Álgebra I', isActive: true, courseId: 'c1',
+        { id: 't1', name: 'Álgebra Lineal', isActive: true,
           subtopics: [
-            { id: 's1', coreName: 'Matrices', localAlias: null, isActive: true, topicId: 't1' },
-            { id: 's2', coreName: 'Vectores', localAlias: null, isActive: true, topicId: 't1' },
+            { id: 's1', name: 'Matrices' },
+            { id: 's2', name: 'Vectores' },
           ]
         },
-        { id: 't2', coreName: 'Cálculo Diferencial', localAlias: null, isActive: true, courseId: 'c1', subtopics: [] },
-        { id: 't3', coreName: 'Geometría del Espacio', localAlias: null, isActive: false, courseId: 'c1', subtopics: [] },
+        { id: 't2', name: 'Cálculo Diferencial', isActive: true, subtopics: [] },
+        { id: 't3', name: 'Geometría del Espacio', isActive: false, subtopics: [] },
       ]
     },
     {
-      id: 'c2', coreName: 'Ciencias', localAlias: 'Ciencias Naturales', isActive: true,
+      id: 'c2', name: 'Ciencias',
       topics: [
-        { id: 't4', coreName: 'Física Cuántica', localAlias: null, isActive: true, courseId: 'c2', subtopics: [] },
-        { id: 't5', coreName: 'Química Orgánica', localAlias: null, isActive: true, courseId: 'c2', subtopics: [] },
+        { id: 't4', name: 'Física Cuántica', isActive: true, subtopics: [] },
+        { id: 't5', name: 'Química Orgánica', isActive: true, subtopics: [] },
       ]
     },
     {
-      id: 'c3', coreName: 'Lenguaje', localAlias: 'Comunicación', isActive: true,
+      id: 'c3', name: 'Lenguaje',
       topics: [
-        { id: 't6', coreName: 'Comprensión Lectora', localAlias: null, isActive: true, courseId: 'c3', subtopics: [] },
+        { id: 't6', name: 'Comprensión Lectora', isActive: true, subtopics: [] },
       ]
     }
   ]

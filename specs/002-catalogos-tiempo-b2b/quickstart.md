@@ -1,70 +1,59 @@
-# Quickstart: Catálogos y Tiempo Académico
+# Quickstart Validation Guide
+
+Este documento proporciona los comandos y escenarios necesarios para validar que la funcionalidad de Catálogos Simplificados y Tiempo Académico ha sido implementada correctamente.
 
 ## Prerequisites
 
-- Spec 001 (Fundamentos) completada: auth funcional, multi-tenant operativo.
-- LocalStack o AWS con SQS configurado.
+1. PostgreSQL en ejecución con el esquema `public` y al menos un esquema de tenant (ej. `tenant_test`).
+2. Backend (NestJS) en ejecución (`npm run start:dev` en `backend-nestjs`).
+3. Frontend (Nuxt/Vue) en ejecución (`npm run dev` en `frontend-vue`).
+4. Autenticación configurada (usar token de prueba con permisos `view_catalogs` y `manage_academic_time`).
 
-## Validation Steps
+## Validation Scenarios
 
-### 1. Verificar catálogos sincronizados
+### Scenario 1: Sincronización de Catálogos (Cron Job)
 
-```bash
-# Listar la taxonomía del tenant
-curl http://localhost:3000/api/v1/catalogs \
-  -b cookies.txt
-```
+**Objective**: Verificar que el backend consulta el Core API y guarda los datos en el esquema `public`.
 
-**Esperado**: JSON con courses > topics > subtopics del tenant.
+**Steps**:
+1. Provocar la ejecución del Cron Job manualmente mediante un trigger interno de NestJS o esperando su ciclo.
+2. Verificar en la base de datos que las tablas `public.courses`, `public.topics` y `public.subtopics` contienen datos idénticos a la respuesta de la API Core.
 
-### 2. Editar alias de un topic
+**Expected Outcome**:
+Los datos existen solo en `public`. El esquema de tenant no contiene tablas de catálogo (salvo `tenant_topic_visibility`).
 
-```bash
-curl -X PATCH http://localhost:3000/api/v1/catalogs/topics/uuid-topic-1 \
-  -b cookies.txt \
-  -H "Content-Type: application/json" \
-  -d '{"localAlias": "ED Ordinarias"}'
-```
+### Scenario 2: Ocultar un Topic
 
-**Esperado**: Topic actualizado con `localAlias = "ED Ordinarias"`, `coreName` intacto.
+**Objective**: Comprobar que un coordinador puede ocultar un tema sin borrarlo globalmente.
 
-### 3. Simular sincronización SQS
+**Steps**:
+1. En el Frontend, ir a la vista de Catálogos.
+2. Desactivar el toggle de visibilidad del topic "Ecuaciones Diferenciales".
+3. Refrescar la página.
 
-Enviar un mensaje manualmente a la cola (ver contrato: [sqs-catalog-events.md](./contracts/sqs-catalog-events.md)). Verificar que `core_name` se actualizó pero `local_alias` permaneció intacto.
+**Expected Outcome**:
+La API retorna `PATCH /api/v1/catalogs/topics/:id/visibility` con `isActive = false`. En la BD, se insertó un registro en `tenant_topic_visibility`. El tema ya no se ve en la vista principal operativa, pero sigue en el modo edición.
 
-### 4. Crear un ciclo académico
+### Scenario 3: Creación de Ciclo (Auto-generación de fechas)
 
-```bash
-curl -X POST http://localhost:3000/api/v1/academic-time/cycles \
-  -b cookies.txt \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Ciclo 2026-I",
-    "year": 2026,
-    "startDate": "2026-03-01",
-    "totalWeeks": 16,
-    "daysPerWeek": 5
-  }'
-```
+**Objective**: Verificar que el cálculo de semanas y fechas funciona de forma matemáticamente exacta.
 
-**Esperado**: Ciclo creado con 16 semanas auto-generadas y `endDate` calculada.
+**Steps**:
+1. En el UI, crear un ciclo con: `startDate = 2026-03-01`, `totalWeeks = 4`, `daysPerWeek = 5`.
+2. Presionar Guardar.
 
-### 5. Desactivar una semana (soft-delete)
+**Expected Outcome**:
+La API crea el ciclo y 4 semanas. 
+- La Semana 1 inicia el `2026-03-01` y termina el `2026-03-05`.
+- La Semana 2 inicia el `2026-03-08` y termina el `2026-03-12`.
+El backend calcula todo de forma asíncrona y la UI se actualiza con la matriz de semanas.
 
-```bash
-curl -X PATCH http://localhost:3000/api/v1/academic-time/weeks/uuid-week-8 \
-  -b cookies.txt \
-  -H "Content-Type: application/json" \
-  -d '{"isActive": false}'
-```
+### Scenario 4: Intento de Eliminación de Ciclo
 
-**Esperado**: Semana 8 con `isActive = false`, registro NO eliminado.
+**Objective**: Validar que la regla de soft-delete condicional funciona.
 
-### 6. Intentar DELETE de semana (prohibido)
-
-```bash
-curl -X DELETE http://localhost:3000/api/v1/academic-time/weeks/uuid-week-8 \
-  -b cookies.txt
-```
-
-**Esperado**: HTTP 405 Method Not Allowed.
+**Steps**:
+1. Intentar borrar un ciclo vacío recién creado (`DELETE /api/v1/academic-time/cycles/:id`).
+2. Comprobar que la respuesta es 200 OK y en la BD aparece como `is_active = false`.
+3. Intentar borrar un ciclo que haya sido vinculado artificialmente a un syllabus en la BD.
+4. Comprobar que la respuesta es `409 Conflict`.

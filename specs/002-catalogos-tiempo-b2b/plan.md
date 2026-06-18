@@ -1,86 +1,82 @@
 # Implementation Plan: Catálogos Simplificados y Gestión del Tiempo Académico
 
-**Branch**: `002-catalogos-tiempo-b2b` | **Date**: 2026-06-16 | **Spec**: [spec.md](./spec.md)
+**Branch**: `002-catalogos-tiempo-b2b` | **Date**: 2026-06-17 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/002-catalogos-tiempo-b2b/spec.md`
 
 ## Summary
 
-Módulo de taxonomía y tiempo académico para el SaaS B2B. Incluye sincronización asíncrona de catálogos (courses/topics/subtopics) desde el Core API via SQS, edición local de alias en topics (subtopics son readonly), y gestión de ciclos académicos con auto-generación de semanas y soft-delete semántico.
+Módulo de taxonomía y tiempo académico para el SaaS B2B. Incluye sincronización de catálogos mediante Cron Job (API Polling) hacia un esquema `public` centralizado, gestión de visibilidad local de temas, y creación de ciclos académicos con auto-generación de semanas.
 
 ## Technical Context
 
-**Language/Version**: TypeScript (NestJS 10+, Nuxt 3, Vue 3 Composition API)
+**Language/Version**: TypeScript (NestJS 10+, Nuxt 3, Vue 3 Composition API con `<script setup lang="ts">` estricto)
 
 **Primary Dependencies**:
-- Backend: `@nestjs/sqs`, `@aws-sdk/client-sqs`, TypeORM, `nestjs-cls`
-- Frontend: Pinia, Nuxt UI, `@formkit/auto-animate`
+- Backend: `@nestjs/schedule` (para el Cron), Axios/Fetch (API Polling), TypeORM, `nestjs-cls`
+- Frontend: Pinia, Nuxt UI, `@formkit/auto-animate`, Vitest
 
-**Storage**: PostgreSQL 16 (Schema-per-tenant, inherited from Spec 001)
+**Storage**: PostgreSQL 16
+- **Global**: Esquema `public` para `courses`, `topics`, `subtopics`
+- **Tenant**: Esquema `tenant_xxx` para `tenant_topic_visibility`, `cycle`, `cycle_weeks`
 
-**Testing**: Jest (backend), Vitest (frontend)
+**Testing**: Jest (backend), Vitest (frontend unit tests obligatorios), Playwright (E2E). Requisito: `test-cases.md`.
 
 **Target Platform**: B2B SaaS Web Application
 
-**Architecture Pattern**: Clean Architecture (Use Cases → Repository interfaces), Persistencia Híbrida (TypeORM 80%, Raw SQL 20%)
+**Architecture Pattern**: Clean Architecture (Use Cases → Repository interfaces)
 
 **Constraints**:
-- Use Cases NUNCA interactúan con ORM directamente
-- Subtopics son readonly (no `local_alias`)
-- Eliminación física de `cycle_weeks` prohibida (soft-delete obligatorio)
-- DLQ obligatoria para mensajes SQS fallidos
+- SQS descartado. Usar Cron Job.
+- Eliminación física de `cycles` y `cycle_weeks` prohibida si tienen relaciones (usar `is_active = false`).
+- Solapamiento de ciclos permitido.
+- UI/UX: Formularios con placeholders, validaciones (`max`, `count`), diálogos con botón X y acciones primarias.
+- Composable `useTableData` debe recibir un solo parámetro.
 
 ## Constitution Check
 
-- [x] **Separación de Dominios**: La taxonomía local es una copia simplificada del Core. No almacena contenido de reactivos. ✅
-- [x] **Clean Architecture**: Use Cases aislados del ORM via interfaces de repositorio. ✅
-- [x] **Asincronía Extrema**: SQS Consumer procesa sincronización en background. ✅
-- [x] **Antipatrón NUNCA eliminar semanas**: Soft-delete semántico implementado. ✅
-- [x] **Schema-per-tenant**: Heredado de Spec 001. ✅
+- [x] **Separación de Dominios**: La taxonomía se importa del Core API y es de solo lectura. ✅
+- [x] **Arquitectura Limpia**: Use Cases aislados del ORM via interfaces. ✅
+- [x] **Testing**: Vitest para UI y generación de `test-cases.md`. ✅
+- [x] **Antipatrones**: Evitar borrado físico. Validaciones frontend obligatorias. ✅
 
 ## Architecture Flow
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
-│ SINCRONIZACIÓN DE CATÁLOGOS (SQS)                               │
+│ SINCRONIZACIÓN DE CATÁLOGOS (CRON JOB)                          │
 │                                                                 │
-│  Core API          Amazon SQS         NestJS Consumer  Tenant DB│
-│  ────────          ──────────         ──────────────── ─────────│
+│  Core API          NestJS Cron Job    PostgreSQL (public)       │
+│  ────────          ───────────────    ───────────────────       │
 │                                                                 │
-│  TopicCreated ──►  Queue ──────────►  SqsCatalogConsumer        │
-│  TopicUpdated ──►                     │                         │
-│                                       ├── Parse event           │
-│                                       ├── Resolve tenant schema │
-│                                       ├── Raw SQL:              │
-│                                       │   INSERT ... ON CONFLICT│
-│                                       │   DO UPDATE SET         │
-│                                       │   core_name = EXCLUDED  │
-│                                       │   (preserva local_alias)│
-│                                       └── ACK message           │
+│  GET /catalogs ◄── Polling (ej. 1hr)                            │
+│  { courses... }──► Parse JSON                                   │
+│                    UPSERT courses, topics, subtopics            │
+│                    en esquema 'public' (1 sola vez)             │
 │                                                                 │
-│  Si falla N veces ──► DLQ (Dead Letter Queue)                   │
+│ VISIBILIDAD LOCAL (Tenant UI)                                   │
+│                                                                 │
+│  Tenant Admin      NestJS API         PostgreSQL (tenant_xyz)   │
+│  ────────────      ──────────         ───────────────────────   │
+│  Ocultar Tema 1──► PATCH /topics/1 ──► INSERT/UPDATE            │
+│                                        tenant_topic_visibility  │
+│                                        (is_active = false)      │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
 │ GESTIÓN DE TIEMPO ACADÉMICO                                     │
 │                                                                 │
-│  Admin UI          NestJS                PostgreSQL              │
-│  ────────          ──────                ──────────              │
+│  Admin UI          NestJS                PostgreSQL (tenant_xyz)│
+│  ────────          ──────                ───────────────────────│
 │                                                                 │
 │  Crear Ciclo: ──►  POST /academic-time/cycles                   │
 │  {name, start,     │                                            │
-│   weeks: 16,       ├── Validate inputs                          │
-│   days: 5}         ├── Calculate end_date = start + (16×5 days) │
+│   weeks: 16,       ├── Calculate fechas:                        │
+│   days: 5}         │   Semana N inicio = start + (N-1)*7        │
+│                    │   Semana N fin = inicio + days - 1         │
 │                    ├── INSERT cycle                              │
-│                    ├── GENERATE 16 cycle_weeks with:             │
-│                    │   - week_number: 1..16                      │
-│                    │   - start/end dates calculated              │
-│                    │   - is_active: true (all)                   │
+│                    ├── INSERT 16 cycle_weeks                     │
 │                    └── Return cycle + weeks                      │
-│                                                                 │
-│  Desactivar ───►   PATCH /academic-time/weeks/:id               │
-│  semana 8          │                                            │
-│                    └── SET is_active = false (NO DELETE)         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -94,10 +90,10 @@ specs/002-catalogos-tiempo-b2b/
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
+├── test-cases.md        # BDD Scenarios & Unit tests (Nuevo requerimiento)
 ├── contracts/
 │   ├── api-catalogs.md
-│   ├── api-academic-time.md
-│   └── sqs-catalog-events.md
+│   └── api-academic-time.md
 └── tasks.md
 ```
 
@@ -109,36 +105,31 @@ backend-nestjs/src/
 │   ├── catalogs.controller.ts
 │   ├── catalogs.module.ts
 │   ├── catalog.use-case.ts
-│   ├── catalog.use-case.spec.ts
+│   ├── catalog.cron.ts                 # NUEVO: Reemplaza al SQS Consumer
 │   ├── entities/
-│   │   ├── course.entity.ts
-│   │   ├── topic.entity.ts
-│   │   └── subtopic.entity.ts
-│   ├── repositories/
-│   │   ├── i-catalog.repository.ts
-│   │   └── catalog.repository.ts
-│   └── sqs-catalog.consumer.ts
+│   │   ├── course.entity.ts            # public schema
+│   │   ├── topic.entity.ts             # public schema
+│   │   └── subtopic.entity.ts          # public schema
+│   └── repositories/
+│       ├── i-catalog.repository.ts
+│       └── catalog.repository.ts
 ├── academic-time/
 │   ├── academic-time.controller.ts
-│   ├── academic-time.module.ts
 │   ├── academic-time.use-case.ts
-│   ├── academic-time.use-case.spec.ts
 │   ├── entities/
+│   │   ├── tenant-topic-visibility.entity.ts # NUEVO
 │   │   ├── cycle.entity.ts
 │   │   └── cycle-week.entity.ts
 │   └── repositories/
-│       ├── i-academic-time.repository.ts
 │       └── academic-time.repository.ts
 
 frontend-vue/src/features/
 ├── catalogs/
 │   ├── components/CatalogTable.vue
-│   ├── store/index.ts
-│   └── types/index.ts
+│   └── store/index.ts
 ├── academic-time/
 │   ├── components/
 │   │   ├── CycleSlideOver.vue
 │   │   └── WeeksMatrix.vue
-│   ├── store/index.ts
-│   └── types/index.ts
+│   └── store/index.ts
 ```

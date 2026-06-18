@@ -1,42 +1,49 @@
 import { useAuthStore } from '@/stores/auth.store';
 import { defineNuxtRouteMiddleware, navigateTo, abortNavigation } from '#app';
 
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const authStore = useAuthStore();
   
+  // Try to rehydrate session on first request (SSR or Client)
+  if (!authStore.isInitialized) {
+    await authStore.fetchMe();
+  }
+
   const publicRoutes = ['/login'];
+  const isPublicRoute = publicRoutes.includes(to.path);
   
-  // Si la ruta es pública
-  if (publicRoutes.includes(to.path)) {
+  // If route is public
+  if (isPublicRoute) {
     if (authStore.isAuthenticated) {
+      // Redirect authenticated users trying to access login page to materials curation
       return navigateTo('/materials/curation');
     }
     return;
   }
   
-  // Proteger rutas privadas
+  // Protect all private routes
   if (!authStore.isAuthenticated) {
     return navigateTo('/login');
   }
   
-  // Control de acceso basado en roles (Spatie RBAC)
+  // Role-based Access Control (RBAC) check
   if (to.meta.roles && Array.isArray(to.meta.roles)) {
     const hasRequiredRole = to.meta.roles.some(role => authStore.hasRole(role as string));
     if (!hasRequiredRole) {
       return abortNavigation({
         statusCode: 403,
-        statusMessage: 'Acceso Denegado: Permisos insuficientes'
+        statusMessage: 'Access Denied: Insufficient roles'
       });
     }
   }
-
-  // Control de acceso basado en permisos (Spatie RBAC)
+  
+  // Permission-based Access Control check
   if (to.meta.permissions && Array.isArray(to.meta.permissions)) {
     const hasRequiredPermission = to.meta.permissions.some(permission => authStore.hasPermission(permission as string));
     if (!hasRequiredPermission) {
       return abortNavigation({
         statusCode: 403,
-        statusMessage: 'Acceso Denegado: No tienes el permiso necesario'
+        statusMessage: 'Access Denied: Missing required permission'
       });
     }
   }
