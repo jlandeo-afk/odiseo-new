@@ -29,6 +29,12 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
     });
   }
 
+  async findByCycle(cycleId: string): Promise<Syllabus[]> {
+    return await this.syllabusRepo.find({
+      where: { cycleId, isActive: true }
+    });
+  }
+
   async createDistribution(distribution: Partial<SyllabusDistribution>): Promise<SyllabusDistribution> {
     const newDist = this.distributionRepo.create(distribution);
     return await this.distributionRepo.save(newDist);
@@ -42,7 +48,7 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
     await this.distributionRepo.delete({ id });
   }
 
-  async getSummaryBySyllabus(syllabusId: string): Promise<any> {
+  async getSummaryBySyllabus(syllabusId: string): Promise<SyllabusDistribution[]> {
     return await this.distributionRepo.find({ where: { syllabusId }});
   }
 }

@@ -1,120 +1,121 @@
 <template>
-  <!-- Data-Dense Catalog Table (Linear-like) -->
+  <!-- Data-Dense Catalog Cards (Modern Accordion Style) -->
   <div class="w-full">
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <UInput
-          v-model="localSearch"
-          size="sm"
-          placeholder="Filtrar temas..."
-          :ui="{ base: 'text-sm' }"
-          class="w-60"
-        />
-        <USelect
-          v-model="filterStatus"
-          :items="statusOptions"
-          size="sm"
-          class="w-32"
-        />
+    <!-- Accordion Cards List -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+      <div v-if="filteredCourses.length === 0" class="py-16 text-center bg-white dark:bg-[#2b2b3f] rounded-2xl border border-slate-200 dark:border-slate-700/50">
+        <UIcon name="i-heroicons-inbox" class="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+        <p class="text-sm text-slate-500 dark:text-slate-400">No se encontraron cursos con "{{ localSearch }}"</p>
       </div>
-      <p class="text-xs text-gray-400">
-        {{ visibleCount }} temas de {{ totalCount }} totales
-      </p>
-    </div>
 
-    <!-- Table -->
-    <div class="border border-gray-100 rounded-lg overflow-hidden">
-      <table class="w-full table-dense">
-        <thead class="bg-gray-50/70 border-b border-gray-100">
-          <tr>
-            <th class="text-left w-12 text-center">#</th>
-            <th class="text-left">Nombre de Tema (Banco Global)</th>
-            <th class="text-left w-32">Curso</th>
-            <th class="text-center w-24">Visible</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-for="course in filteredCourses" :key="course.id">
-            <!-- Course row header -->
-            <tr class="bg-gray-50/50 border-b border-gray-100">
-              <td colspan="4" class="px-3 py-1.5">
-                <div class="flex items-center gap-2">
+      <div
+        v-else
+        v-for="course in filteredCourses"
+        :key="course.id"
+        class="bg-white dark:bg-[#2b2b3f] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden transition-all duration-200"
+        :class="expanded.has(course.id) ? 'ring-1 ring-indigo-500/20 border-indigo-500/30' : 'hover:border-slate-300 dark:hover:border-slate-600'"
+      >
+        <!-- Course Header (Clickable) -->
+        <button
+          @click="toggleCourse(course.id)"
+          class="w-full flex items-center justify-between px-6 py-4 bg-slate-50/50 dark:bg-[#1e1e2d]/50 hover:bg-slate-50 dark:hover:bg-[#1e1e2d] transition-colors outline-none text-left"
+        >
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm">
+              <UIcon name="i-heroicons-folder" class="w-5 h-5 text-indigo-500" />
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">{{ course.name }}</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <span class="font-medium text-slate-700 dark:text-slate-300">{{ course.topics?.length || 0 }}</span> temas disponibles
+              </p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4">
+            <!-- Progress mini bar -->
+            <div v-if="course.topics?.length > 0" class="hidden sm:flex items-center gap-2 mr-4">
+              <div class="w-24 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div 
+                  class="h-full bg-emerald-500 rounded-full" 
+                  :style="{ width: `${(course.topics.filter(t => t.isActive).length / course.topics.length) * 100}%` }"
+                ></div>
+              </div>
+              <span class="text-[10px] text-slate-400 font-medium w-8 text-right">
+                {{ Math.round((course.topics.filter(t => t.isActive).length / course.topics.length) * 100) }}%
+              </span>
+            </div>
+
+            <div class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-[#36364e] text-slate-500 dark:text-slate-400 transition-transform duration-300"
+                 :class="expanded.has(course.id) ? 'rotate-180 bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : ''">
+              <UIcon name="i-heroicons-chevron-down" class="w-5 h-5" />
+            </div>
+          </div>
+        </button>
+
+        <!-- Topics Body -->
+        <div v-if="expanded.has(course.id)" class="border-t border-slate-100 dark:border-slate-700/50">
+          <div v-if="loadingCourses.has(course.id)" class="p-6 space-y-4">
+            <USkeleton class="h-12 w-full dark:bg-slate-700/50 rounded-xl" />
+            <USkeleton class="h-12 w-full dark:bg-slate-700/50 rounded-xl" />
+          </div>
+          
+          <div v-else class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div
+              v-for="topic in filteredTopics(course)"
+              :key="topic.id"
+              class="flex flex-col p-3 rounded-xl border transition-colors group"
+              :class="[
+                topic.isActive 
+                  ? 'bg-white dark:bg-[#36364e]/50 border-slate-200 dark:border-slate-600' 
+                  : 'bg-slate-50/50 dark:bg-[#1e1e2d]/30 border-slate-100 dark:border-slate-700/30 opacity-70',
+                { 'opacity-50 pointer-events-none': pendingTopics.has(topic.id) }
+              ]"
+            >
+              <!-- Topic Header Row (Name + Toggle) -->
+              <div class="flex items-start justify-between gap-3 w-full">
+                <h4 class="text-sm font-medium line-clamp-2 flex-1 min-w-0" :title="topic.name" :class="topic.isActive ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-500 line-through'">
+                  {{ topic.name }}
+                </h4>
+                
+                <div class="shrink-0 flex items-center mt-0.5">
+                  <!-- Active State: Subtle Icon Button (less noise) -->
                   <button
-                    class="text-gray-400 hover:text-gray-600 transition-colors"
-                    @click="toggleCourse(course.id)"
+                    v-if="topic.isActive"
+                    class="p-1.5 rounded-md text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 transition-all duration-200 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
+                    title="Ocultar tema"
+                    @click.stop="onToggleActive(topic)"
                   >
-                    <svg
-                      class="w-3 h-3 transition-transform duration-150"
-                      :class="expanded.has(course.id) ? 'rotate-90' : ''"
-                      fill="currentColor" viewBox="0 0 20 20"
-                    >
-                      <path d="M6 6l8 4-8 4V6z"/>
-                    </svg>
+                    <UIcon name="i-heroicons-eye" class="w-4 h-4" />
                   </button>
-                  <span class="text-xs font-semibold text-gray-700">
-                    {{ course.name }}
-                  </span>
-                  <span class="text-xs text-gray-400">({{ course.topics?.length || 0 }} temas)</span>
+                  
+                  <!-- Inactive State: Explicit Badge -->
+                  <button
+                    v-else
+                    class="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700 transition-all duration-200"
+                    title="Mostrar tema"
+                    @click.stop="onToggleActive(topic)"
+                  >
+                    <UIcon name="i-heroicons-eye-slash" class="w-3.5 h-3.5" />
+                    <span>Oculto</span>
+                  </button>
                 </div>
-              </td>
-            </tr>
-
-            <!-- Topic rows -->
-            <template v-if="expanded.has(course.id)">
-              <tr v-if="loadingCourses.has(course.id)">
-                <td colspan="4" class="px-6 py-4">
-                  <div class="space-y-3">
-                    <USkeleton class="h-4 w-[250px]" />
-                    <USkeleton class="h-4 w-[200px]" />
-                    <USkeleton class="h-4 w-[300px]" />
-                  </div>
-                </td>
-              </tr>
-              <tr
-                v-else
-                v-for="topic in filteredTopics(course)"
-                :key="topic.id"
-                class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group"
-                :class="{ 'optimistic-pending': pendingTopics.has(topic.id) }"
-              >
-                <td class="text-center text-gray-300 text-xs pl-6">·</td>
-
-                <!-- Name (read-only) -->
-                <td class="py-1">
-                  <span class="text-sm text-gray-900 font-medium" :class="!topic.isActive && 'opacity-40 line-through'">
-                    {{ topic.name }}
-                  </span>
-                </td>
-
-                <!-- Course badge -->
-                <td>
-                  <span class="text-[11px] text-gray-400 truncate block max-w-[120px]">
-                    {{ course.name }}
-                  </span>
-                </td>
-
-                <!-- Visibility toggle -->
-                <td class="text-center py-1">
-                  <button
-                    class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors duration-200 focus:outline-none"
-                    :class="topic.isActive ? 'bg-blue-500' : 'bg-gray-200'"
-                    @click="onToggleActive(topic)"
-                  >
-                    <span
-                      class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200"
-                      :class="topic.isActive ? 'translate-x-3.5' : 'translate-x-0.5'"
-                    />
-                  </button>
-                </td>
-              </tr>
-            </template>
-          </template>
-        </tbody>
-      </table>
-
-      <div v-if="filteredCourses.length === 0" class="py-16 text-center">
-        <p class="text-sm text-gray-400">No hay resultados para "{{ localSearch }}"</p>
+              </div>
+              
+              <!-- Subtopics Row (Full Width) -->
+              <div v-if="topic.subtopics && topic.subtopics.length > 0" class="mt-2.5 ml-1 pl-3 border-l-2 border-slate-200 dark:border-slate-700/50 space-y-1.5 w-full">
+                <div v-for="sub in topic.subtopics" :key="sub.id" class="text-xs flex items-start gap-1.5 w-full" :class="topic.isActive ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-600 line-through'">
+                  <UIcon name="i-heroicons-minus-small" class="w-3 h-3 shrink-0 mt-[1px]" />
+                  <span class="line-clamp-2 flex-1 min-w-0" :title="sub.name">{{ sub.name }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="filteredTopics(course).length === 0" class="col-span-full py-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+              No hay temas que coincidan con la búsqueda.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

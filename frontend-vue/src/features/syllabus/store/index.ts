@@ -1,63 +1,160 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { useAuthStore } from '@/stores/auth.store';
 
 export const useSyllabusStore = defineStore('syllabus', () => {
   const syllabus = ref<any>(null);
+  const syllabiList = ref<any[]>([]);
   const distributions = ref<any[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
+
+  async function fetchSyllabiByCycle(cycleId: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const response = await $fetch(`/api/v1/syllabus/cycle/${cycleId}`, {
+        headers: { 'x-subdomain': subdomain }
+      });
+      syllabiList.value = response as any[];
+    } catch (err: any) {
+      error.value = err.message || 'Error al obtener los sílabos del ciclo.';
+    } finally {
+      loading.value = false;
+    }
+  }
 
   async function createSyllabus(payload: any) {
     loading.value = true;
     error.value = null;
     try {
-      // Placeholder for API
-      syllabus.value = { id: 'new-id', ...payload };
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const response = await $fetch('/api/v1/syllabus', {
+        method: 'POST',
+        headers: { 'x-subdomain': subdomain },
+        body: payload
+      });
+      syllabus.value = (response as any).syllabus;
+      // Also add to current list
+      if (syllabus.value) {
+        syllabiList.value.push(syllabus.value);
+      }
     } catch (err: any) {
-      error.value = err.message;
+      // The backend returns a specific ConflictException with message if duplicates exist
+      error.value = err.data?.message || err.message;
     } finally {
       loading.value = false;
     }
   }
 
-  async function addDistribution(payload: any) {
+  async function addDistribution(syllabusId: string, payload: any) {
+    // Generate temporary ID for Optimistic UI
     const tempId = 'temp-' + Date.now();
-    const newDist = { id: tempId, ...payload, requestedQuantity: payload.requestedQuantity || 1 };
+    const newDist = { id: tempId, syllabusId, ...payload, requestedQuantity: payload.requestedQuantity || 1 };
+    
+    // 1. Optimistic Update
     distributions.value.push(newDist);
     
     try {
-      // Simulate API limit validation
-      if (newDist.requestedQuantity > 100) {
-        throw new Error('La cantidad máxima de preguntas por semana no puede exceder 100');
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const response = await $fetch(`/api/v1/syllabus/${syllabusId}/distribution`, {
+        method: 'POST',
+        headers: { 'x-subdomain': subdomain },
+        body: payload
+      });
+      
+      // 2. Replace temp ID with real ID from server
+      const createdDist = (response as any).distribution;
+      const index = distributions.value.findIndex(d => d.id === tempId);
+      if (index !== -1) {
+        distributions.value[index] = createdDist;
       }
     } catch (err: any) {
-      // Rollback Optimistic UI
+      // 3. Rollback Optimistic UI
       distributions.value = distributions.value.filter(d => d.id !== tempId);
-      
-      // En una implementación real, este toast debe provenir de un composable global para que persista
-      // useToast().add({ title: 'Error de Sincronización', description: err.message, color: 'red' });
-      console.error('Optimistic Rollback:', err.message);
-      // Fallback a mostrar el error en el store
-      error.value = err.message;
-      setTimeout(() => { error.value = null; }, 5000);
+      throw err; // Propagate error for UI to show toast
+    }
+  }
+
+  async function updateDistributionQuantity(distId: string, syllabusId: string, requestedQuantity: number) {
+    const dist = distributions.value.find(d => d.id === distId);
+    if (!dist) return;
+    
+    const prevQuantity = dist.requestedQuantity;
+    // 1. Optimistic Update
+    dist.requestedQuantity = requestedQuantity;
+
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      await $fetch(`/api/v1/syllabus/${syllabusId}/distribution/${distId}`, {
+        method: 'PATCH',
+        headers: { 'x-subdomain': subdomain },
+        body: { requestedQuantity }
+      });
+    } catch (err: any) {
+      // 2. Rollback
+      dist.requestedQuantity = prevQuantity;
+      throw err;
+    }
+  }
+
+  async function deleteDistribution(distId: string, syllabusId: string) {
+    const distIndex = distributions.value.findIndex(d => d.id === distId);
+    if (distIndex === -1) return;
+    
+    const backupDist = distributions.value[distIndex];
+    // 1. Optimistic Delete
+    distributions.value.splice(distIndex, 1);
+
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      await $fetch(`/api/v1/syllabus/${syllabusId}/distribution/${distId}`, {
+        method: 'DELETE',
+        headers: { 'x-subdomain': subdomain }
+      });
+    } catch (err: any) {
+      // 2. Rollback
+      distributions.value.splice(distIndex, 0, backupDist);
+      throw err;
     }
   }
 
   async function fetchSummary(syllabusId: string) {
     loading.value = true;
+    error.value = null;
     try {
-      // placeholder para GET summary, por ahora no muteamos states solo simulamos
-      console.log('Fetching summary for ', syllabusId);
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const response = await $fetch(`/api/v1/syllabus/${syllabusId}/summary`, {
+        headers: { 'x-subdomain': subdomain }
+      });
+      distributions.value = (response as any).summary?.distributions || [];
+    } catch (err: any) {
+      error.value = err.message || 'Error al obtener las distribuciones.';
     } finally {
       loading.value = false;
     }
   }
 
-  async function cloneSyllabus(sourceId: string) {
+  async function cloneSyllabus(syllabusId: string, sourceId: string) {
     loading.value = true;
     try {
-      // simulamos API, en real agregaría las distributions de ese source
-      console.log('Cloning from ', sourceId);
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      const response = await $fetch(`/api/v1/syllabus/${syllabusId}/clone`, {
+        method: 'POST',
+        headers: { 'x-subdomain': subdomain },
+        body: { sourceId }
+      });
+      distributions.value = (response as any).summary?.distributions || [];
+    } catch (err: any) {
+      throw err;
     } finally {
       loading.value = false;
     }
@@ -65,9 +162,11 @@ export const useSyllabusStore = defineStore('syllabus', () => {
 
   return {
     syllabus,
+    syllabiList,
     distributions,
     loading,
     error,
+    fetchSyllabiByCycle,
     createSyllabus,
     addDistribution,
     fetchSummary,

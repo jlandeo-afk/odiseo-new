@@ -7,10 +7,11 @@ export interface ISyllabusRepository {
   createSyllabus(syllabus: Partial<Syllabus>): Promise<Syllabus>;
   findById(id: string): Promise<Syllabus | null>;
   findByCourseAndCycle(courseId: string, cycleId: string): Promise<Syllabus | null>;
+  findByCycle(cycleId: string): Promise<Syllabus[]>;
   
   createDistribution(distribution: Partial<SyllabusDistribution>): Promise<SyllabusDistribution>;
   updateDistribution(id: string, requestedQuantity: number): Promise<void>;
   deleteDistribution(id: string): Promise<void>;
   
-  getSummaryBySyllabus(syllabusId: string): Promise<any>;
+  getSummaryBySyllabus(syllabusId: string): Promise<SyllabusDistribution[]>;
 }

@@ -32,7 +32,6 @@ export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composab
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { useTableData, TableConfig } from '../src/composables/useTableData';
 export { useAuthStore, Branding, User } from '../src/stores/auth.store';
-export { useCurationStore } from '../src/stores/curation.store';
 export { useWebSocketStore } from '../src/stores/websocket.store';
 export { defineLocale, extendLocale } from '../node_modules/@nuxt/ui/dist/runtime/composables/defineLocale';
 export { extractShortcuts, defineShortcuts } from '../node_modules/@nuxt/ui/dist/runtime/composables/defineShortcuts';

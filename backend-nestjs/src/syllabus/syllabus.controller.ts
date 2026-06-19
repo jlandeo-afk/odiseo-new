@@ -4,7 +4,7 @@ import { CreateDistributionDto } from './dto/create-distribution.dto';
 import { UpdateDistributionDto } from './dto/update-distribution.dto';
 import { SyllabusUseCase } from './syllabus.use-case';
 
-@Controller('syllabus')
+@Controller('v1/syllabus')
 export class SyllabusController {
   
   constructor(private readonly useCase: SyllabusUseCase) {}
@@ -13,6 +13,11 @@ export class SyllabusController {
   async createSyllabus(@Body() dto: CreateSyllabusDto) {
     const syllabus = await this.useCase.create(dto);
     return { status: 'created', syllabus };
+  }
+
+  @Get('cycle/:cycleId')
+  async getSyllabiByCycle(@Param('cycleId') cycleId: string) {
+    return this.useCase.findByCycle(cycleId);
   }
 
   @Post(':id/distribution')

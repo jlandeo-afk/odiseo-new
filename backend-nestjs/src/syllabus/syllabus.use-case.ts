@@ -1,5 +1,6 @@
 import { Injectable, Inject, ConflictException, BadRequestException } from '@nestjs/common';
-import { ISyllabusRepository, I_SYLLABUS_REPOSITORY } from './repositories/i-syllabus.repository';
+import { I_SYLLABUS_REPOSITORY } from './repositories/i-syllabus.repository';
+import type { ISyllabusRepository } from './repositories/i-syllabus.repository';
 import { CreateSyllabusDto } from './dto/create-syllabus.dto';
 import { CreateDistributionDto } from './dto/create-distribution.dto';
 
@@ -22,6 +23,10 @@ export class SyllabusUseCase {
       name: 'Nuevo Sílabo',
       isActive: true
     });
+  }
+
+  async findByCycle(cycleId: string) {
+    return await this.syllabusRepo.findByCycle(cycleId);
   }
 
   async addDistribution(syllabusId: string, dto: CreateDistributionDto) {

@@ -1,58 +1,288 @@
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue';
 import { useSyllabusStore } from '../store';
+import { useAcademicTimeStore } from '../../academic-time/store';
+import { useCatalogsStore } from '../../catalogs/store';
 
 const store = useSyllabusStore();
+const timeStore = useAcademicTimeStore();
+const catalogsStore = useCatalogsStore();
+const toast = useToast();
 
-const addDemoDist = () => {
-  store.addDistribution({ weekNumber: 1, topicId: 'Topico A', subtopicId: 'Subtopico X', requestedQuantity: 1 });
+const syllabus = computed(() => store.syllabus);
+
+watch(() => syllabus.value?.id, async (newId) => {
+  if (newId) {
+    await store.fetchSummary(newId);
+    if (syllabus.value?.courseId) {
+       await catalogsStore.fetchCourseTopics(syllabus.value.courseId);
+    }
+  }
+}, { immediate: true });
+
+const cycle = computed(() => timeStore.cycles.find(c => c.id === syllabus.value?.cycleId));
+const totalWeeks = computed(() => cycle.value?.totalWeeks || 16);
+
+const course = computed(() => catalogsStore.courses.find(c => c.id === syllabus.value?.courseId));
+const activeTopics = computed(() => course.value?.topics.filter(t => t.isActive) || []);
+
+const topicOptions = computed(() => {
+  const options: { label: string; topicId: string; subtopicId: string; value: string }[] = [];
+  activeTopics.value.forEach(topic => {
+    if (topic.subtopics && topic.subtopics.length > 0) {
+      topic.subtopics.forEach(sub => {
+        options.push({
+          label: `${topic.name} - ${sub.name}`,
+          topicId: topic.id,
+          subtopicId: sub.id,
+          value: `${topic.id}|${sub.id}`
+        });
+      });
+    } else {
+      options.push({
+        label: topic.name,
+        topicId: topic.id,
+        subtopicId: '',
+        value: `${topic.id}|`
+      });
+    }
+  });
+  return options;
+});
+
+const activeAddWeek = ref<number | null>(null);
+const newDistForm = ref({
+  topicValue: '',
+  requestedQuantity: 10
+});
+
+const openAddForWeek = (weekNumber: number) => {
+  activeAddWeek.value = weekNumber;
+  newDistForm.value = { topicValue: '', requestedQuantity: 10 };
 };
 
-const addErrorDist = () => {
-  store.addDistribution({ weekNumber: 1, topicId: 'Topico B', subtopicId: 'Subtopico Y', requestedQuantity: 150 });
+const cancelAdd = () => {
+  activeAddWeek.value = null;
 };
+
+const saveNewDist = async (weekNumber: number) => {
+  if (!newDistForm.value.topicValue) return;
+  const [topicId, subtopicId] = newDistForm.value.topicValue.split('|');
+  
+  try {
+    await store.addDistribution(syllabus.value.id, {
+      weekNumber,
+      topicId,
+      subtopicId,
+      requestedQuantity: Number(newDistForm.value.requestedQuantity)
+    });
+    activeAddWeek.value = null;
+  } catch (e: any) {
+    toast.add({ title: 'Error de Asignación', description: e.message, color: 'red' });
+  }
+};
+
+const updateQty = async (distId: string, quantity: number) => {
+  try {
+    await store.updateDistributionQuantity(distId, syllabus.value.id, quantity);
+  } catch (e: any) {
+    toast.add({ title: 'Error al actualizar', description: e.message, color: 'red' });
+  }
+};
+
+const removeDist = async (distId: string) => {
+  try {
+    await store.deleteDistribution(distId, syllabus.value.id);
+  } catch (e: any) {
+    toast.add({ title: 'Error', description: e.message, color: 'red' });
+  }
+};
+
+const getTopicName = (topicId: string, subtopicId: string) => {
+  const t = activeTopics.value.find(x => x.id === topicId);
+  if (!t) return topicId;
+  if (!subtopicId) return t.name;
+  const s = t.subtopics.find(x => x.id === subtopicId);
+  return s ? `${t.name} - ${s.name}` : `${t.name} - ${subtopicId}`;
+};
+
+const weeksList = computed(() => {
+  const weeks = [];
+  for (let w = 1; w <= totalWeeks.value; w++) {
+    const dists = store.distributions.filter(d => d.weekNumber === w);
+    const totalQty = dists.reduce((sum, d) => sum + Number(d.requestedQuantity), 0);
+    weeks.push({
+      number: w,
+      distributions: dists,
+      totalQty
+    });
+  }
+  return weeks;
+});
+
+const grandTotal = computed(() => store.distributions.reduce((sum, d) => sum + Number(d.requestedQuantity), 0));
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
-      <h3 class="font-medium text-gray-900 dark:text-white">Distribución de Temas</h3>
-      <div class="flex gap-2">
-        <UButton size="sm" color="red" variant="soft" @click="addErrorDist">Simular Error > 100</UButton>
-        <UButton size="sm" color="primary" @click="addDemoDist">Agregar (Optimistic)</UButton>
+  <div class="space-y-6 w-full pb-10">
+    <!-- Header with totals -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-[#2b2b3f] px-6 py-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+      <div class="space-y-1">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-slate-200 tracking-tight">Matriz de Distribución</h3>
+        <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ course?.name || syllabus?.courseId }}</span>
+          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+          <span>{{ totalWeeks }} semanas</span>
+        </div>
+      </div>
+      <div class="mt-4 sm:mt-0 bg-slate-50 dark:bg-[#1e1e2d] px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700/50 text-right min-w-[140px]">
+        <p class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mb-0.5">Total Preguntas</p>
+        <p class="text-3xl font-black text-slate-800 dark:text-slate-200 leading-none">
+          {{ grandTotal }}
+        </p>
       </div>
     </div>
-    
-    <div v-if="store.error" class="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-      <p class="text-sm text-red-600 dark:text-red-400 font-medium">{{ store.error }}</p>
-    </div>
 
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
-        <thead class="bg-gray-50 dark:bg-gray-800/50">
-          <tr>
-            <th class="px-4 py-3 text-left font-medium text-gray-500 w-48">Semana</th>
-            <th class="px-4 py-3 text-left font-medium text-gray-500">Contenido Asignado</th>
-            <th class="px-4 py-3 text-right font-medium text-gray-500 w-32">Cant.</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-          <tr v-for="dist in store.distributions" :key="dist.id" :class="{'bg-amber-50 dark:bg-amber-900/10': dist.hasGeneratedMaterials}">
-            <td class="px-4 py-3 text-gray-900 dark:text-white">
-              Semana {{ dist.weekNumber }}
-              <UBadge v-if="dist.hasGeneratedMaterials" color="amber" variant="subtle" size="xs" class="ml-2" title="Modificar esta semana requerirá re-generar materiales (EC-005)">
-                Materiales Generados
-              </UBadge>
-            </td>
-            <td class="px-4 py-3 text-gray-500">{{ dist.topicId }} / {{ dist.subtopicId }}</td>
-            <td class="px-4 py-3 text-right">
-              <UBadge color="gray">{{ dist.requestedQuantity }}</UBadge>
-            </td>
-          </tr>
-          <tr v-if="store.distributions.length === 0">
-            <td colspan="3" class="px-4 py-8 text-center text-gray-500 italic">No hay distribuciones asignadas</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- The Matrix List -->
+    <div class="space-y-4">
+      <div
+        v-for="week in weeksList" 
+        :key="week.number"
+        class="border border-slate-200 dark:border-slate-700/50 rounded-2xl overflow-hidden bg-white dark:bg-[#2b2b3f] shadow-sm transition-all duration-200"
+        :class="{'ring-1 ring-indigo-500 border-indigo-500': activeAddWeek === week.number}"
+      >
+        <!-- Week Header -->
+        <div class="flex items-center justify-between px-5 py-3.5 bg-slate-50/50 dark:bg-[#1e1e2d]/50 border-b border-slate-200 dark:border-slate-700/50">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-8 h-8 rounded-lg" :class="week.distributions.length > 0 ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'">
+              <span class="font-bold text-sm">S{{ week.number }}</span>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-none">Semana {{ week.number }}</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {{ week.distributions.length }} temas • {{ week.totalQty }} preguntas
+              </p>
+            </div>
+          </div>
+          
+          <div>
+            <UButton 
+              v-if="activeAddWeek !== week.number"
+              size="sm" 
+              color="primary" 
+              variant="soft" 
+              icon="i-heroicons-plus" 
+              @click="openAddForWeek(week.number)"
+              class="hidden sm:flex"
+            >
+              Añadir Tema
+            </UButton>
+            <UButton 
+              v-if="activeAddWeek !== week.number"
+              size="sm" 
+              color="primary" 
+              variant="soft" 
+              icon="i-heroicons-plus" 
+              @click="openAddForWeek(week.number)"
+              class="sm:hidden"
+            />
+          </div>
+        </div>
+
+        <!-- Week Body -->
+        <div class="p-0">
+          
+          <!-- Empty State -->
+          <div v-if="week.distributions.length === 0 && activeAddWeek !== week.number" class="px-5 py-6 text-center">
+            <div class="w-10 h-10 mx-auto bg-slate-50 dark:bg-[#1e1e2d] rounded-full flex items-center justify-center mb-2">
+              <UIcon name="i-heroicons-document-minus" class="w-5 h-5 text-slate-400 dark:text-slate-500" />
+            </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Sin contenido asignado</p>
+          </div>
+
+          <!-- Topics List -->
+          <div v-if="week.distributions.length > 0" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+            <div 
+              v-for="dist in week.distributions" 
+              :key="dist.id"
+              class="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-[#36364e] transition-colors gap-3 sm:gap-0"
+            >
+              <div class="flex-1 pr-4">
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  {{ getTopicName(dist.topicId, dist.subtopicId) }}
+                </span>
+              </div>
+              
+              <div class="flex items-center gap-4 shrink-0 justify-between sm:justify-end w-full sm:w-auto">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-400 dark:text-slate-500">Preguntas:</span>
+                  <UInput 
+                    type="number" 
+                    size="sm" 
+                    :model-value="dist.requestedQuantity" 
+                    @update:model-value="val => updateQty(dist.id, Number(val))" 
+                    class="w-20" 
+                    :ui="{ base: 'text-center font-medium dark:bg-[#1e1e2d] dark:border-slate-600' }"
+                  />
+                </div>
+                <UTooltip text="Eliminar tema">
+                  <UButton 
+                    size="xs" 
+                    color="error" 
+                    variant="ghost" 
+                    icon="i-heroicons-trash" 
+                    @click="removeDist(dist.id)" 
+                  />
+                </UTooltip>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Form Inline -->
+          <div v-if="activeAddWeek === week.number" class="px-5 py-4 bg-indigo-50/50 dark:bg-indigo-500/10 border-t border-indigo-100 dark:border-indigo-500/20">
+            <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div class="flex-1 w-full">
+                <label class="text-[10px] font-semibold text-indigo-800 dark:text-indigo-300 uppercase tracking-wide mb-1 block">Tema / Subtema</label>
+                <USelectMenu 
+                  v-model="newDistForm.topicValue" 
+                  :options="topicOptions" 
+                  value-attribute="value" 
+                  option-attribute="label" 
+                  placeholder="Buscar tema..." 
+                  searchable
+                  class="w-full"
+                />
+              </div>
+              <div class="w-full sm:w-28 shrink-0">
+                <label class="text-[10px] font-semibold text-indigo-800 dark:text-indigo-300 uppercase tracking-wide mb-1 block">Cantidad</label>
+                <UInput 
+                  type="number" 
+                  v-model="newDistForm.requestedQuantity" 
+                  class="w-full" 
+                  :ui="{ base: 'text-center dark:bg-[#1e1e2d] dark:border-slate-600' }"
+                />
+              </div>
+              <div class="flex items-center gap-1 w-full sm:w-auto sm:self-end pt-5 sm:pt-0">
+                <UButton 
+                  color="primary" 
+                  icon="i-heroicons-check" 
+                  @click="saveNewDist(week.number)"
+                  class="flex-1 sm:flex-none justify-center"
+                >
+                  Guardar
+                </UButton>
+                <UButton 
+                  color="neutral" 
+                  variant="ghost" 
+                  icon="i-heroicons-x-mark" 
+                  @click="cancelAdd" 
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 </template>

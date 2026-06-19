@@ -10,6 +10,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TenantMiddleware } from './database/tenant.middleware';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { AcademicTimeModule } from './academic-time/academic-time.module';
+import { SyllabusModule } from './syllabus/syllabus.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AcademicTimeModule } from './academic-time/academic-time.module';
     TenantsModule,
     CatalogsModule,
     AcademicTimeModule,
+    SyllabusModule,
   ],
   controllers: [AppController],
   providers: [AppService],

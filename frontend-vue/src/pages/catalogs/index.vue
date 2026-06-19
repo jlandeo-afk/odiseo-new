@@ -1,17 +1,13 @@
 <template>
   <div class="px-8 py-6 max-w-full">
     <!-- Page header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="text-lg font-semibold text-gray-900">Catálogo de Cursos</h1>
-        <p class="text-xs text-gray-400 mt-0.5">
-          Personaliza nombres locales y visibilidad para tu institución.
-          Los cambios se aplican al instante.
-        </p>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Catálogo de Cursos</h1>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-400 flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
           Sincronizado con Banco Global
         </span>
       </div>

@@ -1,20 +1,18 @@
 <template>
   <div class="px-8 py-6 max-w-full">
     <!-- Page header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="text-lg font-semibold text-gray-900">Tiempo Académico</h1>
-        <p class="text-xs text-gray-400 mt-0.5">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Tiempo Académico</h1>
+        <p class="text-sm text-slate-500 mt-1">
           Gestiona los ciclos y semanas. Marca feriados sin eliminar registros.
         </p>
       </div>
       <button
-        class="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+        class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20"
         @click="showCreateSlide = true"
       >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
+        <span class="text-lg leading-none mb-0.5">+</span>
         Nuevo Ciclo
       </button>
     </div>
