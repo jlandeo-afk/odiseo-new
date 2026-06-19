@@ -10,6 +10,20 @@
 
 El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtemas) y la Generación de Materiales PDF. Define qué temas y subtemas se evalúan en cada semana del ciclo académico, y cuántas preguntas de cada tipo se requieren. Sin un sílabo configurado, el sistema no puede generar materiales porque no tiene una distribución de contenido.
 
+## Clarifications
+
+### Session 2026-06-17
+- Q: ¿La selección de un subtema (`subtopic_id`) en la distribución del sílabo es estrictamente obligatoria? → A: Obligatorio: Cada distribución debe especificar obligatoriamente un subtema (`subtopic_id` NOT NULL).
+- Q: ¿Qué hacer al generar materiales con temas inactivos del catálogo? → A: Advertir pero permitir: El sistema advierte que hay temas inactivos, pero permite continuar con la generación.
+- Q: ¿Autocompletar la cantidad de preguntas al asignar un subtema? → A: Autocompletar con 1: El sistema asigna `1` por defecto para hacer la carga fluida.
+- Q: ¿Soportar clonación de sílabos entre ciclos? → A: Permitir clonación: El sistema debe incluir una función para clonar un sílabo (y toda su distribución) desde un ciclo anterior.
+- Q: ¿Estrategia de resolución de conflictos concurrentes en Optimistic UI? → A: Last-write-wins: El último cambio que llega al servidor sobrescribe la celda de distribución.
+- Q: ¿Existe un límite máximo de preguntas que se pueden asignar a una misma semana en el sílabo? → A: Sí, máximo 100 preguntas por semana en total para evitar sobrecargas.
+- Q: Si una actualización en Optimistic UI falla tras cambiar de ruta, ¿cómo se notifica? → A: Notificación global (Toast) que persista entre rutas indicando el error específico.
+- Q: ¿Se puede editar la distribución de una semana si ya se generaron materiales para ella? → A: Advertencia: Se permite la edición, pero se muestra un "Warning" indicando que el material generado quedará desactualizado.
+- Q: ¿Qué sucede al clonar un sílabo si el destino ya tiene datos? → A: Sobrescribir con advertencia: El sistema permite la clonación, pero debe mostrar un diálogo de confirmación advirtiendo que los datos existentes serán sobrescritos.
+- Q: ¿Qué sucede si un subtema asignado se elimina en el Core API? → A: No aplicable: Por regla de negocio, los temas, subtemas y cursos importados son inmutables/incrementales y nunca se eliminan.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Creación y Configuración de Sílabo (Priority: P1)
@@ -33,7 +47,7 @@ Como coordinador académico, quiero asignar a cada semana del sílabo los temas 
 
 **Acceptance Scenarios**:
 
-1. **Given** un sílabo creado y vinculado a un ciclo, **When** el coordinador asigna un topic + subtopic + cantidad a una semana activa, **Then** se crea un registro de `syllabus_distribution` con los IDs correspondientes y la cantidad solicitada.
+1. **Given** un sílabo creado y vinculado a un ciclo, **When** el coordinador asigna un topic + subtopic a una semana activa, **Then** se crea un registro de `syllabus_distribution` con los IDs correspondientes asumiendo una `requested_quantity` por defecto de `1` (optimizando clics).
 2. **Given** una distribución existente en una semana, **When** el coordinador modifica la cantidad de preguntas, **Then** el registro se actualiza con Optimistic UI (respuesta inmediata en la UI, sincronización en background).
 3. **Given** una semana con distribuciones asignadas, **When** el coordinador elimina una distribución, **Then** el registro se elimina y la UI refleja el cambio inmediatamente.
 
@@ -50,6 +64,20 @@ Como coordinador académico, quiero ver un resumen consolidado del sílabo compl
 1. **Given** un sílabo con distribuciones configuradas, **When** el coordinador accede a la vista resumen, **Then** se muestra una matriz de semanas × temas con las cantidades asignadas y totales por fila/columna.
 2. **Given** semanas del ciclo sin distribución asignada, **When** el coordinador ve el resumen, **Then** las semanas vacías aparecen con indicador visual de "sin contenido" para que el coordinador identifique gaps en la planificación.
 
+---
+
+### User Story 4 - Clonación de Sílabo (Priority: P2)
+
+Como coordinador académico, quiero poder clonar un sílabo existente de un ciclo anterior hacia el ciclo actual, para evitar el trabajo manual repetitivo de reasignar toda la distribución semana a semana.
+
+**Independent Test**: Clonación del sílabo de "Geometría" del ciclo "2025-II" al ciclo "2026-I". Verificación de que todas las distribuciones válidas se copian a las semanas correspondientes en el nuevo ciclo.
+
+**Acceptance Scenarios**:
+
+1. **Given** un ciclo activo sin sílabo para un curso, **When** el coordinador selecciona la opción "Copiar de ciclo anterior" y elige un sílabo origen, **Then** el sistema duplica el sílabo y todas sus distribuciones hacia el ciclo actual.
+2. **Given** un ciclo destino que ya tiene distribuciones previas, **When** el coordinador intenta clonar, **Then** el sistema muestra un diálogo de advertencia ("Existen datos previos que serán sobrescritos") y, tras confirmar, reemplaza las distribuciones actuales por las del origen.
+3. **Given** una clonación en curso, **When** el ciclo destino tiene menos semanas activas que el origen, **Then** el sistema clona las distribuciones solo hasta la última semana válida del ciclo destino e ignora el resto.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -57,9 +85,10 @@ Como coordinador académico, quiero ver un resumen consolidado del sílabo compl
 - **FR-001**: El sistema MUST permitir crear sílabos vinculados a exactamente un `course` y un `cycle` activos dentro del esquema del tenant.
 - **FR-002**: Cada registro de distribución (`syllabus_distribution`) MUST contener: `syllabus_id`, `week_number`, `topic_id`, `subtopic_id` y `requested_quantity` (entero positivo).
 - **FR-003**: No se permite asignar distribuciones a semanas desactivadas (`cycle_weeks.is_active = false`). El frontend MUST deshabilitar la interacción con semanas inactivas.
-- **FR-004**: El frontend MUST implementar Optimistic UI para todas las mutaciones de distribución (crear, editar, eliminar) con rollback visual en caso de error del backend.
+- **FR-004**: El frontend MUST implementar Optimistic UI para todas las mutaciones de distribución con rollback visual en caso de error del backend, e incluir una notificación global (Toast) persistente si el error ocurre cuando el usuario ya navegó a otra ruta.
 - **FR-005**: Solo los topics activos (`is_active = true`) del catálogo MUST ser seleccionables para la distribución del sílabo.
 - **FR-006**: Un sílabo MUST poder marcarse como `is_active = false` para archivarlo, pero no eliminarse físicamente.
+- **FR-007**: El sistema MUST validar que la suma total de `requested_quantity` asignada a una misma semana no exceda el límite estricto de 100 preguntas.
 
 ### Structural Constraints (Critical)
 
@@ -69,7 +98,7 @@ Como coordinador académico, quiero ver un resumen consolidado del sílabo compl
 ### Key Entities
 
 - **syllabus**: Sílabo. Campos: `id` (uuid), `cycle_id` (FK → cycle), `course_id` (FK → course), `name` (string), `is_active` (boolean, default true).
-- **syllabus_distribution**: Distribución por semana. Campos: `id` (uuid), `syllabus_id` (FK → syllabus), `week_number` (number), `topic_id` (FK → topic), `subtopic_id` (FK → subtopic), `requested_quantity` (integer, > 0).
+- **syllabus_distribution**: Distribución por semana. Campos: `id` (uuid), `syllabus_id` (FK → syllabus), `week_number` (number), `topic_id` (FK → topic), `subtopic_id` (FK → subtopic, NOT NULL), `requested_quantity` (integer, > 0).
 
 ### Constraints de Integridad
 
@@ -87,12 +116,15 @@ Como coordinador académico, quiero ver un resumen consolidado del sílabo compl
 
 ## Edge Cases
 
-- **EC-001**: Si un topic se desactiva en el catálogo después de haber sido asignado a distribuciones del sílabo, las distribuciones existentes permanecen (no se eliminan automáticamente) pero se marcan con un indicador visual de "topic inactivo" en la UI.
+- **EC-001**: Si un topic se desactiva en el catálogo después de haber sido asignado a distribuciones del sílabo, las distribuciones existentes permanecen pero se marcan con un indicador visual de "topic inactivo" en la UI. Al intentar generar materiales con este sílabo, el sistema MUST mostrar una advertencia, pero permitir que la generación continúe.
 - **EC-002**: Si un ciclo se desactiva, los sílabos vinculados a ese ciclo MUST quedar automáticamente como inactivos también.
 - **EC-003**: Si el coordinador intenta crear un segundo sílabo para el mismo curso y ciclo, el sistema MUST advertir sobre el sílabo existente y ofrecer editarlo en lugar de crear uno duplicado.
+- **EC-004**: En caso de ediciones concurrentes de la misma celda de distribución por múltiples coordinadores, el sistema aplica resolución Last-Write-Wins (el último en guardar sobrescribe el valor), evitando bloqueos pesimistas.
+- **EC-005**: Si el coordinador intenta editar la distribución de una semana para la cual ya se han generado materiales, el sistema MUST permitir la edición pero mostrar una advertencia visual ("Warning") indicando que los materiales existentes podrían quedar desactualizados.
 
 ## Assumptions
 
 - Se asume que un tenant puede tener múltiples sílabos (uno por curso por ciclo).
 - Se asume que la distribución del sílabo es el insumo principal que el módulo de Generación de Materiales consumirá para determinar qué preguntas solicitar al Core API.
 - Se asume que los subtopics son de solo lectura (provienen del Core) y su visibilidad depende del topic padre activo.
+- Se asume que el catálogo importado del Core API (cursos, temas, subtemas) es inmutable/incremental. Los registros nunca se eliminan en el origen, garantizando la integridad referencial histórica de los sílabos.

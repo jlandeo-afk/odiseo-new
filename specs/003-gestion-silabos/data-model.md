@@ -34,4 +34,5 @@ erDiagram
 
 - UNIQUE: (`syllabus_id`, `week_number`, `topic_id`, `subtopic_id`)
 - CHECK: `requested_quantity > 0`
+- CHECK: Sum of `requested_quantity` per `week_number` <= 100
 - No CASCADE DELETE on distributions when syllabus is deactivated
