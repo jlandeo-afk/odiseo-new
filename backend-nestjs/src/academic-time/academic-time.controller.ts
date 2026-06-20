@@ -12,6 +12,8 @@ import {
 import { AcademicTimeUseCase } from './academic-time.use-case';
 import { CreateCycleMaterialTemplateDto } from './dtos/create-material-template.dto';
 import { UpdateCycleMaterialTemplateDto } from './dtos/update-material-template.dto';
+import { CreateCycleDto } from './dtos/create-cycle.dto';
+import { UpdateCycleDto } from './dtos/update-cycle.dto';
 
 @Controller('v1/academic-time')
 export class AcademicTimeController {
@@ -31,13 +33,7 @@ export class AcademicTimeController {
   @Post('cycles')
   async createCycle(
     @Body()
-    body: {
-      name: string;
-      year: number;
-      startDate: string;
-      daysPerWeek: number;
-      totalWeeks: number;
-    },
+    body: CreateCycleDto,
   ) {
     return this.academicTimeUseCase.createCycle(body);
   }
@@ -46,13 +42,7 @@ export class AcademicTimeController {
   async updateCycle(
     @Param('id') id: string,
     @Body()
-    body: {
-      name: string;
-      year: number;
-      startDate: string;
-      daysPerWeek: number;
-      totalWeeks: number;
-    },
+    body: UpdateCycleDto,
   ) {
     return this.academicTimeUseCase.updateCycle(id, body);
   }

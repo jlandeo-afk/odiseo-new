@@ -40,11 +40,14 @@
             <!-- Temporal Scope -->
             <div>
               <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Alcance Temporal</label>
-              <select v-model="form.scope" class="w-full text-sm border-slate-200 rounded-md dark:bg-slate-900 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 py-2.5 px-3">
-                <option value="CURRENT_WEEK">Semana Actual (Temas en curso)</option>
-                <option value="ACCUMULATIVE">Acumulativo (Repaso semanas atrás)</option>
-                <option value="FULL_ACCUMULATIVE">Acumulativo Completo (Semana 1 a la actual)</option>
-              </select>
+              <USelectMenu
+                v-model="form.scope"
+                :items="scopeOptions"
+                value-key="value"
+                label-key="label"
+                class="w-full"
+                size="lg"
+              />
             </div>
 
             <!-- Accumulation Weeks if scope is ACCUMULATIVE -->
@@ -259,6 +262,12 @@ const isNew = computed(() => templateId.value === 'new')
 
 const cycle = computed(() => store.cycles.find(c => c.id === cycleId.value))
 const cycleName = computed(() => cycle.value ? cycle.value.name : 'Configuración de Ciclo')
+
+const scopeOptions = [
+  { label: 'Semana Actual (Temas en curso)', value: 'CURRENT_WEEK' },
+  { label: 'Acumulativo (Repaso semanas atrás)', value: 'ACCUMULATIVE' },
+  { label: 'Acumulativo Completo (Semana 1 a la actual)', value: 'FULL_ACCUMULATIVE' }
+]
 
 const isSaving = ref(false)
 const isCatalogsLoading = ref(true)

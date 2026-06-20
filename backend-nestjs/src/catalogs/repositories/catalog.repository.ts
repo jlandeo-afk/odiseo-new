@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ICatalogRepository } from './i-catalog.repository';
 import { Course } from '../entities/course.entity';
+import { Topic } from '../entities/topic.entity';
+import { Subtopic } from '../entities/subtopic.entity';
 import { TenantService } from '../../database/tenant.service';
 
 @Injectable()
@@ -142,61 +144,48 @@ export class CatalogRepositoryImpl implements ICatalogRepository {
   }
 
   async upsertCatalogs(payload: any): Promise<void> {
-    // This updates the public schema.
-    // We run it with the global entity manager (without switching tenant schema)
-    // Or we just specify the public schema in the query.
     await this.tenantService.runInTenant(async (manager) => {
       if (!payload || !payload.courses) return;
 
       const courses = payload.courses;
       if (courses.length === 0) return;
 
-      const coursesValues = courses
-        .map((c: any) => `('${c.id}', '${c.name.replace(/'/g, "''")}')`)
-        .join(',');
-      await manager.query(`
-        INSERT INTO public.courses (id, name)
-        VALUES ${coursesValues}
-        ON CONFLICT (id) DO UPDATE 
-        SET name = EXCLUDED.name, updated_at = NOW();
-      `);
+      // 1. Upsert Courses
+      const coursesData = courses.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+      }));
+      await manager.upsert(Course, coursesData, ['id']);
 
-      const topics: string[] = [];
-      const subtopics: string[] = [];
+      // 2. Gather & Upsert Topics and Subtopics
+      const topicsData: any[] = [];
+      const subtopicsData: any[] = [];
 
-      courses.forEach((c: any) => {
-        if (c.topics) {
-          c.topics.forEach((t: any) => {
-            topics.push(
-              `('${t.id}', '${c.id}', '${t.name.replace(/'/g, "''")}')`,
-            );
-            if (t.subtopics) {
-              t.subtopics.forEach((s: any) => {
-                subtopics.push(
-                  `('${s.id}', '${t.id}', '${s.name.replace(/'/g, "''")}')`,
-                );
-              });
-            }
+      for (const c of courses) {
+        if (!c.topics) continue;
+        for (const t of c.topics) {
+          topicsData.push({
+            id: t.id,
+            courseId: c.id,
+            name: t.name,
           });
+          if (!t.subtopics) continue;
+          for (const s of t.subtopics) {
+            subtopicsData.push({
+              id: s.id,
+              topicId: t.id,
+              name: s.name,
+            });
+          }
         }
-      });
-
-      if (topics.length > 0) {
-        await manager.query(`
-          INSERT INTO public.topics (id, course_id, name)
-          VALUES ${topics.join(',')}
-          ON CONFLICT (id) DO UPDATE 
-          SET name = EXCLUDED.name, updated_at = NOW();
-        `);
       }
 
-      if (subtopics.length > 0) {
-        await manager.query(`
-          INSERT INTO public.subtopics (id, topic_id, name)
-          VALUES ${subtopics.join(',')}
-          ON CONFLICT (id) DO UPDATE 
-          SET name = EXCLUDED.name, updated_at = NOW();
-        `);
+      if (topicsData.length > 0) {
+        await manager.upsert(Topic, topicsData, ['id']);
+      }
+
+      if (subtopicsData.length > 0) {
+        await manager.upsert(Subtopic, subtopicsData, ['id']);
       }
     });
   }

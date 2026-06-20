@@ -82,9 +82,17 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
       const cycle = await manager.findOne(Cycle, { where: { id } });
       if (!cycle) return null;
 
-      // Mock relation check: If there were a syllabuses table
-      // const count = await manager.count(Syllabus, { where: { cycleId: id } });
-      const hasSyllabus = false; // Mocked for now
+      // Query the database to check if there are active syllabuses for this cycle
+      let hasSyllabus = false;
+      try {
+        const result = await manager.query(
+          `SELECT COUNT(1) as count FROM "syllabus" WHERE "cycle_id" = $1 AND "is_active" = true`,
+          [id]
+        );
+        hasSyllabus = parseInt(result[0]?.count || '0', 10) > 0;
+      } catch (e) {
+        // Fallback to false if the table doesn't exist yet
+      }
 
       return { ...cycle, hasSyllabus };
     });
