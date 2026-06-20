@@ -67,6 +67,28 @@ Contiene los datos transaccionales específicos de cada colegio.
 | `end_date` | DATE | NOT NULL | Calculado: start_date + days - 1 |
 | `is_active` | BOOLEAN | DEFAULT TRUE | Si es false, representa un feriado/semana muerta |
 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+
+### `tenant_xyz.cycle_material_profiles`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador del perfil |
+| `cycle_id` | UUID | FK -> cycles.id | Ciclo padre al que pertenece el perfil |
+| `name` | VARCHAR(255) | NOT NULL | Ej. "Práctica Semanal" |
+| `scope` | VARCHAR(50) | NOT NULL | CURRENT_WEEK, ACCUMULATIVE o FULL_ACCUMULATIVE |
+| `accumulation_weeks` | INTEGER | NULL | Cantidad de semanas si es acumulativo |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+
+### `tenant_xyz.cycle_material_profile_courses`
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Identificador de la cuota |
+| `profile_id` | UUID | FK -> cycle_material_profiles.id | Perfil al que pertenece |
+| `course_id` | UUID | FK -> public.courses.id | Curso configurado |
+| `questions_quantity` | INTEGER | NOT NULL | Cantidad de preguntas a extraer para este curso |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
 ## Reglas de Integridad y Triggers

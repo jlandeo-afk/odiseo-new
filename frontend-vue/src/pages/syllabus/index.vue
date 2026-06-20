@@ -135,8 +135,11 @@ const backToList = () => {
                     {{ item.name }}
                   </td>
                   <td class="px-6 py-4">
-                    <span v-if="item.syllabus" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                    <span v-if="item.syllabus && item.syllabus.isActive" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
                       Planificado
+                    </span>
+                    <span v-else-if="item.syllabus && !item.syllabus.isActive" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                      Archivado
                     </span>
                     <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                       Sin Configurar
@@ -144,6 +147,9 @@ const backToList = () => {
                   </td>
                   <td class="px-6 py-4 text-right">
                     <div v-if="item.syllabus" class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <UButton size="sm" :color="item.syllabus.isActive ? 'red' : 'green'" variant="soft" :icon="item.syllabus.isActive ? 'i-heroicons-archive-box-arrow-down' : 'i-heroicons-arrow-path'" @click="store.toggleSyllabusVisibility(item.syllabus.id, !item.syllabus.isActive)">
+                        {{ item.syllabus.isActive ? 'Archivar' : 'Activar' }}
+                      </UButton>
                       <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-document-duplicate" @click="openClone(item.id)">Clonar</UButton>
                       <UButton size="sm" color="primary" variant="soft" icon="i-heroicons-pencil-square" @click="openSyllabus(item.syllabus)">Editar</UButton>
                     </div>

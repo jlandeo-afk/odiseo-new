@@ -117,10 +117,12 @@ backend-nestjs/src/
 │   ├── academic-time.controller.ts
 │   ├── academic-time.use-case.ts
 │   ├── entities/
-│   │   ├── tenant-topic-visibility.entity.ts # NUEVO
+│   │   ├── tenant-topic-visibility.entity.ts
 │   │   ├── cycle.entity.ts
-│   │   └── cycle-week.entity.ts
-│   └── repositories/
+│   │   ├── cycle-week.entity.ts
+│   │   ├── cycle-material-profile.entity.ts
+│   │   └── cycle-material-profile-course.entity.ts
+│   ├── repositories/
 │       └── academic-time.repository.ts
 
 frontend-vue/src/features/
@@ -129,7 +131,8 @@ frontend-vue/src/features/
 │   └── store/index.ts
 ├── academic-time/
 │   ├── components/
-│   │   ├── CycleSlideOver.vue
-│   │   └── WeeksMatrix.vue
-│   └── store/index.ts
+│   │   ├── CycleList.vue
+│   │   ├── CycleCreationSlideOver.vue
+│   │   └── CycleMaterialProfilesTab.vue
+│   ├── store/index.ts
 ```

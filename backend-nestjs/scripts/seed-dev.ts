@@ -115,6 +115,25 @@ async function seed() {
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         deleted_at TIMESTAMP WITH TIME ZONE
       );
+
+      CREATE TABLE IF NOT EXISTS "${schemaName}".cycle_material_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        cycle_id UUID NOT NULL REFERENCES "${schemaName}".cycles(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        scope VARCHAR(50) NOT NULL,
+        accumulation_weeks INTEGER,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS "${schemaName}".cycle_material_template_courses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        template_id UUID NOT NULL REFERENCES "${schemaName}".cycle_material_templates(id) ON DELETE CASCADE,
+        course_id UUID NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,
+        questions_quantity INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+      );
     `);
     console.log(`✅ Tenant tables provisioned successfully.`);
 

@@ -160,6 +160,25 @@ export const useSyllabusStore = defineStore('syllabus', () => {
     }
   }
 
+  async function toggleSyllabusVisibility(id: string, isActive: boolean) {
+    const target = syllabiList.value.find(s => s.id === id);
+    if (!target) return;
+    const prev = target.isActive;
+    target.isActive = isActive;
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      await $fetch(`/api/v1/syllabus/${id}/archive`, {
+        method: 'PATCH',
+        headers: { 'x-subdomain': subdomain },
+        body: { isActive }
+      });
+    } catch (err: any) {
+      target.isActive = prev;
+      throw new Error(err.message || 'Error al cambiar la visibilidad del sílabo.');
+    }
+  }
+
   return {
     syllabus,
     syllabiList,
@@ -169,7 +188,10 @@ export const useSyllabusStore = defineStore('syllabus', () => {
     fetchSyllabiByCycle,
     createSyllabus,
     addDistribution,
+    updateDistributionQuantity,
+    deleteDistribution,
     fetchSummary,
-    cloneSyllabus
+    cloneSyllabus,
+    toggleSyllabusVisibility
   };
 });

@@ -8,6 +8,13 @@
 
 ## Clarifications
 
+### Session 2026-06-20
+
+- Q: ¿Cómo se determina el rango de semanas acumulativas en la generación de material? → A: Sugerencia Inteligente + Edición Manual. Al solicitar la generación en la semana W con una acumulación N, el sistema pre-selecciona automáticamente las últimas N semanas activas (retrocediendo desde W), pero muestra un selector en la UI para que el usuario final pueda modificar la selección de semanas antes de confirmar.
+- Q: ¿Cómo afectan las semanas inactivas (feriados/vacaciones) al cálculo de acumulación? → A: El cálculo de la ventana acumulativa salta automáticamente las semanas inactivas (`is_active = false`), considerando únicamente las semanas lectivas/activas del ciclo para la pre-selección inicial.
+- Q: ¿Cómo se distribuyen las preguntas si las semanas acumuladas tienen pesos diferentes en el sílabo? → A: Distribución Equitativa (Round-Robin). El motor distribuye la cuota de preguntas del perfil de la manera más balanceada posible entre todos los temas/subtemas programados en las semanas seleccionadas, priorizando la equidad sobre los pesos individuales del sílabo.
+- Q: ¿Las cantidades de preguntas del sílabo determinan el tamaño total del examen? → A: No. El sílabo solo define la distribución temática (los temas a evaluar). La cantidad total de preguntas del material se define exclusivamente en el Perfil de Material por Ciclo (ej. Examen = 10 preguntas), garantizando independencia total.
+
 ### Session 2026-06-17
 
 - Q: ¿Cómo se deben calcular las fechas de las semanas? → A: Las semanas siguen una cadencia de 7 días. La semana N empieza en `startDate + (N-1)*7` y termina en `inicio + (daysPerWeek - 1)`. La fecha fin del ciclo coincide con el fin de la última semana.
@@ -63,6 +70,19 @@ Como coordinador académico, quiero crear y gestionar Ciclos académicos definie
 4. **Given** un ciclo sin sílabos asociados, **When** el admin intenta eliminar el ciclo, **Then** la operación es exitosa aplicando un Soft Delete.
 5. **Given** un ciclo con sílabos asociados, **When** el admin intenta eliminar el ciclo, **Then** la operación es rechazada; el admin solo puede desactivarlo.
 
+---
+
+### User Story 4 - Configuración de Perfiles de Material (Priority: P1)
+
+Como coordinador académico, quiero definir "Perfiles de Tipos de Material" (ej. "Práctica Semanal", "Examen Quincenal") dentro de mi ciclo, especificando su alcance y la cantidad de preguntas por curso, para establecer las reglas automáticas de generación de PDF.
+
+**Independent Test**: Creación de un perfil "Examen" asociado a un ciclo, con alcance acumulativo y cantidades específicas para 2 cursos.
+
+**Acceptance Scenarios**:
+
+1. **Given** la configuración de un ciclo, **When** el admin crea un Perfil de Material, **Then** puede especificar un `scope` (ej. CURRENT_WEEK, ACCUMULATIVE, FULL_ACCUMULATIVE) y cuántas semanas acumula.
+2. **Given** un Perfil de Material creado, **When** el admin añade cursos, **Then** asigna una cantidad exacta de preguntas a extraer para ese curso en particular (`questions_quantity`).
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -73,6 +93,7 @@ Como coordinador académico, quiero crear y gestionar Ciclos académicos definie
 - **FR-004**: NestJS implementará un Cron Job (`@nestjs/schedule`) para sincronizar el esquema `public` contra el Core API usando peticiones REST, eliminando la dependencia a colas SQS para este módulo.
 - **FR-005**: La eliminación física de `cycle_weeks` y `cycles` está prohibida. Los ciclos soportan eliminación vía soft-delete SOLAMENTE si no tienen entidades relacionadas (como sílabos). Si tienen relaciones, solo se permite desactivarlos (`is_active = false`).
 - **FR-006**: Al crear un ciclo académico, el admin MUST proveer `name`, `start_date`, `total_weeks` y `days_per_week`. El sistema MUST calcular automáticamente `end_date` y autogenerar las `cycle_weeks`.
+- **FR-007**: El sistema MUST permitir la creación y edición de Perfiles de Material (`cycle_material_profiles`) asociados a un ciclo específico, incluyendo el mapeo de la cuota de preguntas requerida por cada curso incluido.
 
 ### Structural Constraints (Critical)
 
@@ -91,6 +112,8 @@ Como coordinador académico, quiero crear y gestionar Ciclos académicos definie
 - **tenant_topic_visibility**: Preferencias locales. Campos: `topic_id` (uuid), `is_active` (boolean).
 - **cycle**: Ciclo académico. Campos: `id` (uuid), `name` (string), `year` (number), `start_date` (date), `end_date` (date, auto-calculada), `days_per_week` (number), `total_weeks` (number), `is_active` (boolean).
 - **cycle_weeks**: Semanas del ciclo. Campos: `id` (uuid), `cycle_id` (FK), `week_number` (number), `start_date` (date), `end_date` (date), `is_active` (boolean).
+- **cycle_material_profiles**: Perfiles de evaluación del ciclo. Campos: `id` (uuid), `cycle_id` (FK), `name` (string), `scope` (enum: CURRENT_WEEK, ACCUMULATIVE, FULL_ACCUMULATIVE), `accumulation_weeks` (number, nullable).
+- **cycle_material_profile_courses**: Cursos evaluados en el perfil. Campos: `id` (uuid), `profile_id` (FK), `course_id` (FK), `questions_quantity` (integer).
 
 ## Success Criteria *(mandatory)*
 

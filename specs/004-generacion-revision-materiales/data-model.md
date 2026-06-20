@@ -3,16 +3,12 @@
 ```mermaid
 erDiagram
     MATERIAL_REQUESTS ||--o{ MATERIAL_REVIEW_QUESTIONS : "material_request_id"
-    SYLLABUS ||--o{ MATERIAL_REQUESTS : "syllabus_id"
-    COURSES ||--o{ MATERIAL_REQUESTS : "course_id"
     USERS ||--o{ MATERIAL_REQUESTS : "created_by"
 
     MATERIAL_REQUESTS {
         uuid id PK
         string tenant_id
-        enum material_type "BALOTARIO | EXAMEN"
-        uuid course_id FK
-        uuid syllabus_id FK
+        uuid profile_id "Ref to Spec 002"
         integer week_number
         enum status "PENDING | PROCESSING | REVIEW_REQUIRED | COMPLETED | COMPLETED_WITH_WARNINGS | FAILED"
         string download_url "Nullable - S3 presigned"

@@ -6,9 +6,11 @@ import { IAcademicTimeRepository } from './repositories/i-academic-time.reposito
 import { AcademicTimeRepositoryImpl } from './repositories/academic-time.repository';
 import { Cycle } from './entities/cycle.entity';
 import { CycleWeek } from './entities/cycle-week.entity';
+import { CycleMaterialTemplate } from './entities/cycle-material-template.entity';
+import { CycleMaterialTemplateCourse } from './entities/cycle-material-template-course.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cycle, CycleWeek])],
+  imports: [TypeOrmModule.forFeature([Cycle, CycleWeek, CycleMaterialTemplate, CycleMaterialTemplateCourse])],
   controllers: [AcademicTimeController],
   providers: [
     AcademicTimeUseCase,

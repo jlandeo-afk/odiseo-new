@@ -9,8 +9,8 @@ export class AcademicTimeUseCase {
     private readonly repository: IAcademicTimeRepository,
   ) {}
 
-  async getCycles(limit?: number, offset?: number) {
-    return this.repository.getCycles(limit, offset);
+  async getCycles(limit?: number, offset?: number, search?: string) {
+    return this.repository.getCycles(limit, offset, search);
   }
 
   async createCycle(dto: {
@@ -21,14 +21,9 @@ export class AcademicTimeUseCase {
     totalWeeks: number;
   }) {
     const { name, year, startDate, daysPerWeek, totalWeeks } = dto;
-    const start = new Date(startDate);
-
-    // Calculate total days for the entire cycle
-    // If a cycle has 2 weeks, and daysPerWeek is 7, total days = 14
-    // end_date = start + (totalWeeks * daysPerWeek - 1) days
-    const totalDays = totalWeeks * daysPerWeek;
-    const endDate = new Date(start);
-    endDate.setDate(endDate.getDate() + totalDays - 1);
+    
+    const startParts = startDate.split('-');
+    const start = new Date(Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]));
 
     const cycleId = uuidv4();
     const cycle = {
@@ -36,17 +31,18 @@ export class AcademicTimeUseCase {
       name,
       year,
       startDate: start.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      endDate: '', // Will be assigned from the last week
       daysPerWeek,
       totalWeeks,
       weeks: [] as any[],
     };
 
-    // Generate weeks
-    let currentWeekStart = new Date(start);
     for (let i = 1; i <= totalWeeks; i++) {
+      const currentWeekStart = new Date(start);
+      currentWeekStart.setUTCDate(start.getUTCDate() + (i - 1) * 7);
+
       const currentWeekEnd = new Date(currentWeekStart);
-      currentWeekEnd.setDate(currentWeekEnd.getDate() + daysPerWeek - 1);
+      currentWeekEnd.setUTCDate(currentWeekStart.getUTCDate() + (daysPerWeek - 1));
 
       cycle.weeks.push({
         id: uuidv4(),
@@ -56,14 +52,79 @@ export class AcademicTimeUseCase {
         endDate: currentWeekEnd.toISOString().split('T')[0],
         isActive: true,
       });
+    }
 
-      // Next week starts the day after this week ends
-      currentWeekStart = new Date(currentWeekEnd);
-      currentWeekStart.setDate(currentWeekStart.getDate() + 1);
+    if (cycle.weeks.length > 0) {
+      cycle.endDate = cycle.weeks[cycle.weeks.length - 1].endDate;
     }
 
     await this.repository.createCycle(cycle);
     return { id: cycleId };
+  }
+
+  async updateCycle(id: string, dto: {
+    name: string;
+    year: number;
+    startDate: string;
+    daysPerWeek: number;
+    totalWeeks: number;
+  }) {
+    const { name, year, startDate, daysPerWeek, totalWeeks } = dto;
+    
+    // Check if cycle has active syllabus relations
+    const existingCycle = await this.repository.getCycleWithSyllabus(id);
+    if (!existingCycle) {
+      throw new Error('Cycle not found');
+    }
+
+    const needsRecalculation = 
+      existingCycle.startDate !== startDate || 
+      existingCycle.daysPerWeek !== daysPerWeek || 
+      existingCycle.totalWeeks !== totalWeeks;
+
+    if (needsRecalculation && existingCycle.hasSyllabus) {
+      throw new ConflictException(
+        'Cannot update cycle dates or weeks because it has active syllabus relationships.',
+      );
+    }
+
+    const cycleUpdate: any = {
+      name,
+      year,
+      startDate,
+      daysPerWeek,
+      totalWeeks,
+    };
+
+    if (needsRecalculation) {
+      const startParts = startDate.split('-');
+      const start = new Date(Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]));
+      
+      cycleUpdate.weeks = [];
+      for (let i = 1; i <= totalWeeks; i++) {
+        const currentWeekStart = new Date(start);
+        currentWeekStart.setUTCDate(start.getUTCDate() + (i - 1) * 7);
+
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setUTCDate(currentWeekStart.getUTCDate() + (daysPerWeek - 1));
+
+        cycleUpdate.weeks.push({
+          id: uuidv4(),
+          cycleId: id,
+          weekNumber: i,
+          startDate: currentWeekStart.toISOString().split('T')[0],
+          endDate: currentWeekEnd.toISOString().split('T')[0],
+          isActive: true,
+        });
+      }
+
+      if (cycleUpdate.weeks.length > 0) {
+        cycleUpdate.endDate = cycleUpdate.weeks[cycleUpdate.weeks.length - 1].endDate;
+      }
+    }
+
+    await this.repository.updateCycle(id, cycleUpdate);
+    return { success: true };
   }
 
   async toggleCycleVisibility(id: string, isActive: boolean) {
@@ -82,5 +143,60 @@ export class AcademicTimeUseCase {
       );
     }
     await this.repository.softDeleteCycle(id);
+  }
+
+  // --- Material Templates ---
+
+  async getTemplates(cycleId: string) {
+    return this.repository.getTemplatesByCycle(cycleId);
+  }
+
+  async createTemplate(cycleId: string, dto: any) {
+    // Optionally check if cycle exists
+    const cycle = await this.repository.getCycleWithSyllabus(cycleId);
+    if (!cycle) {
+      throw new Error('Cycle not found');
+    }
+
+    const templateId = uuidv4();
+    const templateData = {
+      id: templateId,
+      cycleId,
+      name: dto.name,
+      scope: dto.scope,
+      accumulationWeeks: dto.accumulationWeeks ?? null,
+      courses: dto.courses?.map((c: any) => ({
+        id: uuidv4(),
+        courseId: c.courseId,
+        questionsQuantity: c.questionsQuantity,
+      })) || [],
+    };
+
+    await this.repository.createTemplate(templateData);
+    return { id: templateId };
+  }
+
+  async updateTemplate(cycleId: string, templateId: string, dto: any) {
+    // Note: In a real scenario, we might verify template belongs to cycleId
+    const templateData: any = {};
+    if (dto.name !== undefined) templateData.name = dto.name;
+    if (dto.scope !== undefined) templateData.scope = dto.scope;
+    if (dto.accumulationWeeks !== undefined) templateData.accumulationWeeks = dto.accumulationWeeks;
+
+    if (dto.courses) {
+      templateData.courses = dto.courses.map((c: any) => ({
+        id: uuidv4(),
+        courseId: c.courseId,
+        questionsQuantity: c.questionsQuantity,
+      }));
+    }
+
+    await this.repository.updateTemplate(templateId, templateData);
+    return { success: true };
+  }
+
+  async deleteTemplate(cycleId: string, templateId: string) {
+    await this.repository.deleteTemplate(templateId);
+    return { success: true };
   }
 }

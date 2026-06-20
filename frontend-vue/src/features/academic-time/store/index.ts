@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 
 export interface CycleWeek {
@@ -23,8 +23,24 @@ export interface Cycle {
   weeks: CycleWeek[];
 }
 
+export interface CycleMaterialTemplateCourse {
+  id?: string;
+  courseId: string;
+  questionsQuantity: number;
+}
+
+export interface CycleMaterialTemplate {
+  id: string;
+  cycleId: string;
+  name: string;
+  scope: 'CURRENT_WEEK' | 'ACCUMULATIVE' | 'FULL_ACCUMULATIVE';
+  accumulationWeeks: number | null;
+  courses: CycleMaterialTemplateCourse[];
+}
+
 export const useAcademicTimeStore = defineStore('academicTime', () => {
   const cycles = ref<Cycle[]>([])
+  const templatesByCycle = ref<Record<string, CycleMaterialTemplate[]>>({})
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   
@@ -33,21 +49,30 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   const limit = 20
 
   const hasMore = computed(() => cycles.value.length < totalCycles.value)
+  const currentSearch = ref('')
 
-  async function fetchCycles(loadMore = false) {
+  async function fetchCycles(loadMore = false, searchStr?: string) {
     if (isLoading.value) return;
+    
+    if (searchStr !== undefined && searchStr !== currentSearch.value) {
+      currentSearch.value = searchStr;
+      loadMore = false; // Fresh search implies fresh data
+    }
+
     isLoading.value = true;
     error.value = null;
 
     if (!loadMore) {
       currentOffset.value = 0;
+      cycles.value = []; // Clear current UI list instantly for a snappy search UX
     }
 
     try {
       const authStore = useAuthStore();
       const subdomain = authStore.getSubdomain();
       // @ts-ignore
-      const response = await $fetch(`/api/v1/academic-time/cycles?limit=${limit}&offset=${currentOffset.value}`, {
+      const url = `/api/v1/academic-time/cycles?limit=${limit}&offset=${currentOffset.value}${currentSearch.value ? `&search=${encodeURIComponent(currentSearch.value)}` : ''}`
+      const response = await $fetch(url, {
         headers: { 'x-subdomain': subdomain }
       });
       
@@ -84,6 +109,25 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
       await fetchCycles()
     } catch (e: any) {
       throw new Error(e.message || 'Error al crear el ciclo')
+    }
+  }
+
+  async function updateCycle(id: string, data: { name: string; year: number; startDate: string; daysPerWeek: number; totalWeeks: number }) {
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/cycles/${id}`, {
+        method: 'PATCH',
+        headers: { 'x-subdomain': subdomain },
+        body: data
+      })
+      await fetchCycles()
+    } catch (e: any) {
+      if (e.status === 409) {
+        throw new Error('No se pueden modificar las fechas porque el ciclo ya tiene sílabos asignados.')
+      }
+      throw new Error(e.message || 'Error al actualizar el ciclo')
     }
   }
 
@@ -149,5 +193,75 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
     }
   }
 
-  return { cycles, isLoading, error, fetchCycles, createCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle, hasMore }
+  // --- Material Templates ---
+
+  async function fetchTemplates(cycleId: string) {
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      // @ts-ignore
+      const data = await $fetch(`/api/v1/academic-time/cycles/${cycleId}/templates`, {
+        headers: { 'x-subdomain': subdomain }
+      })
+      templatesByCycle.value[cycleId] = data as CycleMaterialTemplate[];
+    } catch (e: any) {
+      console.error('Error fetching templates', e);
+      throw new Error('Error al cargar las plantillas del ciclo.');
+    }
+  }
+
+  async function createTemplate(cycleId: string, data: Partial<CycleMaterialTemplate>) {
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/cycles/${cycleId}/templates`, {
+        method: 'POST',
+        headers: { 'x-subdomain': subdomain },
+        body: data
+      })
+      await fetchTemplates(cycleId)
+    } catch (e: any) {
+      if (e.data) throw e;
+      throw new Error(e.message || 'Error al crear la plantilla')
+    }
+  }
+
+  async function updateTemplate(cycleId: string, templateId: string, data: Partial<CycleMaterialTemplate>) {
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/cycles/${cycleId}/templates/${templateId}`, {
+        method: 'PUT',
+        headers: { 'x-subdomain': subdomain },
+        body: data
+      })
+      await fetchTemplates(cycleId)
+    } catch (e: any) {
+      if (e.data) throw e;
+      throw new Error(e.message || 'Error al actualizar la plantilla')
+    }
+  }
+
+  async function deleteTemplate(cycleId: string, templateId: string) {
+    try {
+      const authStore = useAuthStore();
+      const subdomain = authStore.getSubdomain();
+      // @ts-ignore
+      await $fetch(`/api/v1/academic-time/cycles/${cycleId}/templates/${templateId}`, {
+        method: 'DELETE',
+        headers: { 'x-subdomain': subdomain }
+      })
+      await fetchTemplates(cycleId)
+    } catch (e: any) {
+      throw new Error(e.message || 'Error al eliminar la plantilla')
+    }
+  }
+
+  return { 
+    cycles, templatesByCycle, isLoading, error, hasMore,
+    fetchCycles, createCycle, updateCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle,
+    fetchTemplates, createTemplate, updateTemplate, deleteTemplate
+  }
 })

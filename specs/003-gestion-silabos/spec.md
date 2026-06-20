@@ -8,7 +8,7 @@
 
 ## Context
 
-El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtemas) y la Generación de Materiales PDF. Define qué temas y subtemas se evalúan en cada semana del ciclo académico, y cuántas preguntas de cada tipo se requieren. Sin un sílabo configurado, el sistema no puede generar materiales porque no tiene una distribución de contenido.
+El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtemas) y la Generación de Materiales PDF. Define qué temas y subtemas se evalúan en cada semana del ciclo académico, estableciendo un peso base (`requested_quantity`). La configuración específica de los tipos de materiales (Examen, Práctica, etc.) y las reglas exactas de extracción de preguntas se centralizan a nivel del Ciclo a través de **Perfiles de Material**. Esto simplifica el sílabo y evita retrabajos al generar. Sin un sílabo, el sistema no tiene distribución de contenido.
 
 ## Clarifications
 
@@ -23,6 +23,7 @@ El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtema
 - Q: ¿Se puede editar la distribución de una semana si ya se generaron materiales para ella? → A: Advertencia: Se permite la edición, pero se muestra un "Warning" indicando que el material generado quedará desactualizado.
 - Q: ¿Qué sucede al clonar un sílabo si el destino ya tiene datos? → A: Sobrescribir con advertencia: El sistema permite la clonación, pero debe mostrar un diálogo de confirmación advirtiendo que los datos existentes serán sobrescritos.
 - Q: ¿Qué sucede si un subtema asignado se elimina en el Core API? → A: No aplicable: Por regla de negocio, los temas, subtemas y cursos importados son inmutables/incrementales y nunca se eliminan.
+- Q: ¿Dónde se configuran los tipos de material (Examen, Práctica) y cómo interactúan con el sílabo? → A: Perfiles de Material por Ciclo. Para simplificar el proceso sin perder estabilidad, el sílabo se limita a mapear temas a semanas con una cantidad base. Los tipos de materiales se configurarán a nivel de Ciclo (ej. "Práctica Semanal", "Examen Parcial") conteniendo las reglas para leer la matriz del sílabo al momento de generar.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -41,7 +42,7 @@ Como coordinador académico, quiero crear un sílabo para un curso específico v
 
 ### User Story 2 - Distribución de Contenido por Semana (Priority: P1)
 
-Como coordinador académico, quiero asignar a cada semana del sílabo los temas y subtemas que se evaluarán, junto con la cantidad de preguntas requeridas por cada subtema, para estructurar el contenido que alimentará la generación de materiales.
+Como coordinador académico, quiero asignar a cada semana del sílabo los temas y subtemas que se evaluarán, junto con una cantidad base referencial de preguntas por cada subtema, para estructurar la matriz temática que alimentará los Perfiles de Material.
 
 **Independent Test**: Asignación del topic "Ecuaciones Lineales" con subtopic "Resolución Básica" y cantidad 5 a la semana 3 del sílabo. Verificación de que el registro de distribución se persiste correctamente. Edición de la cantidad a 3 y verificación de la actualización.
 
@@ -98,7 +99,7 @@ Como coordinador académico, quiero poder clonar un sílabo existente de un cicl
 ### Key Entities
 
 - **syllabus**: Sílabo. Campos: `id` (uuid), `cycle_id` (FK → cycle), `course_id` (FK → course), `name` (string), `is_active` (boolean, default true).
-- **syllabus_distribution**: Distribución por semana. Campos: `id` (uuid), `syllabus_id` (FK → syllabus), `week_number` (number), `topic_id` (FK → topic), `subtopic_id` (FK → subtopic, NOT NULL), `requested_quantity` (integer, > 0).
+- **syllabus_distribution**: Distribución por semana. Campos: `id` (uuid), `syllabus_id` (FK → syllabus), `week_number` (number), `topic_id` (FK → topic), `subtopic_id` (FK → subtopic, NOT NULL), `requested_quantity` (integer, > 0, actúa como peso base referencial).
 
 ### Constraints de Integridad
 
@@ -125,6 +126,6 @@ Como coordinador académico, quiero poder clonar un sílabo existente de un cicl
 ## Assumptions
 
 - Se asume que un tenant puede tener múltiples sílabos (uno por curso por ciclo).
-- Se asume que la distribución del sílabo es el insumo principal que el módulo de Generación de Materiales consumirá para determinar qué preguntas solicitar al Core API.
+- Se asume que la distribución del sílabo es la matriz temática base que, combinada con los Perfiles de Material configurados a nivel del Ciclo, servirá como insumo para que el módulo de Generación de Materiales solicite preguntas al Core API.
 - Se asume que los subtopics son de solo lectura (provienen del Core) y su visibilidad depende del topic padre activo.
 - Se asume que el catálogo importado del Core API (cursos, temas, subtemas) es inmutable/incremental. Los registros nunca se eliminan en el origen, garantizando la integridad referencial histórica de los sílabos.

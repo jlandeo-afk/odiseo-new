@@ -8,14 +8,22 @@
 
 ## Context
 
-Este módulo permite a los administradores generar materiales educativos (balotarios, exámenes) en formato PDF a partir de la distribución del sílabo. El flujo es completamente asíncrono: el SaaS B2B envía un payload a Amazon SQS, un Worker FastAPI en AWS Fargate procesa la solicitud (consulta al Core API, ensambla el documento, genera el PDF y lo sube a S3), y notifica al usuario por WebSocket cuando está listo.
+Este módulo permite a los administradores generar documentos PDF en base a los **Perfiles de Material por Ciclo** (configurados previamente en el módulo de Tiempo Académico - Spec 002). El Perfil dicta las reglas (frecuencia, cursos y cantidades), y el motor lo cruza con el Sílabo para saber qué temas específicos evaluar. El flujo es asíncrono: el SaaS envía un payload a SQS, un Worker FastAPI en AWS Fargate procesa la solicitud (extrae preguntas del Core API, ensambla el documento con WeasyPrint, lo sube a S3) y notifica por WebSocket.
 
 Opcionalmente, el administrador puede solicitar una **revisión del material** antes de la generación final del PDF, permitiéndole ver las preguntas seleccionadas en el orden del documento, gestionar vacíos y aprobar o ajustar el contenido.
 
 ## Clarifications
 
+### Session 2026-06-20
+
+- Q: ¿Cómo se determina el rango de semanas acumulativas en la generación de material? → A: Sugerencia Inteligente + Edición Manual. Al solicitar la generación en la semana W con una acumulación N, el sistema pre-selecciona automáticamente las últimas N semanas activas (retrocediendo desde W), pero muestra un selector en la UI para que el usuario final pueda modificar la selección de semanas antes de confirmar.
+- Q: ¿Cómo afectan las semanas inactivas (feriados/vacaciones) al cálculo de acumulación? → A: El cálculo de la ventana acumulativa salta automáticamente las semanas inactivas (`is_active = false`), considerando únicamente las semanas lectivas/activas del ciclo para la pre-selección inicial.
+- Q: ¿Cómo se distribuyen las preguntas si las semanas acumuladas tienen pesos diferentes en el sílabo? → A: Distribución Equitativa (Round-Robin). El motor distribuye la cuota de preguntas del perfil de la manera más balanceada posible entre todos los temas/subtemas programados en las semanas seleccionadas, priorizando la equidad sobre los pesos individuales del sílabo.
+- Q: ¿Las cantidades de preguntas del sílabo determinan el tamaño total del examen? → A: No. El sílabo solo define la distribución temática (los temas a evaluar). La cantidad total de preguntas del material se define exclusivamente en el Perfil de Material por Ciclo (ej. Examen = 10 preguntas), garantizando independencia total.
+
 ### Session 2026-06-16
 
+- Q: ¿Cómo sabe el Worker cuántas preguntas extraer si el sílabo ya no tiene cantidades estrictas? → A: A través de los Perfiles de Material por Ciclo. El admin primero crea un perfil (ej. "Examen Quincenal") que estipula el alcance (ej. últimas 2 semanas) y la cantidad por curso (ej. 20 Álgebra, 10 Física). Al generar, el backend cruza este perfil con el sílabo para enviar al Worker un payload exacto con temas y cantidades.
 - Q: ¿De dónde viene el `syllabus_distribution` real? → A: De la tabla `syllabus_distribution` en el esquema del tenant, configurada previamente por el coordinador (Spec 003).
 - Q: ¿Qué es "curaduría"? → A: Se renombra a "Revisión de Material". Es una vista donde el admin ve las preguntas en el orden que aparecerán en el PDF, gestiona las encontradas y los vacíos (preguntas insuficientes). No es un flujo separado — es una sección del módulo de materiales.
 - Q: ¿Cómo se manejan preguntas insuficientes? → A: El admin puede continuar con inconsistencias (generando el PDF parcial) con advertencias visibles, o buscar reemplazos.
@@ -25,13 +33,13 @@ Opcionalmente, el administrador puede solicitar una **revisión del material** a
 
 ### User Story 1 - Solicitud de Generación de Material (Priority: P1)
 
-Como administrador del tenant, quiero solicitar la generación de un material educativo (balotario o examen) para un curso y semana específicos, utilizando la distribución del sílabo como insumo, para obtener un documento PDF con preguntas del banco de reactivos.
+Como administrador del tenant, quiero solicitar la generación de un PDF basándome en un perfil de material (previamente configurado en mi Ciclo) y una semana específicos, para obtener un documento con las preguntas exactas dictadas por las reglas del ciclo.
 
 **Independent Test**: Solicitud de generación de un balotario para "Álgebra", semana 3. Verificación de HTTP 202 Accepted. Verificación de que el payload correcto se envió a SQS con la distribución del sílabo.
 
 **Acceptance Scenarios**:
 
-1. **Given** un sílabo configurado con distribución para una semana, **When** el admin solicita generar un material seleccionando tipo (BALOTARIO/EXAMEN), curso y semana, **Then** el backend lee la distribución del sílabo, arma el payload con los datos del tenant (branding) y la distribución, y lo envía a SQS retornando HTTP 202 con el `job_id`.
+1. **Given** un Ciclo con un Perfil de Material y sílabos configurados, **When** el admin solicita generar un material seleccionando la Semana y el Perfil, **Then** el backend cruza las reglas del perfil con el sílabo, arma el payload con los datos del tenant y la distribución final, y lo envía a SQS retornando HTTP 202 con el `job_id`.
 2. **Given** una solicitud de material tipo EXAMEN, **When** el admin especifica las áreas de examen, **Then** el payload incluye el array de `exam_areas` para que el Worker genere cuadernillos segregados por área.
 3. **Given** que el admin solicita generación con revisión, **When** marca la opción `requires_review = true`, **Then** el Worker pausa después de obtener las preguntas y notifica `REVIEW_REQUIRED` al frontend para que el admin revise antes de generar el PDF.
 
@@ -81,7 +89,7 @@ Como administrador conectado al panel B2B, quiero recibir una notificación visu
 
 ### Functional Requirements
 
-- **FR-001**: El backend MUST leer la distribución del sílabo (tabla `syllabus_distribution`) al recibir una solicitud de generación, armando el payload con los `topic_id`, `subtopic_id` y `requested_quantity` correspondientes a la semana seleccionada.
+- **FR-001**: El backend MUST leer el Perfil de Material seleccionado (`cycle_material_profile`) y cruzarlo con el Sílabo. Por defecto, calculará el rango de las últimas N semanas activas del ciclo (excluyendo semanas inactivas `is_active = false`) para sugerir la pre-selección. Sin embargo, el sistema MUST permitir recibir un arreglo explícito de semanas desde el frontend para sobreescribir esta selección. El backend distribuirá la cuota de preguntas exigida por el perfil entre los temas y subtemas de las semanas seleccionadas de manera equitativa (Round-Robin).
 - **FR-002**: El backend MUST persistir cada solicitud de material en la tabla `material_requests` con estado `PENDING` antes de enviar el mensaje a SQS.
 - **FR-003**: El Worker MUST usar WeasyPrint (HTML/CSS → PDF) como motor de generación de documentos, aplicando templates que incluyan el branding del tenant (logo, nombre comercial).
 - **FR-004**: Cuando el Core API retorna menos preguntas de las solicitadas, el Worker MUST NO abortar — MUST continuar con las preguntas disponibles, registrar un desglose detallado de faltantes por tema/subtema, y marcar el material como `COMPLETED_WITH_WARNINGS`.
@@ -98,8 +106,8 @@ Como administrador conectado al panel B2B, quiero recibir una notificación visu
 
 ### Key Entities
 
-- **material_requests**: Solicitud de material. Campos: `id` (uuid), `tenant_id` (string), `material_type` (enum: BALOTARIO, EXAMEN), `course_id` (FK), `syllabus_id` (FK), `week_number` (number), `status` (enum: PENDING, PROCESSING, REVIEW_REQUIRED, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED), `download_url` (string, nullable), `warnings` (jsonb, nullable — desglose de faltantes), `requires_review` (boolean), `created_by` (FK → user), `created_at` (timestamp).
-- **material_review_questions**: Preguntas de revisión. Campos: `id` (uuid), `material_request_id` (FK), `question_id` (string — referencia al Core API), `topic_id` (FK), `subtopic_id` (FK), `position` (number — orden en el PDF), `status` (enum: FOUND, EMPTY, REPLACED, REMOVED).
+- **material_requests**: Solicitud de material. Campos: `id` (uuid), `tenant_id` (string), `profile_id` (FK → cycle_material_profiles), `week_number` (number), `status` (enum: PENDING, PROCESSING, REVIEW_REQUIRED, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED), `download_url` (string, nullable), `warnings` (jsonb, nullable), `requires_review` (boolean), `created_by` (FK), `created_at` (timestamp).
+- **material_review_questions**: Preguntas de revisión. Campos: `id` (uuid), `material_request_id` (FK), `question_id` (string), `topic_id` (FK), `subtopic_id` (FK), `position` (number), `status` (enum: FOUND, EMPTY, REPLACED, REMOVED).
 
 ## Success Criteria *(mandatory)*
 

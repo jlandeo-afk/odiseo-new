@@ -17,6 +17,7 @@ interface _GlobalComponents {
   AppCommandPalette: typeof import("../../src/components/AppCommandPalette.vue")['default']
   MaterialWarning: typeof import("../../src/components/MaterialWarning.vue")['default']
   SharedAppCommandPalette: typeof import("../../src/components/shared/AppCommandPalette.vue")['default']
+  SharedAppDatePicker: typeof import("../../src/components/shared/AppDatePicker.vue")['default']
   UAccordion: typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue")['default']
   UAlert: typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/Alert.vue")['default']
   UApp: typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/App.vue")['default']
@@ -104,6 +105,7 @@ interface _GlobalComponents {
   LazyAppCommandPalette: LazyComponent<typeof import("../../src/components/AppCommandPalette.vue")['default']>
   LazyMaterialWarning: LazyComponent<typeof import("../../src/components/MaterialWarning.vue")['default']>
   LazySharedAppCommandPalette: LazyComponent<typeof import("../../src/components/shared/AppCommandPalette.vue")['default']>
+  LazySharedAppDatePicker: LazyComponent<typeof import("../../src/components/shared/AppDatePicker.vue")['default']>
   LazyUAccordion: LazyComponent<typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue")['default']>
   LazyUAlert: LazyComponent<typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/Alert.vue")['default']>
   LazyUApp: LazyComponent<typeof import("../../node_modules/@nuxt/ui/dist/runtime/components/App.vue")['default']>

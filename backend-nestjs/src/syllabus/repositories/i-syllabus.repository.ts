@@ -8,6 +8,7 @@ export interface ISyllabusRepository {
   findById(id: string): Promise<Syllabus | null>;
   findByCourseAndCycle(courseId: string, cycleId: string): Promise<Syllabus | null>;
   findByCycle(cycleId: string): Promise<Syllabus[]>;
+  updateVisibility(id: string, isActive: boolean): Promise<void>;
   
   createDistribution(distribution: Partial<SyllabusDistribution>): Promise<SyllabusDistribution>;
   updateDistribution(id: string, requestedQuantity: number): Promise<void>;

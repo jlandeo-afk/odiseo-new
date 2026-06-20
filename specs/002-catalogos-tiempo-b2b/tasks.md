@@ -16,7 +16,7 @@
 - [x] T002 Crear migraciones SQL para crear las tablas `courses`, `topics` y `subtopics` estrictamente en el esquema `public`.
 - [x] T003 Crear migraciones SQL para crear las tablas `tenant_topic_visibility`, `cycles` y `cycle_weeks` en los esquemas de tenant.
 - [x] T004 [P] Crear TypeORM entities para las tablas del esquema `public` en `backend-nestjs/src/catalogs/entities/`.
-- [x] T005 [P] Crear TypeORM entities para las tablas del esquema tenant en `backend-nestjs/src/academic-time/entities/`.
+- [x] T005 [P] Crear TypeORM entities para las tablas del esquema tenant en `backend-nestjs/src/academic-time/entities/` (incluyendo `cycle_material_profile` y courses).
 
 **Checkpoint**: Base de datos lista. Las historias pueden comenzar.
 
@@ -81,7 +81,27 @@
 
 ---
 
-## Phase 5: Polish & Cross-Cutting Concerns
+## Phase 5: User Story 4 - Configuración de Perfiles de Material (Priority: P1)
+
+**Goal**: Crear, editar y listar "Plantillas de Tipos de Material" asociados a un ciclo.
+
+**Independent Test**: Crear plantilla con alcance acumulativo y asignar cuotas de preguntas a 2 cursos.
+
+### Tests
+- [x] T027 [P] [US4] Escribir escenarios BDD en `test-cases.md` para la creación y gestión de plantillas de material.
+- [x] T028 [P] [US4] Escribir tests unitarios (Jest) para la lógica de validación de plantillas en `academic-time.use-case.spec.ts`.
+
+### Implementation Backend
+- [x] T029 [P] [US4] Implementar `POST /api/v1/academic-time/cycles/:id/templates` para crear la plantilla y sus cuotas por curso.
+- [x] T030 [US4] Implementar `GET`, `PUT` y `DELETE` para las plantillas.
+
+### Implementation Frontend
+- [x] T031 [P] [US4] Actualizar Store `useAcademicTimeStore` para manejar el CRUD de plantillas.
+- [x] T032 [US4] Implementar `materials/index.vue` y `materials/[templateId].vue` para listar, crear y editar plantillas con su matriz de distribución.
+
+---
+
+## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T027 [P] Ejecutar Linter y Prettier en ambos repositorios (`backend-nestjs` y `frontend-vue`).
 - [x] T028 Ejecutar `npm run build:icons` si se añadieron nuevos íconos de Remix Icons.

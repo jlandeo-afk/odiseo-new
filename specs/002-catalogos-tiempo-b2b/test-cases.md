@@ -81,4 +81,37 @@ Feature: Creación y gestión de ciclos académicos
     When el administrador intenta hacer un DELETE físico
     Then el sistema arroja el error 409 Conflict
     And sugiere usar la desactivación (`is_active = false`) en su lugar
+
+### US4: Configuración de Perfiles de Material (Plantillas)
+- **`AcademicTimeUseCase` (Material Templates)**:
+  - `createTemplate` debe crear un perfil de material con su nombre, alcance y cuotas por curso asociadas.
+  - `createTemplate` debe validar que la cantidad de preguntas de cada curso sea mayor a 0.
+  - `updateTemplate` debe actualizar correctamente las cuotas de preguntas por curso, aplicando reemplazo limpio.
+  - `deleteTemplate` debe eliminar el perfil y propagar la eliminación en cascada de sus cuotas asociadas.
+
+---
+
+## 3. BDD Scenarios (Gherkin) para US4
+
+### US4: Configuración de Perfiles de Material
+```gherkin
+Feature: Configuración de Perfiles de Material (Plantillas)
+  Para automatizar la generación de materiales académicos,
+  El coordinador quiere configurar plantillas de evaluación asignando cuotas de preguntas a cada curso.
+
+  Scenario: Creación exitosa de plantilla de material
+    Given que el coordinador está en la pestaña de Plantillas de un ciclo activo
+    When crea una plantilla con nombre "Examen Quincenal", alcance "ACCUMULATIVE", acumulación de 2 semanas
+    And asigna la cuota de "10" preguntas al curso "Álgebra"
+    And hace clic en Guardar
+    Then el backend inserta el perfil en `cycle_material_templates`
+    And inserta la cuota de "10" preguntas en `cycle_material_template_courses`
+
+  Scenario: Edición de plantilla modificando cuotas de cursos
+    Given que existe la plantilla "Práctica Semanal" con cuota "5" para "Álgebra"
+    When el coordinador edita la plantilla y cambia la cuota de "Álgebra" a "8"
+    And hace clic en Guardar
+    Then el backend actualiza la plantilla
+    And reemplaza las cuotas viejas por la nueva cuota de "8" preguntas
+```
 ```

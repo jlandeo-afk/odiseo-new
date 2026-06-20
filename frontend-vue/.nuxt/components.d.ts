@@ -17,6 +17,7 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 export const AppCommandPalette: typeof import("../src/components/AppCommandPalette.vue")['default']
 export const MaterialWarning: typeof import("../src/components/MaterialWarning.vue")['default']
 export const SharedAppCommandPalette: typeof import("../src/components/shared/AppCommandPalette.vue")['default']
+export const SharedAppDatePicker: typeof import("../src/components/shared/AppDatePicker.vue")['default']
 export const UAccordion: typeof import("../node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue")['default']
 export const UAlert: typeof import("../node_modules/@nuxt/ui/dist/runtime/components/Alert.vue")['default']
 export const UApp: typeof import("../node_modules/@nuxt/ui/dist/runtime/components/App.vue")['default']
@@ -104,6 +105,7 @@ export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components
 export const LazyAppCommandPalette: LazyComponent<typeof import("../src/components/AppCommandPalette.vue")['default']>
 export const LazyMaterialWarning: LazyComponent<typeof import("../src/components/MaterialWarning.vue")['default']>
 export const LazySharedAppCommandPalette: LazyComponent<typeof import("../src/components/shared/AppCommandPalette.vue")['default']>
+export const LazySharedAppDatePicker: LazyComponent<typeof import("../src/components/shared/AppDatePicker.vue")['default']>
 export const LazyUAccordion: LazyComponent<typeof import("../node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue")['default']>
 export const LazyUAlert: LazyComponent<typeof import("../node_modules/@nuxt/ui/dist/runtime/components/Alert.vue")['default']>
 export const LazyUApp: LazyComponent<typeof import("../node_modules/@nuxt/ui/dist/runtime/components/App.vue")['default']>

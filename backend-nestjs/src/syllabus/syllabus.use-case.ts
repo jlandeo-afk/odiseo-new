@@ -98,4 +98,8 @@ export class SyllabusUseCase {
 
     return await this.getSummary(syllabusId);
   }
+
+  async archiveSyllabus(id: string, isActive: boolean) {
+    await this.syllabusRepo.updateVisibility(id, isActive);
+  }
 }

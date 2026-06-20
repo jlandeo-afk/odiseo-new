@@ -56,4 +56,10 @@ export class SyllabusController {
     const summary = await this.useCase.cloneSyllabus(syllabusId, sourceId);
     return { status: 'cloned', summary };
   }
+
+  @Patch(':id/archive')
+  async archiveSyllabus(@Param('id') id: string, @Body() body: { isActive: boolean }) {
+    await this.useCase.archiveSyllabus(id, body.isActive);
+    return { success: true };
+  }
 }

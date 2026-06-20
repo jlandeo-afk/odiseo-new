@@ -7,8 +7,11 @@ import {
   Body,
   Delete,
   Query,
+  Put,
 } from '@nestjs/common';
 import { AcademicTimeUseCase } from './academic-time.use-case';
+import { CreateCycleMaterialTemplateDto } from './dtos/create-material-template.dto';
+import { UpdateCycleMaterialTemplateDto } from './dtos/update-material-template.dto';
 
 @Controller('v1/academic-time')
 export class AcademicTimeController {
@@ -18,10 +21,11 @@ export class AcademicTimeController {
   async getCycles(
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('search') search?: string,
   ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const parsedOffset = offset ? parseInt(offset, 10) : 0;
-    return this.academicTimeUseCase.getCycles(parsedLimit, parsedOffset);
+    return this.academicTimeUseCase.getCycles(parsedLimit, parsedOffset, search);
   }
 
   @Post('cycles')
@@ -36,6 +40,21 @@ export class AcademicTimeController {
     },
   ) {
     return this.academicTimeUseCase.createCycle(body);
+  }
+
+  @Patch('cycles/:id')
+  async updateCycle(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name: string;
+      year: number;
+      startDate: string;
+      daysPerWeek: number;
+      totalWeeks: number;
+    },
+  ) {
+    return this.academicTimeUseCase.updateCycle(id, body);
   }
 
   @Patch('cycles/:id/visibility')
@@ -60,5 +79,37 @@ export class AcademicTimeController {
   async deleteCycle(@Param('id') id: string) {
     await this.academicTimeUseCase.deleteCycle(id);
     return { success: true };
+  }
+
+  // --- Material Templates ---
+
+  @Get('cycles/:id/templates')
+  async getTemplates(@Param('id') id: string) {
+    return this.academicTimeUseCase.getTemplates(id);
+  }
+
+  @Post('cycles/:id/templates')
+  async createTemplate(
+    @Param('id') cycleId: string,
+    @Body() dto: CreateCycleMaterialTemplateDto,
+  ) {
+    return this.academicTimeUseCase.createTemplate(cycleId, dto);
+  }
+
+  @Put('cycles/:cycleId/templates/:templateId')
+  async updateTemplate(
+    @Param('cycleId') cycleId: string,
+    @Param('templateId') templateId: string,
+    @Body() dto: UpdateCycleMaterialTemplateDto,
+  ) {
+    return this.academicTimeUseCase.updateTemplate(cycleId, templateId, dto);
+  }
+
+  @Delete('cycles/:cycleId/templates/:templateId')
+  async deleteTemplate(
+    @Param('cycleId') cycleId: string,
+    @Param('templateId') templateId: string,
+  ) {
+    return this.academicTimeUseCase.deleteTemplate(cycleId, templateId);
   }
 }

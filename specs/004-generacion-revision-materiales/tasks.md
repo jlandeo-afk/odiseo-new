@@ -6,15 +6,15 @@
 ## Phase 1: Foundational
 
 - [ ] T001 Create TypeORM entities `MaterialRequest` and `MaterialReviewQuestion` in `backend-nestjs/src/materials/entities/`
-- [ ] T002 Create `IMaterialsRepository` interface and implementation in `backend-nestjs/src/materials/repositories/`
+- [ ] T002 Create Repositories interface and implementation for Materials in `backend-nestjs/src/materials/repositories/`
 - [ ] T003 Create `MaterialsModule` in `backend-nestjs/src/materials/materials.module.ts`
 
 ## Phase 2: User Story 1 — Solicitud de Generación (P1)
 
-- [ ] T004 [US1] Write unit test for `MaterialsUseCase.generate()` in `backend-nestjs/src/materials/materials.use-case.spec.ts` — test syllabus read, payload construction, SQS dispatch, missing distribution rejection (EC-004)
-- [ ] T005 [US1] Implement `MaterialsUseCase` in `backend-nestjs/src/materials/materials.use-case.ts` — read syllabus distribution, build payload with tenant branding, persist MaterialRequest (PENDING), send to SQS, return jobId
+- [ ] T004 [US1] Write unit test for `MaterialsUseCase.generate()` in `backend-nestjs/src/materials/materials.use-case.spec.ts` — test profile reading, syllabus crossing, payload construction, and SQS dispatch
+- [ ] T005 [US1] Implement `MaterialsUseCase` in `backend-nestjs/src/materials/materials.use-case.ts` — read profile rules, cross with syllabus distribution, build payload with exact quantities per course, persist MaterialRequest, send to SQS
 - [ ] T006 [US1] Create DTOs and controller in `backend-nestjs/src/materials/` per contract
-- [ ] T007 [P] [US1] Build `GenerateForm` component in `frontend-vue/src/features/materials/components/GenerateForm.vue` — select type, course, syllabus, week; toggle requires_review
+- [ ] T007 [P] [US1] Build `GenerateForm` component in `frontend-vue/src/features/materials/components/GenerateForm.vue` — select Cycle, Profile, Week; toggle requires_review
 
 ## Phase 3: User Story 2 — Worker Processing (P1)
 

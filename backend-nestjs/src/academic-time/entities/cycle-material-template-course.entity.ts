@@ -1,0 +1,37 @@
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { CycleMaterialTemplate } from './cycle-material-template.entity';
+
+@Entity({ name: 'cycle_material_template_courses' })
+export class CycleMaterialTemplateCourse {
+  @PrimaryColumn('uuid')
+  id: string;
+
+  @Column({ name: 'template_id', type: 'uuid' })
+  templateId: string;
+
+  @Column({ name: 'course_id', type: 'uuid' })
+  courseId: string;
+
+  @Column({ name: 'questions_quantity', type: 'integer' })
+  questionsQuantity: number;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updatedAt: Date;
+
+  @ManyToOne(() => CycleMaterialTemplate, (template) => template.courses, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'template_id' })
+  template: CycleMaterialTemplate;
+}

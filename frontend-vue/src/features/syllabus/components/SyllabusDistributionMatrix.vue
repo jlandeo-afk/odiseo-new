@@ -99,20 +99,28 @@ const removeDist = async (distId: string) => {
 };
 
 const getTopicName = (topicId: string, subtopicId: string) => {
-  const t = activeTopics.value.find(x => x.id === topicId);
+  const t = course.value?.topics.find(x => x.id === topicId);
   if (!t) return topicId;
   if (!subtopicId) return t.name;
   const s = t.subtopics.find(x => x.id === subtopicId);
   return s ? `${t.name} - ${s.name}` : `${t.name} - ${subtopicId}`;
 };
 
+const isTopicActive = (topicId: string) => {
+  const t = course.value?.topics.find(x => x.id === topicId);
+  return t ? t.isActive : false;
+};
+
 const weeksList = computed(() => {
   const weeks = [];
+  const cycleWeeks = cycle.value?.weeks || [];
   for (let w = 1; w <= totalWeeks.value; w++) {
     const dists = store.distributions.filter(d => d.weekNumber === w);
     const totalQty = dists.reduce((sum, d) => sum + Number(d.requestedQuantity), 0);
+    const cWeek = cycleWeeks.find(cw => cw.weekNumber === w);
     weeks.push({
       number: w,
+      isActive: cWeek ? cWeek.isActive : true,
       distributions: dists,
       totalQty
     });
@@ -167,7 +175,7 @@ const grandTotal = computed(() => store.distributions.reduce((sum, d) => sum + N
           
           <div>
             <UButton 
-              v-if="activeAddWeek !== week.number"
+              v-if="week.isActive && activeAddWeek !== week.number"
               size="sm" 
               color="primary" 
               variant="soft" 
@@ -178,7 +186,7 @@ const grandTotal = computed(() => store.distributions.reduce((sum, d) => sum + N
               Añadir Tema
             </UButton>
             <UButton 
-              v-if="activeAddWeek !== week.number"
+              v-if="week.isActive && activeAddWeek !== week.number"
               size="sm" 
               color="primary" 
               variant="soft" 
@@ -190,7 +198,13 @@ const grandTotal = computed(() => store.distributions.reduce((sum, d) => sum + N
         </div>
 
         <!-- Week Body -->
-        <div class="p-0">
+        <div v-if="!week.isActive" class="px-5 py-6 text-center bg-slate-50/50 dark:bg-[#1e1e2d]/30 border-t border-slate-200 dark:border-slate-700/50">
+          <p class="text-sm text-red-500 font-semibold flex items-center justify-center gap-2">
+            <UIcon name="i-heroicons-lock-closed" class="w-4 h-4" />
+            Semana Inactiva (Feriado o deshabilitada)
+          </p>
+        </div>
+        <div v-else class="p-0">
           
           <!-- Empty State -->
           <div v-if="week.distributions.length === 0 && activeAddWeek !== week.number" class="px-5 py-6 text-center">
@@ -207,10 +221,11 @@ const grandTotal = computed(() => store.distributions.reduce((sum, d) => sum + N
               :key="dist.id"
               class="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-[#36364e] transition-colors gap-3 sm:gap-0"
             >
-              <div class="flex-1 pr-4">
-                <span class="text-sm font-medium text-slate-700 dark:text-slate-200">
+              <div class="flex-1 pr-4 flex items-center gap-2">
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-200" :class="{ 'line-through opacity-50': !isTopicActive(dist.topicId) }">
                   {{ getTopicName(dist.topicId, dist.subtopicId) }}
                 </span>
+                <UBadge v-if="!isTopicActive(dist.topicId)" color="red" size="sm" variant="subtle">Inactivo</UBadge>
               </div>
               
               <div class="flex items-center gap-4 shrink-0 justify-between sm:justify-end w-full sm:w-auto">

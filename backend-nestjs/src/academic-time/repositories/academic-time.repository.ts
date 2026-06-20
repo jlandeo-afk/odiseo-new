@@ -1,19 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { IsNull } from 'typeorm';
+import { IsNull, ILike } from 'typeorm';
 import { IAcademicTimeRepository } from './i-academic-time.repository';
 import { Cycle } from '../entities/cycle.entity';
 import { CycleWeek } from '../entities/cycle-week.entity';
+import { CycleMaterialTemplate } from '../entities/cycle-material-template.entity';
+import { CycleMaterialTemplateCourse } from '../entities/cycle-material-template-course.entity';
 import { TenantService } from '../../database/tenant.service';
 
 @Injectable()
 export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
   constructor(private readonly tenantService: TenantService) {}
 
-  async getCycles(limit: number = 20, offset: number = 0): Promise<{ data: Cycle[], total: number }> {
+  async getCycles(limit: number = 20, offset: number = 0, search: string = ''): Promise<{ data: Cycle[], total: number }> {
     return this.tenantService.runInTenant(async (manager) => {
+      const where: any = { deletedAt: IsNull() };
+      
+      if (search && search.trim() !== '') {
+        where.name = ILike(`%${search.trim()}%`);
+      }
+
       const [data, total] = await manager.findAndCount(Cycle, {
         relations: ['weeks'],
-        where: { deletedAt: IsNull() },
+        where,
         order: { startDate: 'DESC', weeks: { weekNumber: 'ASC' } },
         take: limit,
         skip: offset,
@@ -33,9 +41,33 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
     });
   }
 
+  async updateCycle(id: string, data: any): Promise<void> {
+    return this.tenantService.runInTenant(async (manager) => {
+      const { weeks, ...cycleData } = data;
+      
+      // Update the cycle core properties
+      await manager.update(Cycle, id, cycleData);
+
+      // If weeks are provided, it means we are recalculating
+      if (weeks && weeks.length > 0) {
+        // Delete old weeks (hard delete to prevent orphaned soft-deleted records piling up)
+        await manager.delete(CycleWeek, { cycle: { id } });
+
+        // Save new weeks
+        const cycleWeeks = weeks.map((w: any) => manager.create(CycleWeek, w));
+        await manager.save(cycleWeeks);
+      }
+    });
+  }
+
   async updateCycleVisibility(id: string, isActive: boolean): Promise<void> {
     await this.tenantService.runInTenant(async (manager) => {
       await manager.update(Cycle, id, { isActive });
+      if (!isActive) {
+        // If a cycle is archived, all its associated syllabuses should also be archived
+        // to prevent active syllabuses from belonging to inactive cycles.
+        await manager.query(`UPDATE "syllabus" SET is_active = false WHERE cycle_id = $1`, [id]);
+      }
     });
   }
 
@@ -62,6 +94,57 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
     await this.tenantService.runInTenant(async (manager) => {
       await manager.softDelete(Cycle, id);
       await manager.softDelete(CycleWeek, { cycle: { id } });
+    });
+  }
+
+  async getTemplatesByCycle(cycleId: string): Promise<any[]> {
+    return this.tenantService.runInTenant(async (manager) => {
+      return manager.find(CycleMaterialTemplate, {
+        where: { cycleId },
+        relations: ['courses'],
+        order: { createdAt: 'ASC' },
+      });
+    });
+  }
+
+  async createTemplate(data: any): Promise<void> {
+    return this.tenantService.runInTenant(async (manager) => {
+      const { courses, ...templateData } = data;
+      const template = manager.create(CycleMaterialTemplate, templateData);
+      await manager.save(template);
+
+      if (courses && courses.length > 0) {
+        const templateCourses = courses.map((c: any) =>
+          manager.create(CycleMaterialTemplateCourse, { ...c, templateId: template.id }),
+        );
+        await manager.save(templateCourses);
+      }
+    });
+  }
+
+  async updateTemplate(templateId: string, data: any): Promise<void> {
+    return this.tenantService.runInTenant(async (manager) => {
+      const { courses, ...templateData } = data;
+      await manager.update(CycleMaterialTemplate, templateId, templateData);
+
+      if (courses) {
+        // Hard delete old courses mappings and re-insert
+        await manager.delete(CycleMaterialTemplateCourse, { templateId });
+        if (courses.length > 0) {
+          const templateCourses = courses.map((c: any) =>
+            manager.create(CycleMaterialTemplateCourse, { ...c, templateId }),
+          );
+          await manager.save(templateCourses);
+        }
+      }
+    });
+  }
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    return this.tenantService.runInTenant(async (manager) => {
+      // Courses have CASCADE on delete if configured, or we delete explicitly:
+      await manager.delete(CycleMaterialTemplateCourse, { templateId });
+      await manager.delete(CycleMaterialTemplate, templateId);
     });
   }
 }

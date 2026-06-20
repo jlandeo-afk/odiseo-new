@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { CatalogCronService } from './catalog.cron';
 import { ICatalogRepository } from './repositories/i-catalog.repository';
 
@@ -11,18 +12,26 @@ describe('CatalogCronService', () => {
       upsertCatalogs: jest.fn(),
     };
 
+    const mockConfigService = {
+      get: jest.fn().mockReturnValue('http://localhost:3000/api/catalogs'),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CatalogCronService,
         {
-          provide: 'ICatalogRepository',
+          provide: ICatalogRepository,
           useValue: mockRepository,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
         },
       ],
     }).compile();
 
     service = module.get<CatalogCronService>(CatalogCronService);
-    repository = module.get<ICatalogRepository>('ICatalogRepository');
+    repository = module.get<ICatalogRepository>(ICatalogRepository);
 
     // Mock global fetch
     global.fetch = jest.fn();
@@ -47,7 +56,7 @@ describe('CatalogCronService', () => {
 
     await service.syncCatalogs();
 
-    expect(global.fetch).toHaveBeenCalledWith(expect.any(String));
+    expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.any(Object));
     expect(repository.upsertCatalogs).toHaveBeenCalledWith(expect.any(Object));
   });
 
@@ -65,6 +74,7 @@ describe('CatalogCronService', () => {
     expect(repository.upsertCatalogs).not.toHaveBeenCalled();
     expect(loggerSpy).toHaveBeenCalledWith(
       expect.stringContaining('Failed to fetch catalogs from Core API'),
+      expect.any(String),
     );
   });
 });

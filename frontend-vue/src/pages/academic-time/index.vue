@@ -8,13 +8,21 @@
           Gestiona los ciclos y semanas. Marca feriados sin eliminar registros.
         </p>
       </div>
-      <button
-        class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20"
-        @click="showCreateSlide = true"
-      >
-        <span class="text-lg leading-none mb-0.5">+</span>
-        Nuevo Ciclo
-      </button>
+      <div class="flex items-center gap-4">
+        <UInput
+          v-model="searchQuery"
+          icon="i-heroicons-magnifying-glass"
+          placeholder="Buscar ciclo..."
+          class="w-64"
+        />
+        <button
+          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20"
+          @click="openCreateSlide"
+        >
+          <span class="text-lg leading-none mb-0.5">+</span>
+          Nuevo Ciclo
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -28,19 +36,21 @@
     </div>
 
     <!-- Weeks matrix -->
-    <WeeksMatrix v-show="store.cycles.length > 0 || !store.isLoading" />
+    <WeeksMatrix v-show="store.cycles.length > 0 || !store.isLoading" @edit="openEditSlide" />
 
     <!-- Slide-over (non-blocking) -->
-    <CycleSlideOver v-model="showCreateSlide" @created="onCreated" />
+    <CycleSlideOver v-model="showCreateSlide" :cycleToEdit="selectedCycle" @submit="onSubmitted" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAcademicTimeStore } from '../../features/academic-time/store'
+import type { Cycle } from '../../features/academic-time/store'
 import WeeksMatrix from '../../features/academic-time/components/WeeksMatrix.vue'
 import CycleSlideOver from '../../features/academic-time/components/CycleSlideOver.vue'
 import { useToast } from '#imports'
+import { watchDebounced } from '@vueuse/core'
 
 definePageMeta({
   layout: 'b2b',
@@ -49,11 +59,32 @@ definePageMeta({
 
 const store = useAcademicTimeStore()
 const showCreateSlide = ref(false)
+const selectedCycle = ref<Cycle | null>(null)
+const searchQuery = ref('')
 const toast = useToast()
 
 onMounted(() => store.fetchCycles())
 
-function onCreated() {
-  toast.add({ title: 'Ciclo creado con éxito', color: 'success', timeout: 2500 })
+watchDebounced(
+  searchQuery,
+  (newVal) => {
+    store.fetchCycles(false, newVal)
+  },
+  { debounce: 400, maxWait: 1000 }
+)
+
+function openCreateSlide() {
+  selectedCycle.value = null
+  showCreateSlide.value = true
+}
+
+function openEditSlide(cycle: Cycle) {
+  selectedCycle.value = cycle
+  showCreateSlide.value = true
+}
+
+function onSubmitted() {
+  toast.add({ title: selectedCycle.value ? 'Ciclo actualizado con éxito' : 'Ciclo creado con éxito', color: 'success', timeout: 2500 })
+  showCreateSlide.value = false
 }
 </script>

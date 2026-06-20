@@ -10,9 +10,14 @@
       <div class="flex items-center justify-between px-5 py-3.5 bg-slate-50/50 dark:bg-[#1e1e2d]/50 border-b border-slate-200 dark:border-slate-700/50">
         <div class="flex items-center gap-3">
           <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ cycle.name }}</h3>
-          <span class="text-xs text-slate-500 dark:text-slate-400">
-            {{ cycle.startDate }} → {{ cycle.endDate }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500 dark:text-slate-400">
+              {{ cycle.startDate }} → {{ cycle.endDate }}
+            </span>
+            <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+              {{ getCycleDaysText(cycle.daysPerWeek) }}
+            </span>
+          </div>
           <button
             class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border focus:outline-none"
             :class="cycle.isActive 
@@ -42,9 +47,22 @@
           >
             {{ expandedCycles.has(cycle.id) ? 'Ocultar Semanas' : 'Ver Semanas' }}
           </button>
+          <NuxtLink 
+            :to="`/academic-time/cycles/${cycle.id}/materials`"
+            class="px-2.5 py-1 text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 rounded-md transition-colors"
+          >
+            Ver Materiales
+          </NuxtLink>
+          <button 
+            @click="onEditCycle(cycle)"
+            class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:text-indigo-400 dark:hover:bg-indigo-500/10 rounded-md transition-colors"
+            title="Editar Ciclo"
+          >
+            <UIcon name="i-heroicons-pencil" class="w-4 h-4" />
+          </button>
           <button 
             @click="onDeleteCycle(cycle.id)"
-            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 ml-2 rounded-md transition-colors"
+            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-md transition-colors"
             title="Eliminar Ciclo"
           >
             <UIcon name="i-heroicons-trash" class="w-4 h-4" />
@@ -53,41 +71,61 @@
       </div>
 
       <!-- Weeks grid -->
-      <div v-if="expandedCycles.has(cycle.id)" class="p-5">
-        <div class="grid gap-1.5" :style="`grid-template-columns: repeat(${Math.min(cycle.weeks.length, 12)}, minmax(0, 1fr))`">
+      <div v-if="expandedCycles.has(cycle.id)" class="p-6 bg-slate-50/30 dark:bg-[#1e1e2d]/20 border-t border-slate-100 dark:border-slate-800">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           <button
             v-for="week in cycle.weeks"
             :key="week.id"
-            class="week-cell relative group flex flex-col items-center justify-center rounded border text-center cursor-pointer select-none"
+            class="relative flex flex-col rounded-xl border text-left cursor-pointer select-none overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-1 dark:focus:ring-offset-[#2b2b3f] group"
             :class="weekCellClass(week)"
-            style="min-height: 56px; padding: 4px 2px;"
             :title="week.isActive ? `Semana ${week.weekNumber} — click para desactivar` : `Semana ${week.weekNumber} — click para reactivar`"
             @click="onToggleWeek(week)"
           >
-            <span v-if="pendingWeeks.has(week.id)" class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-[#2b2b3f]/60 rounded">
-              <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-indigo-500" />
-            </span>
+            <!-- Loading Overlay -->
+            <div v-if="pendingWeeks.has(week.id)" class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-[#2b2b3f]/60 z-10 backdrop-blur-[1px]">
+              <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-indigo-500" />
+            </div>
 
-            <span class="text-[10px] font-semibold" :class="week.isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500 line-through'">
-              S{{ week.weekNumber }}
-            </span>
-            <span class="text-[9px] leading-tight mt-0.5 block font-medium" :class="week.isActive ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-600'">
-              {{ formatShortDate(week.startDate) }}
-            </span>
-
-            <span
-              v-if="!week.isActive"
-              class="absolute top-0.5 right-0.5 text-[8px] text-slate-400 dark:text-slate-600 font-medium"
+            <!-- Calendar "Header" -->
+            <div 
+              class="px-3 py-2.5 flex items-center justify-between border-b transition-colors"
+              :class="week.isActive 
+                ? 'bg-indigo-50/80 border-indigo-100 dark:bg-indigo-500/10 dark:border-indigo-500/20' 
+                : 'bg-slate-50 border-slate-200 dark:bg-[#252536] dark:border-slate-700'"
             >
-              <UIcon name="i-heroicons-no-symbol" class="w-2.5 h-2.5" />
-            </span>
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-heroicons-calendar-days" class="w-3.5 h-3.5" :class="week.isActive ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'" />
+                <span class="text-[10px] font-bold uppercase tracking-wider" :class="week.isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'">
+                  Semana {{ week.weekNumber }}
+                </span>
+              </div>
+              <UIcon 
+                :name="week.isActive ? 'i-heroicons-check-circle-20-solid' : 'i-heroicons-minus-circle-20-solid'" 
+                class="w-4 h-4"
+                :class="week.isActive ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-300 dark:text-slate-600'"
+              />
+            </div>
 
-            <span
-              class="absolute -bottom-0 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 text-[9px] font-bold transition-opacity whitespace-nowrap"
-              :class="week.isActive ? 'text-rose-500' : 'text-emerald-500'"
-            >
-              {{ week.isActive ? 'Pausar' : 'Activar' }}
-            </span>
+            <!-- Calendar "Body" -->
+            <div class="p-3.5 flex-1 flex flex-col justify-center items-center relative overflow-hidden bg-white dark:bg-[#2b2b3f]" :class="!week.isActive && 'opacity-70 grayscale-[30%]'">
+              <div class="text-[13px] font-semibold tracking-tight" :class="week.isActive ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'">
+                {{ formatDayWithShortName(week.startDate) }} - {{ formatDayWithShortName(week.endDate) }}
+              </div>
+              <div class="text-[10px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase mt-0.5">
+                {{ formatMonthRange(week.startDate, week.endDate) }}
+              </div>
+
+              <!-- Hover Action Overlay -->
+              <div class="absolute inset-0 bg-white/95 dark:bg-[#2b2b3f]/95 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center">
+                <span
+                  class="text-xs font-bold transition-transform transform translate-y-1 group-hover:translate-y-0 duration-200 flex items-center gap-1"
+                  :class="week.isActive ? 'text-rose-500' : 'text-emerald-500'"
+                >
+                  <UIcon :name="week.isActive ? 'i-heroicons-pause-circle' : 'i-heroicons-play-circle'" class="w-4 h-4" />
+                  {{ week.isActive ? 'Pausar' : 'Activar' }}
+                </span>
+              </div>
+            </div>
           </button>
         </div>
       </div>
@@ -112,6 +150,10 @@ import { useIntersectionObserver } from '@vueuse/core'
 
 const store = useAcademicTimeStore()
 const toast = useToast()
+
+const emit = defineEmits<{
+  'edit': [cycle: Cycle]
+}>()
 
 const pendingWeeks = ref(new Set<string>())
 const expandedCycles = ref(new Set<string>())
@@ -148,15 +190,49 @@ function activeWeekCount(cycle: Cycle) {
   return cycle.weeks.filter(w => w.isActive).length
 }
 
-function formatShortDate(dateStr: string) {
-  const [year, month, day] = dateStr.split('-')
-  return `${day}/${month}`
+function getCycleDaysText(days: number) {
+  if (days === 1) return 'Solo Lunes'
+  if (days === 2) return 'Lunes a Martes'
+  if (days === 3) return 'Lunes a Miércoles'
+  if (days === 4) return 'Lunes a Jueves'
+  if (days === 5) return 'Lunes a Viernes'
+  if (days === 6) return 'Lunes a Sábado'
+  if (days === 7) return 'Lunes a Domingo'
+  return `${days} días por sem.`
+}
+
+function formatDayWithShortName(dateStr: string) {
+  if (!dateStr) return '?'
+  const date = new Date(dateStr + 'T00:00:00Z')
+  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const dayName = days[date.getUTCDay()]
+  const [, , day] = dateStr.split('-')
+  return `${dayName} ${day}`
+}
+
+function formatMonthRange(start: string, end: string) {
+  if (!start) return ''
+  const [, sMonth] = start.split('-')
+  
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  const sMonthName = months[parseInt(sMonth, 10) - 1]
+  
+  if (!end) return sMonthName
+  
+  const [, eMonth] = end.split('-')
+  const eMonthName = months[parseInt(eMonth, 10) - 1]
+  
+  if (sMonth === eMonth) {
+    return sMonthName
+  } else {
+    return `${sMonthName} - ${eMonthName}`
+  }
 }
 
 function weekCellClass(week: CycleWeek) {
-  if (pendingWeeks.value.has(week.id)) return 'border-indigo-200 bg-indigo-50 dark:border-indigo-500/30 dark:bg-indigo-500/10 opacity-50 pointer-events-none'
-  if (week.isActive) return 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/30 dark:bg-indigo-500/10 hover:border-indigo-400 hover:bg-indigo-100 dark:hover:border-indigo-400 dark:hover:bg-indigo-500/20'
-  return 'border-slate-200 bg-slate-50 dark:border-slate-700/50 dark:bg-[#1e1e2d]/50 hover:border-slate-300 hover:bg-slate-100 dark:hover:border-slate-600 dark:hover:bg-[#1e1e2d] week-cell--inactive'
+  if (pendingWeeks.value.has(week.id)) return 'border-indigo-200 dark:border-indigo-500/30 opacity-70 pointer-events-none'
+  if (week.isActive) return 'border-indigo-200/60 dark:border-indigo-500/30 hover:border-indigo-400 hover:shadow-md dark:hover:border-indigo-400 shadow-sm'
+  return 'border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600 week-cell--inactive bg-slate-50 dark:bg-[#1e1e2d]'
 }
 
 async function onToggleWeek(week: CycleWeek) {
@@ -186,5 +262,9 @@ async function onDeleteCycle(cycleId: string) {
   } catch (e: any) {
     toast.add({ title: e.message, color: 'error', timeout: 3000 })
   }
+}
+
+function onEditCycle(cycle: Cycle) {
+  emit('edit', cycle)
 }
 </script>
