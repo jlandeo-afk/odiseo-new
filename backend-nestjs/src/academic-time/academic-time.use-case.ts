@@ -62,13 +62,16 @@ export class AcademicTimeUseCase {
     return { id: cycleId };
   }
 
-  async updateCycle(id: string, dto: {
-    name: string;
-    year: number;
-    startDate: string;
-    daysPerWeek: number;
-    totalWeeks: number;
-  }) {
+  async updateCycle(
+    id: string,
+    dto: {
+      name?: string;
+      year?: number;
+      startDate?: string;
+      daysPerWeek?: number;
+      totalWeeks?: number;
+    },
+  ) {
     const { name, year, startDate, daysPerWeek, totalWeeks } = dto;
     
     // Check if cycle has active syllabus relations
@@ -77,10 +80,27 @@ export class AcademicTimeUseCase {
       throw new Error('Cycle not found');
     }
 
+    const normalizeDate = (d: any): string => {
+      if (!d) return '';
+      if (d instanceof Date) {
+        return d.toISOString().split('T')[0];
+      }
+      if (typeof d === 'string') {
+        return d.split('T')[0];
+      }
+      return String(d);
+    };
+
+    const finalStartDate = startDate !== undefined ? normalizeDate(startDate) : normalizeDate(existingCycle.startDate);
+    const finalDaysPerWeek = daysPerWeek ?? existingCycle.daysPerWeek;
+    const finalTotalWeeks = totalWeeks ?? existingCycle.totalWeeks;
+
+    const existingStartDateNormalized = normalizeDate(existingCycle.startDate);
+
     const needsRecalculation = 
-      existingCycle.startDate !== startDate || 
-      existingCycle.daysPerWeek !== daysPerWeek || 
-      existingCycle.totalWeeks !== totalWeeks;
+      (startDate !== undefined && existingStartDateNormalized !== finalStartDate) || 
+      (daysPerWeek !== undefined && existingCycle.daysPerWeek !== finalDaysPerWeek) || 
+      (totalWeeks !== undefined && existingCycle.totalWeeks !== finalTotalWeeks);
 
     if (needsRecalculation && existingCycle.hasSyllabus) {
       throw new ConflictException(
@@ -88,25 +108,24 @@ export class AcademicTimeUseCase {
       );
     }
 
-    const cycleUpdate: any = {
-      name,
-      year,
-      startDate,
-      daysPerWeek,
-      totalWeeks,
-    };
+    const cycleUpdate: any = {};
+    if (name !== undefined) cycleUpdate.name = name;
+    if (year !== undefined) cycleUpdate.year = year;
+    if (startDate !== undefined) cycleUpdate.startDate = finalStartDate;
+    if (daysPerWeek !== undefined) cycleUpdate.daysPerWeek = finalDaysPerWeek;
+    if (totalWeeks !== undefined) cycleUpdate.totalWeeks = finalTotalWeeks;
 
     if (needsRecalculation) {
-      const startParts = startDate.split('-');
+      const startParts = finalStartDate.split('-');
       const start = new Date(Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]));
       
       cycleUpdate.weeks = [];
-      for (let i = 1; i <= totalWeeks; i++) {
+      for (let i = 1; i <= finalTotalWeeks; i++) {
         const currentWeekStart = new Date(start);
         currentWeekStart.setUTCDate(start.getUTCDate() + (i - 1) * 7);
 
         const currentWeekEnd = new Date(currentWeekStart);
-        currentWeekEnd.setUTCDate(currentWeekStart.getUTCDate() + (daysPerWeek - 1));
+        currentWeekEnd.setUTCDate(currentWeekStart.getUTCDate() + (finalDaysPerWeek - 1));
 
         cycleUpdate.weeks.push({
           id: uuidv4(),

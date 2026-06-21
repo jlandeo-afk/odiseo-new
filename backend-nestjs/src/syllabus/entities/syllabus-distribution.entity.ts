@@ -3,8 +3,8 @@ import { Syllabus } from './syllabus.entity';
 
 @Entity('syllabus_distribution')
 @Unique('UQ_syllabus_week_topic_subtopic', ['syllabusId', 'weekNumber', 'topicId', 'subtopicId'])
-@Check(`"requested_quantity" > 0`)
-@Check(`"requested_quantity" <= 100`)
+@Check(`"weight" > 0`)
+@Check(`"weight" <= 10`)
 export class SyllabusDistribution {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -25,8 +25,8 @@ export class SyllabusDistribution {
   @Column({ name: 'subtopic_id', type: 'uuid' })
   subtopicId: string;
 
-  @Column({ name: 'requested_quantity', type: 'int' })
-  requestedQuantity: number;
+  @Column({ name: 'weight', type: 'int' })
+  weight: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

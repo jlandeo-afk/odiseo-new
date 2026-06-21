@@ -78,12 +78,12 @@ export class MaterialsService {
         {
           topic_id: 'uuid_ecuaciones',
           subtopic_id: 'uuid_lineales',
-          requested_quantity: 3,
+          weight: 3,
         },
         {
           topic_id: 'uuid_ecuaciones',
           subtopic_id: 'uuid_cuadraticas',
-          requested_quantity: 2,
+          weight: 2,
         },
       ],
       notification: {

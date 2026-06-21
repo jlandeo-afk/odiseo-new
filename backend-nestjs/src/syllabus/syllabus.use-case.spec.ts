@@ -24,32 +24,19 @@ describe('SyllabusUseCase', () => {
     useCase = module.get<SyllabusUseCase>(SyllabusUseCase);
   });
 
-  it('should throw BadRequestException if requested quantity exceeds 100', async () => {
-    mockRepo.getSummaryBySyllabus.mockResolvedValue([
-      { weekNumber: 1, requestedQuantity: 60 }
-    ]);
-
-    await expect(useCase.addDistribution('syl-1', {
-      weekNumber: 1,
-      topicId: 't-1',
-      subtopicId: 'st-1',
-      requestedQuantity: 50
-    })).rejects.toThrow(BadRequestException);
-  });
-
-  it('should create distribution if under limit', async () => {
-    mockRepo.getSummaryBySyllabus.mockResolvedValue([
-      { weekNumber: 1, requestedQuantity: 40 }
-    ]);
-    mockRepo.createDistribution.mockResolvedValue({ id: 'new-dist' });
+  it('should create distribution successfully with weight', async () => {
+    mockRepo.createDistribution.mockResolvedValue({ id: 'new-dist', weight: 5 });
 
     const result = await useCase.addDistribution('syl-1', {
       weekNumber: 1,
       topicId: 't-1',
       subtopicId: 'st-1',
-      requestedQuantity: 50
+      weight: 5
     });
 
     expect(result.id).toBe('new-dist');
+    expect(mockRepo.createDistribution).toHaveBeenCalledWith(expect.objectContaining({
+      weight: 5
+    }));
   });
 });

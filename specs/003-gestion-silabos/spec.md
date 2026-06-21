@@ -8,7 +8,7 @@
 
 ## Context
 
-El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtemas) y la Generación de Materiales PDF. Define qué temas y subtemas se evalúan en cada semana del ciclo académico, estableciendo un peso base (`requested_quantity`). La configuración específica de los tipos de materiales (Examen, Práctica, etc.) y las reglas exactas de extracción de preguntas se centralizan a nivel del Ciclo a través de **Perfiles de Material**. Esto simplifica el sílabo y evita retrabajos al generar. Sin un sílabo, el sistema no tiene distribución de contenido.
+El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtemas) y la Generación de Materiales PDF. Define qué temas y subtemas se evalúan en cada semana del ciclo académico, estableciendo un peso relativo (`weight` de 1 a 10) para cada subtema. La configuración específica de los tipos de materiales (Examen, Práctica, etc.) y la cantidad total de preguntas a extraer se centralizan a nivel del Ciclo a través de **Plantillas de Material**. Esto simplifica el sílabo y evita retrabajos al generar. Sin un sílabo, el sistema no tiene distribución de contenido.
 
 ## Clarifications
 
@@ -18,7 +18,7 @@ El sílabo es el puente entre los Catálogos (taxonomía de cursos/temas/subtema
 - Q: ¿Autocompletar la cantidad de preguntas al asignar un subtema? → A: Autocompletar con 1: El sistema asigna `1` por defecto para hacer la carga fluida.
 - Q: ¿Soportar clonación de sílabos entre ciclos? → A: Permitir clonación: El sistema debe incluir una función para clonar un sílabo (y toda su distribución) desde un ciclo anterior.
 - Q: ¿Estrategia de resolución de conflictos concurrentes en Optimistic UI? → A: Last-write-wins: El último cambio que llega al servidor sobrescribe la celda de distribución.
-- Q: ¿Existe un límite máximo de preguntas que se pueden asignar a una misma semana en el sílabo? → A: Sí, máximo 100 preguntas por semana en total para evitar sobrecargas.
+- Q: ¿Existe un límite máximo de preguntas que se pueden asignar a una misma semana en el sílabo? → A: No, el sílabo usa pesos relativos (1 a 10), por lo tanto no hay un límite de preguntas absoluto en esta capa. La cantidad absoluta la define la Plantilla de Material.
 - Q: Si una actualización en Optimistic UI falla tras cambiar de ruta, ¿cómo se notifica? → A: Notificación global (Toast) que persista entre rutas indicando el error específico.
 - Q: ¿Se puede editar la distribución de una semana si ya se generaron materiales para ella? → A: Advertencia: Se permite la edición, pero se muestra un "Warning" indicando que el material generado quedará desactualizado.
 - Q: ¿Qué sucede al clonar un sílabo si el destino ya tiene datos? → A: Sobrescribir con advertencia: El sistema permite la clonación, pero debe mostrar un diálogo de confirmación advirtiendo que los datos existentes serán sobrescritos.
@@ -42,27 +42,27 @@ Como coordinador académico, quiero crear un sílabo para un curso específico v
 
 ### User Story 2 - Distribución de Contenido por Semana (Priority: P1)
 
-Como coordinador académico, quiero asignar a cada semana del sílabo los temas y subtemas que se evaluarán, junto con una cantidad base referencial de preguntas por cada subtema, para estructurar la matriz temática que alimentará los Perfiles de Material.
+Como coordinador académico, quiero asignar a cada semana del sílabo los temas y subtemas que se evaluarán, junto con un peso relativo (1-10) por cada subtema, para estructurar la matriz temática que alimentará a las Plantillas de Material de manera proporcional.
 
-**Independent Test**: Asignación del topic "Ecuaciones Lineales" con subtopic "Resolución Básica" y cantidad 5 a la semana 3 del sílabo. Verificación de que el registro de distribución se persiste correctamente. Edición de la cantidad a 3 y verificación de la actualización.
+**Independent Test**: Asignación del topic "Ecuaciones Lineales" con subtopic "Resolución Básica" y peso 5 a la semana 3 del sílabo. Verificación de que el registro de distribución se persiste correctamente. Edición del peso a 3 y verificación de la actualización.
 
 **Acceptance Scenarios**:
 
-1. **Given** un sílabo creado y vinculado a un ciclo, **When** el coordinador asigna un topic + subtopic a una semana activa, **Then** se crea un registro de `syllabus_distribution` con los IDs correspondientes asumiendo una `requested_quantity` por defecto de `1` (optimizando clics).
-2. **Given** una distribución existente en una semana, **When** el coordinador modifica la cantidad de preguntas, **Then** el registro se actualiza con Optimistic UI (respuesta inmediata en la UI, sincronización en background).
+1. **Given** un sílabo creado y vinculado a un ciclo, **When** el coordinador asigna un topic + subtopic a una semana activa, **Then** se crea un registro de `syllabus_distribution` con los IDs correspondientes asumiendo un `weight` por defecto de `5` (peso intermedio).
+2. **Given** una distribución existente en una semana, **When** el coordinador modifica el peso del subtema, **Then** el registro se actualiza con Optimistic UI (respuesta inmediata en la UI, sincronización en background).
 3. **Given** una semana con distribuciones asignadas, **When** el coordinador elimina una distribución, **Then** el registro se elimina y la UI refleja el cambio inmediatamente.
 
 ---
 
 ### User Story 3 - Visualización Resumen del Sílabo (Priority: P2)
 
-Como coordinador académico, quiero ver un resumen consolidado del sílabo completo que muestre el total de preguntas por semana y por tema, para verificar que la distribución cubre adecuadamente el ciclo antes de generar materiales.
+Como coordinador académico, quiero ver un resumen consolidado del sílabo completo que muestre el total de pesos por semana y por tema, para verificar que la distribución cubre adecuadamente el ciclo antes de generar materiales.
 
 **Independent Test**: Acceso a la vista resumen de un sílabo con distribuciones en múltiples semanas. Verificación de que los totales por semana y por tema se calculan correctamente. Verificación de que semanas sin distribución se muestran vacías (no se ocultan).
 
 **Acceptance Scenarios**:
 
-1. **Given** un sílabo con distribuciones configuradas, **When** el coordinador accede a la vista resumen, **Then** se muestra una matriz de semanas × temas con las cantidades asignadas y totales por fila/columna.
+1. **Given** un sílabo con distribuciones configuradas, **When** el coordinador accede a la vista resumen, **Then** se muestra una matriz de semanas × temas con los pesos asignados y totales por fila/columna.
 2. **Given** semanas del ciclo sin distribución asignada, **When** el coordinador ve el resumen, **Then** las semanas vacías aparecen con indicador visual de "sin contenido" para que el coordinador identifique gaps en la planificación.
 
 ---
@@ -84,12 +84,12 @@ Como coordinador académico, quiero poder clonar un sílabo existente de un cicl
 ### Functional Requirements
 
 - **FR-001**: El sistema MUST permitir crear sílabos vinculados a exactamente un `course` y un `cycle` activos dentro del esquema del tenant.
-- **FR-002**: Cada registro de distribución (`syllabus_distribution`) MUST contener: `syllabus_id`, `week_number`, `topic_id`, `subtopic_id` y `requested_quantity` (entero positivo).
+- **FR-002**: Cada registro de distribución (`syllabus_distribution`) MUST contener: `syllabus_id`, `week_number`, `topic_id`, `subtopic_id` y `weight` (entero de 1 a 10).
 - **FR-003**: No se permite asignar distribuciones a semanas desactivadas (`cycle_weeks.is_active = false`). El frontend MUST deshabilitar la interacción con semanas inactivas.
 - **FR-004**: El frontend MUST implementar Optimistic UI para todas las mutaciones de distribución con rollback visual en caso de error del backend, e incluir una notificación global (Toast) persistente si el error ocurre cuando el usuario ya navegó a otra ruta.
 - **FR-005**: Solo los topics activos (`is_active = true`) del catálogo MUST ser seleccionables para la distribución del sílabo.
 - **FR-006**: Un sílabo MUST poder marcarse como `is_active = false` para archivarlo, pero no eliminarse físicamente.
-- **FR-007**: El sistema MUST validar que la suma total de `requested_quantity` asignada a una misma semana no exceda el límite estricto de 100 preguntas.
+- **FR-007**: El sistema MUST validar que el `weight` esté estrictamente entre 1 y 10.
 
 ### Structural Constraints (Critical)
 
@@ -99,12 +99,12 @@ Como coordinador académico, quiero poder clonar un sílabo existente de un cicl
 ### Key Entities
 
 - **syllabus**: Sílabo. Campos: `id` (uuid), `cycle_id` (FK → cycle), `course_id` (FK → course), `name` (string), `is_active` (boolean, default true).
-- **syllabus_distribution**: Distribución por semana. Campos: `id` (uuid), `syllabus_id` (FK → syllabus), `week_number` (number), `topic_id` (FK → topic), `subtopic_id` (FK → subtopic, NOT NULL), `requested_quantity` (integer, > 0, actúa como peso base referencial).
+- **syllabus_distribution**: Distribución por semana. Campos: `id` (uuid), `syllabus_id` (FK → syllabus), `week_number` (number), `topic_id` (FK → topic), `subtopic_id` (FK → subtopic, NOT NULL), `weight` (integer, 1 a 10, actúa como peso relativo).
 
 ### Constraints de Integridad
 
 - **UNIQUE**: (`syllabus_id`, `week_number`, `topic_id`, `subtopic_id`) — no se puede duplicar la misma combinación tema/subtema en una misma semana.
-- **CHECK**: `requested_quantity > 0` — la cantidad siempre es positiva.
+- **CHECK**: `weight >= 1 AND weight <= 10` — el peso debe estar en el rango permitido.
 - **FK CASCADE**: Si un sílabo se desactiva, sus distribuciones permanecen (no se eliminan en cascada).
 
 ## Success Criteria *(mandatory)*

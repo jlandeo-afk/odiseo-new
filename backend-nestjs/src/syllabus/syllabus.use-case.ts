@@ -30,27 +30,17 @@ export class SyllabusUseCase {
   }
 
   async addDistribution(syllabusId: string, dto: CreateDistributionDto) {
-    const currentDistributions = await this.syllabusRepo.getSummaryBySyllabus(syllabusId);
-    
-    const weekTotal = currentDistributions
-      .filter(d => d.weekNumber === dto.weekNumber)
-      .reduce((sum, d) => sum + d.requestedQuantity, 0);
-
-    if (weekTotal + dto.requestedQuantity > 100) {
-      throw new BadRequestException('La cantidad máxima de preguntas por semana no puede exceder 100.');
-    }
-
     return await this.syllabusRepo.createDistribution({
       syllabusId,
       weekNumber: dto.weekNumber,
       topicId: dto.topicId,
       subtopicId: dto.subtopicId,
-      requestedQuantity: dto.requestedQuantity
+      weight: dto.weight
     });
   }
 
-  async updateDistributionQuantity(distId: string, syllabusId: string, quantity: number) {
-    await this.syllabusRepo.updateDistribution(distId, quantity);
+  async updateDistributionWeight(distId: string, syllabusId: string, weight: number) {
+    await this.syllabusRepo.updateDistribution(distId, weight);
   }
 
   async deleteDistribution(distId: string) {
@@ -61,16 +51,16 @@ export class SyllabusUseCase {
     const distributions = await this.syllabusRepo.getSummaryBySyllabus(syllabusId);
     
     const summary = {
-      totalQuestions: 0,
-      weeklyTotals: {} as Record<number, number>,
-      topicTotals: {} as Record<string, number>,
+      totalWeight: 0,
+      weeklyWeights: {} as Record<number, number>,
+      topicWeights: {} as Record<string, number>,
       distributions
     };
 
     for (const dist of distributions) {
-      summary.totalQuestions += dist.requestedQuantity;
-      summary.weeklyTotals[dist.weekNumber] = (summary.weeklyTotals[dist.weekNumber] || 0) + dist.requestedQuantity;
-      summary.topicTotals[dist.topicId] = (summary.topicTotals[dist.topicId] || 0) + dist.requestedQuantity;
+      summary.totalWeight += dist.weight;
+      summary.weeklyWeights[dist.weekNumber] = (summary.weeklyWeights[dist.weekNumber] || 0) + dist.weight;
+      summary.topicWeights[dist.topicId] = (summary.topicWeights[dist.topicId] || 0) + dist.weight;
     }
 
     return summary;
@@ -92,7 +82,7 @@ export class SyllabusUseCase {
         weekNumber: dist.weekNumber,
         topicId: dist.topicId,
         subtopicId: dist.subtopicId,
-        requestedQuantity: dist.requestedQuantity
+        weight: dist.weight
       });
     }
 

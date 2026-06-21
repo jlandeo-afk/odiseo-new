@@ -11,7 +11,7 @@ export interface ISyllabusRepository {
   updateVisibility(id: string, isActive: boolean): Promise<void>;
   
   createDistribution(distribution: Partial<SyllabusDistribution>): Promise<SyllabusDistribution>;
-  updateDistribution(id: string, requestedQuantity: number): Promise<void>;
+  updateDistribution(id: string, weight: number): Promise<void>;
   deleteDistribution(id: string): Promise<void>;
   
   getSummaryBySyllabus(syllabusId: string): Promise<SyllabusDistribution[]>;

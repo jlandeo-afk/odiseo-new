@@ -53,7 +53,7 @@ export const useSyllabusStore = defineStore('syllabus', () => {
   async function addDistribution(syllabusId: string, payload: any) {
     // Generate temporary ID for Optimistic UI
     const tempId = 'temp-' + Date.now();
-    const newDist = { id: tempId, syllabusId, ...payload, requestedQuantity: payload.requestedQuantity || 1 };
+    const newDist = { id: tempId, syllabusId, ...payload, weight: payload.weight || 1 };
     
     // 1. Optimistic Update
     distributions.value.push(newDist);
@@ -80,13 +80,13 @@ export const useSyllabusStore = defineStore('syllabus', () => {
     }
   }
 
-  async function updateDistributionQuantity(distId: string, syllabusId: string, requestedQuantity: number) {
+  async function updateDistributionWeight(distId: string, syllabusId: string, weight: number) {
     const dist = distributions.value.find(d => d.id === distId);
     if (!dist) return;
     
-    const prevQuantity = dist.requestedQuantity;
+    const prevWeight = dist.weight;
     // 1. Optimistic Update
-    dist.requestedQuantity = requestedQuantity;
+    dist.weight = weight;
 
     try {
       const authStore = useAuthStore();
@@ -94,11 +94,11 @@ export const useSyllabusStore = defineStore('syllabus', () => {
       await $fetch(`/api/v1/syllabus/${syllabusId}/distribution/${distId}`, {
         method: 'PATCH',
         headers: { 'x-subdomain': subdomain },
-        body: { requestedQuantity }
+        body: { weight }
       });
     } catch (err: any) {
       // 2. Rollback
-      dist.requestedQuantity = prevQuantity;
+      dist.weight = prevWeight;
       throw err;
     }
   }
@@ -188,7 +188,7 @@ export const useSyllabusStore = defineStore('syllabus', () => {
     fetchSyllabiByCycle,
     createSyllabus,
     addDistribution,
-    updateDistributionQuantity,
+    updateDistributionWeight,
     deleteDistribution,
     fetchSummary,
     cloneSyllabus,

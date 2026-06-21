@@ -48,9 +48,9 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
     });
   }
 
-  async updateDistribution(id: string, requestedQuantity: number): Promise<void> {
+  async updateDistribution(id: string, weight: number): Promise<void> {
     await this.tenantService.runInTenant(async (manager) => {
-      await manager.update(SyllabusDistribution, { id }, { requestedQuantity });
+      await manager.update(SyllabusDistribution, { id }, { weight });
     });
   }
 

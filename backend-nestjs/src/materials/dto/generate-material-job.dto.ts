@@ -12,7 +12,7 @@ export interface ExamArea {
 export interface SyllabusDistribution {
   topic_id: string;
   subtopic_id: string;
-  requested_quantity: number;
+  weight: number;
 }
 
 export interface NotificationInfo {

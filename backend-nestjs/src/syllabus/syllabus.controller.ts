@@ -32,7 +32,7 @@ export class SyllabusController {
     @Param('distId') distId: string,
     @Body() dto: UpdateDistributionDto
   ) {
-    await this.useCase.updateDistributionQuantity(distId, syllabusId, dto.requestedQuantity);
+    await this.useCase.updateDistributionWeight(distId, syllabusId, dto.weight);
     return { status: 'updated' };
   }
 
