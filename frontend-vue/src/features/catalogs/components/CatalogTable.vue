@@ -80,25 +80,29 @@
                 
                 <div class="shrink-0 flex items-center mt-0.5">
                   <!-- Active State: Subtle Icon Button (less noise) -->
-                  <button
+                  <UButton
                     v-if="topic.isActive"
-                    class="p-1.5 rounded-md text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 transition-all duration-200 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
+                    size="xs"
+                    color="emerald"
+                    variant="soft"
+                    icon="i-heroicons-eye"
+                    class="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
                     title="Ocultar tema"
                     @click.stop="onToggleActive(topic)"
-                  >
-                    <UIcon name="i-heroicons-eye" class="w-4 h-4" />
-                  </button>
+                  />
                   
                   <!-- Inactive State: Explicit Badge -->
-                  <button
+                  <UButton
                     v-else
-                    class="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700 transition-all duration-200"
+                    size="xs"
+                    color="gray"
+                    variant="soft"
+                    icon="i-heroicons-eye-slash"
                     title="Mostrar tema"
                     @click.stop="onToggleActive(topic)"
                   >
-                    <UIcon name="i-heroicons-eye-slash" class="w-3.5 h-3.5" />
-                    <span>Oculto</span>
-                  </button>
+                    Oculto
+                  </UButton>
                 </div>
               </div>
               

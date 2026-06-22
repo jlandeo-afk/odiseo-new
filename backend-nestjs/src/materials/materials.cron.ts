@@ -9,7 +9,7 @@ export class MaterialsCron {
   constructor(private readonly materialsService: MaterialsService) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleAutomaticGeneration() {
+  async handleCron() {
     this.logger.log('Running US5: Automatic Material Generation (Cron)');
 
     // Mock de base de datos para la configuración de ciclos

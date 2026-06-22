@@ -14,4 +14,20 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./localstack-init:/etc/localstack/init/ready.d"
 
-  # We can add more services here later (like postgres) if needed
+  worker:
+    build:
+      context: ./worker-fastapi
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/odiseo-materials-queue
+      - AWS_SQS_ENDPOINT=http://localstack:4566
+      - AWS_S3_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_S3_BUCKET_NAME=odiseo-materials
+      - B2B_WEBHOOK_URL=http://host.docker.internal:3000/v1/materials/webhook/status
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - localstack

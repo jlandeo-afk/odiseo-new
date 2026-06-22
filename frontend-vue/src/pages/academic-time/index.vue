@@ -15,13 +15,13 @@
           placeholder="Buscar ciclo..."
           class="w-64"
         />
-        <button
-          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20"
+        <UButton
+          color="primary"
+          icon="i-heroicons-plus"
           @click="openCreateSlide"
         >
-          <span class="text-lg leading-none mb-0.5">+</span>
           Nuevo Ciclo
-        </button>
+        </UButton>
       </div>
     </div>
 

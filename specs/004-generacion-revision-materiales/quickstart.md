@@ -1,57 +1,69 @@
-# Quickstart: Generación de Balotario PDF
+# Quickstart: Material Generation Pipeline
 
-Guía de validación end-to-end del flujo asíncrono.
+This guide outlines the steps to run and verify the `004-generacion-revision-materiales` module end-to-end.
 
-## Prerequisites
+## Environment Variables
 
-1. **LocalStack o AWS Setup**:
-   Necesitas una cola SQS y un bucket S3.
-   ```bash
-   # Utilizando awslocal (LocalStack)
-   awslocal sqs create-queue --queue-name odiseo-materials-queue
-   awslocal s3 mb s3://odiseo-materials
-   ```
-2. **Entorno de Red Local**: El Backend B2B y el Worker FastAPI deben estar corriendo y poderse conectar a las herramientas AWS mockeadas.
-
-## Validation Steps
-
-### 1. Iniciar los servicios
-En tu terminal 1 (SaaS B2B):
+### NestJS Backend (`backend-nestjs/.env`)
+Make sure the following variables are configured:
 ```bash
-cd backend-nestjs
+# AWS SQS & S3 Configuration (LocalStack defaults)
+AWS_REGION=us-east-1
+AWS_SQS_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/odiseo-materials-queue
+AWS_SQS_ENDPOINT=http://localhost:4566
+AWS_S3_ENDPOINT=http://localhost:4566
+AWS_S3_BUCKET=odiseo-materials
+```
+
+### FastAPI Worker (`worker-fastapi/.env` or Docker Compose)
+```bash
+AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/odiseo-materials-queue
+AWS_SQS_ENDPOINT=http://localstack:4566
+AWS_S3_ENDPOINT=http://localstack:4566
+AWS_S3_BUCKET_NAME=odiseo-materials
+AWS_REGION=us-east-1
+B2B_WEBHOOK_URL=http://host.docker.internal:3000/v1/materials/webhook/status
+```
+
+## Running the Services
+
+### 1. Start LocalStack and Worker Containers
+From the root directory of the repository:
+```bash
+docker-compose up --build -d
+```
+This builds and starts:
+- **LocalStack**: Initializes SQS `odiseo-materials-queue` and S3 `odiseo-materials` bucket.
+- **FastAPI Worker**: Automatically listens to the LocalStack queue in the background.
+
+### 2. Start NestJS Backend
+In `backend-nestjs`:
+```bash
 npm run start:dev
 ```
 
-En tu terminal 2 (Worker Fargate local):
+### 3. Start Frontend Vue App
+In `frontend-vue`:
+```bash
+npm run dev
+```
+
+## Testing & Verification Scenarios
+
+### Automated Tests
+Run unit tests in both modules to ensure regression safety:
+
+**NestJS Tests:**
+```bash
+cd backend-nestjs
+npm run test src/materials/materials.service.spec.ts
+```
+
+**FastAPI Tests:**
 ```bash
 cd worker-fastapi
-uvicorn main:app --reload
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt pytest
+pytest tests/
 ```
-
-### 2. Disparar Petición HTTP
-Ejecuta la llamada para encolar la creación del examen. Valida que el servicio retorna HTTP 202 inmediatamente:
-
-```bash
-curl -X POST http://localhost:3000/api/v1/materials/generate \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "material_type": "EXAMEN",
-    "course_id": "uuid-algebra",
-    "difficulty_level": "AVANZADO",
-    "exam_areas": ["uuid_area_A", "uuid_area_B"]
-  }'
-```
-
-### 3. Verificar Worker Logs & S3
-Observa la terminal 2 (Worker). Debería aparecer:
-```text
-[INFO] Received SQS Event: 84a3-4b92-b6f7-112233445566
-[INFO] Material type EXAMEN detected. Preparing booklets for areas: uuid_area_A, uuid_area_B
-[INFO] Core API returned 5 questions
-[INFO] PDF successfully generated and uploaded to s3://odiseo-materials/examen_firmado.pdf
-[INFO] Firing WebSocket notification via API Gateway.
-```
-
-### 4. Validar WebSocket Event
-Como administrador conectado a la interfaz web (o en consola de cliente Websocket), validarás que el evento `material.generation.completed` llegó con el `download_url` listo.

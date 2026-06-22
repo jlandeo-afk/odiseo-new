@@ -11,6 +11,9 @@ import { TenantMiddleware } from './database/tenant.middleware';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { AcademicTimeModule } from './academic-time/academic-time.module';
 import { SyllabusModule } from './syllabus/syllabus.module';
+import { MaterialsModule } from './materials/materials.module';
+import { WorkerModule } from './worker/worker.module';
+import { QuestionBankModule } from './question-bank/question-bank.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { SyllabusModule } from './syllabus/syllabus.module';
     CatalogsModule,
     AcademicTimeModule,
     SyllabusModule,
+    MaterialsModule,
+    WorkerModule,
+    QuestionBankModule,
   ],
   controllers: [AppController],
   providers: [AppService],

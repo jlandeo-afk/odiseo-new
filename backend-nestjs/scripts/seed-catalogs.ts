@@ -61,6 +61,17 @@ async function seedCatalogs() {
         topic_id UUID REFERENCES public.topics(id) ON DELETE CASCADE,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
       );
+
+      CREATE TABLE IF NOT EXISTS public.questions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        topic_id UUID NOT NULL,
+        subtopic_id UUID NOT NULL,
+        difficulty_level VARCHAR(50) DEFAULT 'MEDIUM',
+        html_content TEXT NOT NULL,
+        options JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+      );
     `);
 
     // Insert Courses
@@ -88,7 +99,30 @@ async function seedCatalogs() {
       );
     }
 
-    // Insert Subtopics
+    // Insert Subtopics and 2 dummy questions per subtopic
+    console.log('Seeding subtopics and generating dummy questions (this might take a minute)...');
+    
+    // Batch inserts for questions to speed it up
+    let questionValues: any[][] = [];
+    const maxBatchSize = 1000;
+
+    const flushQuestions = async () => {
+      if (questionValues.length === 0) return;
+      
+      const valuesStr = questionValues.map((_, i) => 
+        `($${i*6+1}, $${i*6+2}, $${i*6+3}, $${i*6+4}, $${i*6+5}, $${i*6+6})`
+      ).join(', ');
+      
+      const params = questionValues.flatMap(v => v);
+      
+      await client.query(`
+        INSERT INTO public.questions (id, topic_id, subtopic_id, difficulty_level, html_content, options)
+        VALUES ${valuesStr}
+      `, params);
+      
+      questionValues = [];
+    };
+
     for (const s of subtopics) {
       const uuid = String(s.id).padStart(12, '0');
       const subtopicId = `00000000-0000-0000-0000-${uuid}`;
@@ -100,10 +134,28 @@ async function seedCatalogs() {
         `INSERT INTO public.subtopics (id, name, topic_id) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
         [subtopicId, s.name, topicId]
       );
+
+      // Generate 2 dummy questions for this subtopic
+      for (let i = 1; i <= 2; i++) {
+        const questionId = require('crypto').randomUUID();
+        const htmlContent = `<p>Si sabemos que $x = ${Math.floor(Math.random() * 10)}$ y $y = ${Math.floor(Math.random() * 10)}$, resuelva la siguiente ecuación (Tema: ${s.name}):</p> <math><mrow><mi>x</mi><mo>+</mo><mi>y</mi><mo>=</mo><mo>?</mo></mrow></math>`;
+        const options = JSON.stringify([
+          { label: 'A', text: '10', is_correct: i === 1 },
+          { label: 'B', text: '12', is_correct: i === 2 },
+          { label: 'C', text: '14', is_correct: false },
+          { label: 'D', text: 'N.A', is_correct: false },
+        ]);
+
+        questionValues.push([questionId, topicId, subtopicId, 'MEDIUM', htmlContent, options]);
+        if (questionValues.length >= maxBatchSize) {
+          await flushQuestions();
+        }
+      }
     }
+    await flushQuestions(); // flush remaining
 
     await client.query('COMMIT');
-    console.log('✅ Catalogs seeded successfully!');
+    console.log('✅ Catalogs and Questions seeded successfully!');
     
   } catch (error) {
     await client.query('ROLLBACK');

@@ -3,11 +3,11 @@ import boto3
 import json
 import logging
 import time
-import os
 import requests
 from .material_assembler import material_assembler
 from .ws_notifier import ws_notifier
 from .core_api_client import InsufficientQuestionsError
+from .schemas.material import GenerateMaterialJobPayload
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,24 @@ class SQSConsumer:
 
     def process_message(self, message: dict):
         """
-        Procesa un único mensaje de SQS.
+        Procesa un único mensaje de SQS y lo valida con Pydantic.
         """
-        body = json.loads(message.get('Body', '{}'))
+        try:
+            body_dict = json.loads(message.get('Body', '{}'))
+            # T009/T018: Validar estructura del payload con Pydantic
+            payload = GenerateMaterialJobPayload(**body_dict)
+            body = payload.model_dump()
+        except Exception as ve:
+            logger.error(f"Invalid message payload: {str(ve)}")
+            # Intentar obtener job_id rudimentario del body para notificar fallo
+            try:
+                raw_body = json.loads(message.get('Body', '{}'))
+                job_id = raw_body.get('job_id', 'UNKNOWN')
+                self.notify_internal_webhook(job_id, "failed", error_message="Payload de mensaje SQS inválido.")
+            except Exception:
+                pass
+            return
+
         job_id = body.get('job_id', 'UNKNOWN')
         logger.info(f"Received SQS Event: {job_id}")
         
@@ -53,7 +68,7 @@ class SQSConsumer:
         material_type = body.get('material_type', 'UNKNOWN')
         
         try:
-            # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3) o pausar (Curaduría)
+            # 1. Ensamblar y subir a S3 (Core API -> Ensamblador -> PDF -> S3)
             download_url = material_assembler.assemble(body)
             
             if download_url == "CURATION_REQUIRED":
@@ -71,14 +86,11 @@ class SQSConsumer:
             logger.error(f"Data validation error for job {job_id}: {str(e)}")
             ws_notifier.notify_failure(connection_id, job_id, str(e))
             self.notify_internal_webhook(job_id, "failed", error_message=str(e))
-            # No re-lanzamos porque el error es esperado (US2), el job debe ser eliminado de SQS
             
         except Exception as e:
             logger.error(f"Unexpected error processing job {job_id}: {str(e)}")
             ws_notifier.notify_failure(connection_id, job_id, "Error interno durante la generación del material.")
             self.notify_internal_webhook(job_id, "failed", error_message="Error interno durante la generación del material.")
-            # Dependiendo de la política de reintentos, se podría relanzar aquí.
-            # Por ahora lo atrapamos para que el SQS Consumer no se caiga.
 
     def start_polling(self):
         logger.info(f"Starting SQS consumer polling on {self.queue_url}")

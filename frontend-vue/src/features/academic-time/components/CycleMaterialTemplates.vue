@@ -69,20 +69,41 @@
               <UIcon name="i-heroicons-book-open" class="w-4 h-4 text-slate-400" />
               <span><strong class="text-slate-700 dark:text-slate-300">{{ template.courses.length }}</strong> cursos participan</span>
             </div>
+            
+            <div class="pt-4 mt-2 border-t border-slate-100 dark:border-slate-700/50">
+              <button
+                @click.prevent.stop="openGenerateModal(template.id)"
+                class="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 rounded-lg transition-colors"
+              >
+                <UIcon name="i-heroicons-bolt" class="w-4 h-4" />
+                Generar Material
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Generate Modal -->
+    <MaterialGenerateModal
+      ref="generateModalRef"
+      :cycleId="cycleId"
+      :defaultTemplateId="activeTemplateId"
+      @success="handleGenerateSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAcademicTimeStore } from '@/features/academic-time/store'
+import MaterialGenerateModal from '@/features/materials/components/MaterialGenerateModal.vue'
 
 const props = defineProps<{ cycleId: string }>()
 
 const store = useAcademicTimeStore()
+const generateModalRef = ref<any>(null)
+const activeTemplateId = ref<string>('')
 
 const templates = computed(() => store.templatesByCycle[props.cycleId] ?? [])
 
@@ -98,5 +119,18 @@ async function handleDelete(templateId: string) {
     console.error(e)
     alert('Error al eliminar.')
   }
+}
+
+function openGenerateModal(templateId: string) {
+  activeTemplateId.value = templateId
+  if (generateModalRef.value) {
+    generateModalRef.value.isOpen = true
+  }
+}
+
+function handleGenerateSuccess() {
+  // Option: show a toast or redirect to the global material board.
+  // We can just close the modal, which happens automatically inside it.
+  alert('Generación iniciada con éxito. Revisa el Workspace de Materiales.')
 }
 </script>

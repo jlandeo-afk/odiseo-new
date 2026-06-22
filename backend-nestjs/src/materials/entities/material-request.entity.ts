@@ -4,13 +4,19 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { MaterialRequestCourse } from './material-request-course.entity';
+import { MaterialReviewQuestion } from './material-review-question.entity';
 
 export enum MaterialRequestStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
+  PENDING = 'PENDING',
+  IN_REVIEW = 'IN_REVIEW',
+  PROCESSING = 'PROCESSING',
+  REVIEW_REQUIRED = 'REVIEW_REQUIRED',
+  COMPLETED = 'COMPLETED',
+  COMPLETED_WITH_WARNINGS = 'COMPLETED_WITH_WARNINGS',
+  FAILED = 'FAILED',
 }
 
 @Entity('material_requests')
@@ -21,11 +27,17 @@ export class MaterialRequest {
   @Column({ name: 'tenant_id', type: 'varchar', length: 36 })
   tenantId: string;
 
-  @Column({ name: 'material_type', type: 'varchar', length: 50 })
+  @Column({ name: 'profile_id', type: 'uuid' })
+  profileId: string;
+
+  @Column({ name: 'week_number', type: 'integer' })
+  weekNumber: number;
+
+  @Column({ name: 'material_type', type: 'varchar', default: 'BALOTARIO' })
   materialType: string;
 
-  @Column({ name: 'course_id', type: 'varchar', length: 36 })
-  courseId: string;
+  @Column({ type: 'integer', default: 1 })
+  version: number;
 
   @Column({
     type: 'enum',
@@ -34,11 +46,25 @@ export class MaterialRequest {
   })
   status: MaterialRequestStatus;
 
-  @Column({ name: 'download_url', type: 'text', nullable: true })
-  downloadUrl: string;
+  @Column({ name: 'requires_review', type: 'boolean', default: true })
+  requiresReview: boolean;
 
-  @Column({ name: 'error_message', type: 'text', nullable: true })
-  errorMessage: string;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true })
+  createdBy: string;
+
+  @OneToMany(
+    () => MaterialRequestCourse,
+    (course) => course.materialRequest,
+    { cascade: true }
+  )
+  courses: MaterialRequestCourse[];
+
+  @OneToMany(
+    () => MaterialReviewQuestion,
+    (question) => question.materialRequest,
+    { cascade: true }
+  )
+  questions: MaterialReviewQuestion[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

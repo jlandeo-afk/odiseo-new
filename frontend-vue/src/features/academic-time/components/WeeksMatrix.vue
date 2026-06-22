@@ -18,16 +18,15 @@
               {{ getCycleDaysText(cycle.daysPerWeek) }}
             </span>
           </div>
-          <button
-            class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border focus:outline-none"
-            :class="cycle.isActive 
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 dark:hover:bg-emerald-500/20' 
-              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700'"
+          <UButton
+            size="xs"
+            :color="cycle.isActive ? 'emerald' : 'gray'"
+            variant="soft"
+            :icon="cycle.isActive ? 'i-heroicons-check-circle' : 'i-heroicons-minus-circle'"
             @click="onToggleCycleVisibility(cycle)"
           >
-            <UIcon :name="cycle.isActive ? 'i-heroicons-check-circle' : 'i-heroicons-minus-circle'" class="w-3.5 h-3.5" />
-            <span>{{ cycle.isActive ? 'Activo' : 'Archivado' }}</span>
-          </button>
+            {{ cycle.isActive ? 'Activo' : 'Archivado' }}
+          </UButton>
         </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
@@ -41,32 +40,40 @@
               />
             </div>
           </div>
-          <button
+          <UButton
+            size="xs"
+            color="primary"
+            variant="soft"
+            :icon="expandedCycles.has(cycle.id) ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
             @click="toggleCycleExpand(cycle.id)"
-            class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium px-2 py-1 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg transition-colors"
           >
             {{ expandedCycles.has(cycle.id) ? 'Ocultar Semanas' : 'Ver Semanas' }}
-          </button>
-          <NuxtLink 
+          </UButton>
+          <UButton
+            size="xs"
+            color="primary"
+            variant="soft"
+            icon="i-heroicons-document-text"
             :to="`/academic-time/cycles/${cycle.id}/materials`"
-            class="px-2.5 py-1 text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 rounded-md transition-colors"
           >
             Ver Materiales
-          </NuxtLink>
-          <button 
+          </UButton>
+          <UButton 
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-pencil-square"
             @click="onEditCycle(cycle)"
-            class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:text-indigo-400 dark:hover:bg-indigo-500/10 rounded-md transition-colors"
             title="Editar Ciclo"
-          >
-            <UIcon name="i-heroicons-pencil" class="w-4 h-4" />
-          </button>
-          <button 
+          />
+          <UButton 
+            size="xs"
+            color="error"
+            variant="ghost"
+            icon="i-heroicons-trash"
             @click="onDeleteCycle(cycle.id)"
-            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-md transition-colors"
             title="Eliminar Ciclo"
-          >
-            <UIcon name="i-heroicons-trash" class="w-4 h-4" />
-          </button>
+          />
         </div>
       </div>
 

@@ -306,7 +306,7 @@ const navigationData = [
     path: '#',
     badge: null,
     items: [
-      { name: 'Historial de Materiales', path: '/materials/history', badge: null },
+      { name: 'Gestión de Materiales', path: '/materials', badge: null },
     ]
   },
   {

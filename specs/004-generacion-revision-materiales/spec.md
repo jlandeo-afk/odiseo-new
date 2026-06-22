@@ -12,6 +12,10 @@ Este módulo permite a los administradores generar documentos PDF en base a los 
 
 Opcionalmente, el administrador puede solicitar una **revisión del material** antes de la generación final del PDF, permitiéndole ver las preguntas seleccionadas en el orden del documento, gestionar vacíos y aprobar o ajustar el contenido.
 
+**Out of Scope**:
+- La edición del texto, alternativas o imágenes de las preguntas desde la interfaz del SaaS B2B. Las preguntas son inmutables en este flujo.
+- La creación de nuevas preguntas desde este módulo (responsabilidad del Banco de Preguntas).
+
 ## Clarifications
 
 ### Session 2026-06-20
@@ -20,6 +24,15 @@ Opcionalmente, el administrador puede solicitar una **revisión del material** a
 - Q: ¿Cómo afectan las semanas inactivas (feriados/vacaciones) al cálculo de acumulación? → A: El cálculo de la ventana acumulativa salta automáticamente las semanas inactivas (`is_active = false`), considerando únicamente las semanas lectivas/activas del ciclo para la pre-selección inicial.
 - Q: ¿Cómo se distribuyen las preguntas si las semanas acumuladas tienen pesos diferentes en el sílabo? → A: Distribución Equitativa (Round-Robin). El motor distribuye la cuota de preguntas del perfil de la manera más balanceada posible entre todos los temas/subtemas programados en las semanas seleccionadas, priorizando la equidad sobre los pesos individuales del sílabo.
 - Q: ¿Las cantidades de preguntas del sílabo determinan el tamaño total del examen? → A: No. El sílabo solo define la distribución temática (los temas a evaluar). La cantidad total de preguntas del material se define exclusivamente en el Perfil de Material por Ciclo (ej. Examen = 10 preguntas), garantizando independencia total.
+
+### Session 2026-06-21
+
+- Q: ¿Se permite editar el contenido de las preguntas directamente en la pantalla de revisión de materiales, o solo se admite reemplazo/remoción? → A: Solo reemplazar/eliminar. El contenido de la pregunta es inmutable en el SaaS B2B, respetando la separación de dominios.
+- Q: ¿Cómo se manejan la concurrencia y el estado "en proceso" durante la generación y revisión de material? → A: Ambos. Se introduce el estado `IN_REVIEW` cuando un admin entra a la pantalla de revisión, y `PROCESSING` queda reservado para la compilación activa del PDF por el Worker. Si otro administrador intenta abrir un material en `IN_REVIEW`, la UI mostrará una advertencia y el backend aplicará bloqueo optimista para prevenir sobreescrituras accidentales.
+- Q: ¿Cuál es el tiempo de expiración de las URLs pre-firmadas y la retención de los PDFs en S3? → A: Las URLs pre-firmadas expiran en 24 horas y los archivos se retienen de forma permanente en S3 para el ciclo académico. Al solicitar la descarga, NestJS regenera la URL pre-firmada al instante sin volver a compilar el archivo.
+- Q: ¿Cómo se gestionan los archivos y URLs cuando una solicitud incluye múltiples cursos? → A: Se almacenan de manera granular en una nueva tabla relacional `material_request_courses`, permitiendo tener un estado y un URL de descarga independiente para cada curso.
+- Q: ¿Cómo debe comportarse el Worker FastAPI si el Core API no responde (timeout) o retorna error? → A: Reintentos con Backoff y reporte final. El Worker FastAPI reintenta la llamada hasta 3 veces con una pausa exponencial corta (2s, 4s, 8s). Si persiste, el Worker actualiza el estado de la solicitud y de sus cursos a `FAILED` en el SaaS, y notifica por WebSocket.
+- Q: ¿Se debe implementar alguna regla básica de anti-repetición de preguntas dentro del alcance de la Spec 004, o queda diferida al 100% a la Spec 005? → A: 100% Diferida a la Spec 005. No se hace control de duplicados de preguntas entre distintos materiales o dentro del mismo documento en esta fase; las reglas se implementarán en la Spec 005 (Historial y trazabilidad).
 
 ### Session 2026-06-16
 
@@ -95,8 +108,16 @@ Como administrador conectado al panel B2B, quiero recibir una notificación visu
 - **FR-004**: Cuando el Core API retorna menos preguntas de las solicitadas, el Worker MUST NO abortar — MUST continuar con las preguntas disponibles, registrar un desglose detallado de faltantes por tema/subtema, y marcar el material como `COMPLETED_WITH_WARNINGS`.
 - **FR-005**: La vista de revisión MUST mostrar las preguntas en el orden exacto que aparecerán en el PDF, agrupadas por tema/subtema, con indicadores visuales claros para preguntas encontradas vs. vacíos.
 - **FR-006**: El sistema MUST soportar dos modos de generación: (a) generación directa (sin revisión) y (b) generación con revisión previa (`requires_review = true`).
-- **FR-007**: Las URLs de descarga de S3 MUST ser URLs pre-firmadas (presigned URLs) con expiración temporal para seguridad.
+- **FR-007**: Las URLs de descarga de S3 para cada curso MUST ser URLs pre-firmadas (presigned URLs) con expiración temporal de 24 horas. El backend MUST generar una nueva URL pre-firmada al solicitar la descarga si la anterior ha expirado, sin necesidad de re-compilar el PDF.
 - **FR-008**: Para materiales tipo EXAMEN con múltiples áreas, el Worker MUST generar cuadernillos separados por área y empaquetarlos en un ZIP.
+- **FR-009**: Las preguntas presentadas en la vista de revisión MUST ser inmutables. El sistema MUST permitir únicamente el reemplazo lógico (`REPLACED`) o la eliminación de la pregunta en la distribución (`REMOVED`), sin modificar el contenido original de la pregunta.
+- **FR-010**: El sistema MUST manejar la siguiente máquina de estados para `material_requests.status`:
+  - `PENDING` -> `REVIEW_REQUIRED` (si requiere revisión, tras la extracción inicial por el Worker).
+  - `REVIEW_REQUIRED` -> `IN_REVIEW` (cuando un administrador abre la pantalla de revisión).
+  - `IN_REVIEW` o `PENDING` -> `PROCESSING` (cuando se aprueba la revisión o se inicia generación directa, mientras el Worker compila el PDF).
+  - `PROCESSING` -> `COMPLETED` / `COMPLETED_WITH_WARNINGS` / `FAILED` (según el resultado de la generación del PDF).
+- **FR-011**: Cuando un material esté en estado `IN_REVIEW`, el backend MUST aplicar control de concurrencia optimista. Si otro administrador intenta guardar modificaciones o aprobar el material, el sistema MUST rechazar la acción con una alerta visual indicando que el material ya está siendo modificado o ha cambiado de estado.
+- **FR-012**: El sistema MUST registrar y procesar los archivos generados de forma independiente por curso. Cada curso en la solicitud tendrá su propia entrada en `material_request_courses` con su estado, URL de descarga y posibles advertencias.
 
 ### Structural Constraints (Critical)
 
@@ -106,7 +127,8 @@ Como administrador conectado al panel B2B, quiero recibir una notificación visu
 
 ### Key Entities
 
-- **material_requests**: Solicitud de material. Campos: `id` (uuid), `tenant_id` (string), `profile_id` (FK → cycle_material_profiles), `week_number` (number), `status` (enum: PENDING, PROCESSING, REVIEW_REQUIRED, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED), `download_url` (string, nullable), `warnings` (jsonb, nullable), `requires_review` (boolean), `created_by` (FK), `created_at` (timestamp).
+- **material_requests**: Solicitud de material. Campos: `id` (uuid), `tenant_id` (string), `profile_id` (FK → cycle_material_profiles), `week_number` (number), `status` (enum: PENDING, IN_REVIEW, PROCESSING, REVIEW_REQUIRED, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED), `requires_review` (boolean), `created_by` (FK), `created_at` (timestamp).
+- **material_request_courses**: Archivos y URLs por curso de la solicitud de material. Campos: `id` (uuid), `material_request_id` (FK → material_requests), `course_id` (string), `status` (enum: PENDING, PROCESSING, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED), `download_url` (string, nullable), `warnings` (jsonb, nullable), `created_at` (timestamp).
 - **material_review_questions**: Preguntas de revisión. Campos: `id` (uuid), `material_request_id` (FK), `question_id` (string), `topic_id` (FK), `subtopic_id` (FK), `position` (number), `status` (enum: FOUND, EMPTY, REPLACED, REMOVED).
 
 ## Success Criteria *(mandatory)*
@@ -124,6 +146,7 @@ Como administrador conectado al panel B2B, quiero recibir una notificación visu
 - **EC-002**: Si el Core API retorna 0 preguntas para toda la distribución (banco completamente vacío para ese curso), el Worker MUST marcar el material como FAILED con mensaje descriptivo, sin generar un PDF vacío.
 - **EC-003**: Si un material está en estado `REVIEW_REQUIRED` por más de 24 horas sin acción del admin, el sistema MUST NO auto-expirar — permanece en revisión hasta acción explícita.
 - **EC-004**: Si el admin solicita un material para una semana que no tiene distribución en el sílabo, el backend MUST rechazar con HTTP 400 y mensaje: "No hay distribución configurada para la semana seleccionada".
+- **EC-005**: Si el Core API retorna un error de red o de servidor (HTTP 5xx / Timeout) durante la consulta de reactivos, el Worker FastAPI MUST realizar hasta 3 intentos con backoff exponencial (2, 4, 8 segundos). Si todos los intentos fallan, el Worker MUST actualizar el estado de la solicitud y de sus cursos asociados a `FAILED`, abortando la generación y notificando al frontend por WebSocket.
 
 ## Assumptions
 

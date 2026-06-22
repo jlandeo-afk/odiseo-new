@@ -17,7 +17,7 @@ class MaterialAssembler:
         job_id = job_payload.get('job_id')
         material_type = job_payload.get('material_type')
         course_id = job_payload.get('course_id')
-        difficulty = job_payload.get('difficulty_level')
+        difficulty = job_payload.get('difficulty_level', 'MEDIA')
         syllabus = job_payload.get('syllabus_distribution', [])
         tenant = job_payload.get('tenant', {})
         exam_areas = job_payload.get('exam_areas')
@@ -33,44 +33,44 @@ class MaterialAssembler:
                 return "CURATION_REQUIRED"
 
             if material_type == 'EXAMEN' and exam_areas:
-            # Lógica CR-002 y CR-003: Segregación física por áreas
-            pdf_buffers = {}
-            for area in exam_areas:
-                area_name = area.get('name', 'Area Desconocida')
-                logger.info(f"Processing segregated booklet for {area_name}")
+                # Lógica CR-002 y CR-003: Segregación física por áreas
+                pdf_buffers = {}
+                for area in exam_areas:
+                    area_name = area.get('name', 'Area Desconocida')
+                    logger.info(f"Processing segregated booklet for {area_name}")
+                    
+                    # 1. Fetch questions
+                    questions = core_api_client.fetch_questions(course_id, difficulty, syllabus)
+                    
+                    # 2. Generar PDF para el área
+                    title = f"Examen - {area_name}"
+                    pdf_bytes = pdf_generator.generate_pdf(questions, tenant, title)
+                    # Formatear nombre de archivo limpio
+                    clean_name = area_name.replace(' ', '_').replace('(', '').replace(')', '')
+                    pdf_buffers[f"Cuadernillo_{clean_name}.pdf"] = pdf_bytes
                 
-                # 1. Fetch questions
+                # Empaquetar en un ZIP para proveer un único download_url
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for filename, filebytes in pdf_buffers.items():
+                        zf.writestr(filename, filebytes)
+                
+                # 3. Subir a S3
+                zip_buffer.seek(0)
+                file_name = f"examenes/{job_id}/cuadernillos.zip"
+                download_url = s3_service.upload_pdf(zip_buffer.read(), file_name)
+                return download_url
+                
+            else:
+                # Flujo estándar: Un solo documento
                 questions = core_api_client.fetch_questions(course_id, difficulty, syllabus)
-                
-                # 2. Generar PDF para el área
-                title = f"Examen - {area_name}"
+                title = f"{material_type} - {course_id}"
                 pdf_bytes = pdf_generator.generate_pdf(questions, tenant, title)
-                # Formatear nombre de archivo limpio
-                clean_name = area_name.replace(' ', '_').replace('(', '').replace(')', '')
-                pdf_buffers[f"Cuadernillo_{clean_name}.pdf"] = pdf_bytes
-            
-            # Empaquetar en un ZIP para proveer un único download_url
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                for filename, filebytes in pdf_buffers.items():
-                    zf.writestr(filename, filebytes)
-            
-            # 3. Subir a S3
-            zip_buffer.seek(0)
-            file_name = f"examenes/{job_id}/cuadernillos.zip"
-            download_url = s3_service.upload_pdf(zip_buffer.read(), file_name)
-            return download_url
-            
-        else:
-            # Flujo estándar: Un solo documento
-            questions = core_api_client.fetch_questions(course_id, difficulty, syllabus)
-            title = f"{material_type} - {course_id}"
-            pdf_bytes = pdf_generator.generate_pdf(questions, tenant, title)
-            
-            file_name = f"materiales/{job_id}/documento.pdf"
-            download_url = s3_service.upload_pdf(pdf_bytes, file_name)
-            return download_url
-            
+                
+                file_name = f"materiales/{job_id}/documento.pdf"
+                download_url = s3_service.upload_pdf(pdf_bytes, file_name)
+                return download_url
+                
         except InsufficientQuestionsError as e:
             logger.error(f"Assembly aborted for job {job_id} due to data validation: {str(e)}")
             raise e

@@ -1,79 +1,87 @@
-<!--
-  T028 [US3] — History View
-  Permite recuperar el estado de PDFs generados mientras el usuario estaba offline.
-  Consulta el historial persistido en la BD B2B vía GET /api/v1/materials/history
-  y muestra los enlaces de descarga previamente generados.
--->
 <template>
-  <div class="materials-history">
-    <header class="materials-history__header">
-      <h1>Historial de Materiales</h1>
-      <p class="materials-history__subtitle">
-        Consulta y descarga todos los balotarios y exámenes generados previamente.
-      </p>
-    </header>
+  <div class="px-8 py-6 max-w-full">
+    <!-- Page header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-200">Historial de Materiales</h1>
+        <p class="text-sm text-slate-500 mt-1">
+          Consulta y descarga todos los balotarios y exámenes generados previamente.
+        </p>
+      </div>
+      <div class="flex items-center gap-4">
+        <UButton color="neutral" variant="ghost" icon="i-heroicons-arrow-path" @click="fetchHistory" :loading="loading" />
+      </div>
+    </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="materials-history__loading">
-      <div class="spinner" />
-      <span>Cargando historial...</span>
+    <!-- Loading skeleton -->
+    <div v-if="loading && materials.length === 0" class="space-y-3">
+      <div v-for="i in 5" :key="i" class="h-16 bg-slate-100 dark:bg-[#2b2b3f] rounded-xl animate-pulse" />
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="materials.length === 0" class="materials-history__empty">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="64" height="64" class="materials-history__empty-icon">
-        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-      </svg>
-      <p>Aún no tienes materiales generados.</p>
+    <div v-else-if="materials.length === 0" class="py-20 text-center bg-white dark:bg-[#2b2b3f] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+      <UIcon name="i-heroicons-document-magnifying-glass" class="w-16 h-16 mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">Aún no tienes materiales</h3>
+      <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+        Los balotarios y exámenes generados aparecerán aquí para que los puedas descargar en cualquier momento.
+      </p>
     </div>
 
     <!-- History table -->
-    <div v-else class="materials-history__table-wrapper">
-      <table class="materials-history__table">
-        <thead>
-          <tr>
-            <th>Tipo</th>
-            <th>Curso</th>
-            <th>Estado</th>
-            <th>Fecha</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="material in materials"
-            :key="material.id"
-            class="materials-history__row"
-          >
-            <td>
-              <span :class="['badge', `badge--${material.materialType.toLowerCase()}`]">
-                {{ material.materialType }}
-              </span>
-            </td>
-            <td>{{ material.courseId }}</td>
-            <td>
-              <span :class="['status-dot', `status-dot--${material.status.toLowerCase()}`]" />
-              {{ statusLabel(material.status) }}
-            </td>
-            <td>{{ formatDate(material.createdAt) }}</td>
-            <td>
-              <a
-                v-if="material.status === 'COMPLETED' && material.downloadUrl"
-                :href="material.downloadUrl"
-                target="_blank"
-                rel="noopener"
-                class="download-link"
-              >
-                ⬇ Descargar
-              </a>
-              <span v-else-if="material.status === 'FAILED'" class="error-text">
-                {{ material.errorMessage || 'Error' }}
-              </span>
-              <span v-else class="pending-text">En proceso...</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="bg-white dark:bg-[#2b2b3f] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700/50 text-sm text-left">
+          <thead class="bg-slate-50 dark:bg-[#1e1e2d]/50">
+            <tr>
+              <th class="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Tipo</th>
+              <th class="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Curso</th>
+              <th class="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Estado</th>
+              <th class="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Fecha</th>
+              <th class="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700/30">
+            <tr
+              v-for="material in materials"
+              :key="material.id"
+              class="hover:bg-slate-50/50 dark:hover:bg-[#36364e] transition-colors"
+            >
+              <td class="px-6 py-4">
+                <UBadge :color="material.materialType === 'EXAMEN' ? 'indigo' : 'fuchsia'" variant="subtle">
+                  {{ material.materialType }}
+                </UBadge>
+              </td>
+              <td class="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">{{ material.courseId }}</td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" :class="statusColorClass(material.status)"></span>
+                  <span class="text-slate-600 dark:text-slate-300 font-medium text-[13px]">{{ statusLabel(material.status) }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-slate-500 dark:text-slate-400">{{ formatDate(material.createdAt) }}</td>
+              <td class="px-6 py-4">
+                <UButton
+                  v-if="material.status === 'COMPLETED' && material.downloadUrl"
+                  size="xs"
+                  color="primary"
+                  variant="soft"
+                  icon="i-heroicons-arrow-down-tray"
+                  :to="material.downloadUrl"
+                  target="_blank"
+                >
+                  Descargar
+                </UButton>
+                <div v-else-if="material.status === 'FAILED'" class="text-xs text-rose-500 max-w-[200px] truncate" :title="material.errorMessage || 'Error'">
+                  {{ material.errorMessage || 'Error' }}
+                </div>
+                <div v-else class="text-xs text-slate-400 italic">
+                  En proceso...
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -94,7 +102,8 @@ const authStore = useAuthStore();
 
 const API_BASE = 'http://localhost:3000/api';
 
-onMounted(async () => {
+async function fetchHistory() {
+  loading.value = true;
   const subdomain = authStore.getSubdomain();
   try {
     const response = await fetch(`${API_BASE}/v1/materials/history`, {
@@ -112,6 +121,10 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+}
+
+onMounted(() => {
+  fetchHistory();
 });
 
 function statusLabel(status: MaterialRequestStatus): string {
@@ -125,6 +138,17 @@ function statusLabel(status: MaterialRequestStatus): string {
   return labels[status] || status;
 }
 
+function statusColorClass(status: string) {
+  switch (status) {
+    case 'PENDING': return 'bg-amber-400';
+    case 'PROCESSING': return 'bg-indigo-500 animate-pulse';
+    case 'CURATION_REQUIRED': return 'bg-orange-500';
+    case 'COMPLETED': return 'bg-emerald-500';
+    case 'FAILED': return 'bg-rose-500';
+    default: return 'bg-slate-400';
+  }
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-PE', {
     year: 'numeric',
@@ -135,128 +159,3 @@ function formatDate(iso: string): string {
   });
 }
 </script>
-
-<style scoped>
-.materials-history {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-.materials-history__header h1 {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin: 0 0 6px;
-}
-
-.materials-history__subtitle {
-  color: #6c757d;
-  font-size: 0.95rem;
-  margin: 0 0 28px;
-}
-
-.materials-history__loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 60px 0;
-  color: #6c757d;
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid #e0e0e0;
-  border-top-color: #2c3e50;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.materials-history__empty {
-  text-align: center;
-  padding: 60px 0;
-  color: #9e9e9e;
-}
-.materials-history__empty-icon {
-  color: #bdbdbd;
-  margin-bottom: 12px;
-}
-
-.materials-history__table-wrapper {
-  overflow-x: auto;
-  border-radius: 12px;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
-}
-
-.materials-history__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.materials-history__table thead {
-  background: #f5f6fa;
-}
-
-.materials-history__table th {
-  text-align: left;
-  padding: 14px 16px;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.materials-history__table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.materials-history__row:hover {
-  background: #f8f9ff;
-}
-
-.badge {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.badge--examen { background: #e3f2fd; color: #1565c0; }
-.badge--balotario { background: #f3e5f5; color: #7b1fa2; }
-
-.status-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-.status-dot--pending { background: #ffc107; }
-.status-dot--processing { background: #2196f3; animation: pulse 1.5s infinite; }
-.status-dot--curation_required { background: #ff9800; }
-.status-dot--completed { background: #4caf50; }
-.status-dot--failed { background: #f44336; }
-
-.download-link {
-  color: #1565c0;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-.download-link:hover { color: #0d47a1; text-decoration: underline; }
-
-.error-text { color: #d32f2f; font-size: 0.85rem; }
-.pending-text { color: #9e9e9e; font-style: italic; }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-</style>
