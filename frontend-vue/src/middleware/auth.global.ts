@@ -15,8 +15,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // If route is public
   if (isPublicRoute) {
     if (authStore.isAuthenticated) {
-      // Redirect authenticated users trying to access login page to materials history
-      return navigateTo('/materials/history');
+      // Redirect authenticated users trying to access login page to materials monitor
+      return navigateTo('/materials');
     }
     return;
   }

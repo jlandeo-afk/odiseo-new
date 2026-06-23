@@ -18,6 +18,7 @@ export interface CatalogCourse {
   id: string;
   name: string;
   topicsCount?: number;
+  activeTopicsCount?: number;
   topics: CatalogTopic[];
 }
 
@@ -74,11 +75,15 @@ export const useCatalogsStore = defineStore('catalogs', () => {
 
   // Optimistic UI: update topic immediately, revert on error
   async function toggleVisibility(topicId: string, isActive: boolean) {
-    // 1. Find topic and snapshot previous state
+    // 1. Find topic and parent course, and snapshot previous state
     let targetTopic: CatalogTopic | undefined;
+    let targetCourse: CatalogCourse | undefined;
     for (const course of courses.value) {
       targetTopic = course.topics.find(t => t.id === topicId);
-      if (targetTopic) break;
+      if (targetTopic) {
+        targetCourse = course;
+        break;
+      }
     }
     
     if (!targetTopic) return
@@ -87,6 +92,13 @@ export const useCatalogsStore = defineStore('catalogs', () => {
 
     // 2. Apply immediately (optimistic)
     targetTopic.isActive = isActive
+    if (targetCourse && prevIsActive !== isActive) {
+      if (isActive) {
+        targetCourse.activeTopicsCount = (targetCourse.activeTopicsCount || 0) + 1;
+      } else {
+        targetCourse.activeTopicsCount = Math.max(0, (targetCourse.activeTopicsCount || 0) - 1);
+      }
+    }
 
     try {
       // 3. Persist
@@ -101,6 +113,13 @@ export const useCatalogsStore = defineStore('catalogs', () => {
     } catch {
       // 4. Revert on error
       targetTopic.isActive = prevIsActive
+      if (targetCourse && prevIsActive !== isActive) {
+        if (prevIsActive) {
+          targetCourse.activeTopicsCount = (targetCourse.activeTopicsCount || 0) + 1;
+        } else {
+          targetCourse.activeTopicsCount = Math.max(0, (targetCourse.activeTopicsCount || 0) - 1);
+        }
+      }
       throw new Error('No se pudo guardar el cambio de visibilidad. Intenta nuevamente.')
     }
   }

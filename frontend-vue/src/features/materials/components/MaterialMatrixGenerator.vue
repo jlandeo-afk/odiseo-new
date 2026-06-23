@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAcademicTimeStore } from '@/features/academic-time/store';
 import { useMaterialsStore } from '../store/materials';
+import { useCatalogsStore } from '@/features/catalogs/store';
+import MaterialReviewList from '@/features/materials/components/MaterialReviewList.vue';
 
 const emit = defineEmits(['success']);
 
+const router = useRouter();
 const academicStore = useAcademicTimeStore();
 const materialsStore = useMaterialsStore();
+const catalogsStore = useCatalogsStore();
 
 const isOpen = ref(false);
 const selectedCycleId = ref('');
@@ -14,19 +19,33 @@ const selectedTemplateId = ref('');
 const selectedWeek = ref<number | null>(null);
 
 const cycleHistory = ref<any[]>([]);
+const showCoursesList = ref(false);
+const isReviewModalOpen = ref(false);
+
+let isProgrammaticChange = false;
 
 const cycles = computed(() => academicStore.cycles);
 const templates = computed(() => academicStore.templatesByCycle[selectedCycleId.value] ?? []);
 
+// Reset courses list when templates or week changes
+watch([selectedTemplateId, selectedWeek], () => {
+  showCoursesList.value = false;
+});
+
 // Pre-fill cycles if not loaded
 watch(isOpen, async (newVal) => {
-  if (newVal && cycles.value.length === 0) {
-    await academicStore.fetchCycles();
-  }
-  // Try to set a default cycle if none is selected
-  if (newVal && !selectedCycleId.value && cycles.value.length > 0) {
-    const active = cycles.value.find(c => c.isActive);
-    selectedCycleId.value = active ? active.id : cycles.value[0].id;
+  if (newVal) {
+    if (cycles.value.length === 0) {
+      await academicStore.fetchCycles();
+    }
+    if (catalogsStore.courses.length === 0) {
+      await catalogsStore.fetchCourses();
+    }
+    // Try to set a default cycle if none is selected
+    if (!selectedCycleId.value && cycles.value.length > 0) {
+      const active = cycles.value.find(c => c.isActive);
+      selectedCycleId.value = active ? active.id : cycles.value[0].id;
+    }
   }
 });
 
@@ -34,8 +53,10 @@ watch(isOpen, async (newVal) => {
 watch(selectedCycleId, async (newCycle) => {
   if (newCycle) {
     await academicStore.fetchTemplates(newCycle);
-    selectedTemplateId.value = '';
-    selectedWeek.value = null;
+    if (!isProgrammaticChange) {
+      selectedTemplateId.value = '';
+      selectedWeek.value = null;
+    }
     await fetchCycleHistory(newCycle);
   }
 });
@@ -98,6 +119,7 @@ const handleGenerate = async () => {
 };
 
 const openWithContext = async (cycleId: string, templateId: string, weekNumber: number) => {
+  isProgrammaticChange = true;
   if (cycles.value.length === 0) {
     await academicStore.fetchCycles();
   }
@@ -107,6 +129,49 @@ const openWithContext = async (cycleId: string, templateId: string, weekNumber: 
   await academicStore.fetchTemplates(cycleId);
   await fetchCycleHistory(cycleId);
   selectIntersection(templateId, weekNumber);
+  await nextTick();
+  isProgrammaticChange = false;
+};
+
+const currentRequest = computed(() => {
+  if (!selectedTemplateId.value || !selectedWeek.value) return null;
+  const matches = cycleHistory.value.filter(
+    req => req.profileId === selectedTemplateId.value && req.weekNumber === selectedWeek.value
+  );
+  if (matches.length === 0) return null;
+  return matches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+});
+
+const getCourseName = (courseId: string) => {
+  const course = catalogsStore.courses.find(c => c.id === courseId);
+  return course ? course.name : courseId;
+};
+
+const handleAuditQuestions = () => {
+  if (currentRequest.value) {
+    isReviewModalOpen.value = true;
+  }
+};
+
+const handleReviewApproved = (result: any) => {
+  isReviewModalOpen.value = false;
+  isOpen.value = false;
+  emit('success', result);
+};
+
+const downloadPdf = async (course: any) => {
+  if (!currentRequest.value) return;
+  try {
+    const result = await materialsStore.fetchDownloadUrl(currentRequest.value.id, course.courseId);
+    if (result && result.downloadUrl) {
+      window.open(result.downloadUrl, '_blank');
+    } else {
+      alert('No se pudo obtener el enlace de descarga');
+    }
+  } catch (err) {
+    console.error('Error fetching download URL:', err);
+    alert('Ocurrió un error al obtener la descarga del PDF.');
+  }
 };
 
 defineExpose({ isOpen, openWithContext });
@@ -302,31 +367,140 @@ defineExpose({ isOpen, openWithContext });
 
               <!-- Right: Audits -->
               <div class="flex-1 flex flex-col gap-3">
-                <button class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-amber-400 dark:hover:border-amber-500/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors group">
+                <button
+                  :disabled="!currentRequest"
+                  @click="handleAuditQuestions"
+                  class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-amber-400 dark:hover:border-amber-500/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
                     <UIcon name="i-heroicons-magnifying-glass-circle" class="w-5 h-5" />
                   </div>
                   <div class="text-left">
                     <div class="text-sm font-bold text-slate-800 dark:text-slate-200">Auditar Preguntas AI</div>
-                    <div class="text-[10px] text-slate-500">Ver faltantes y estado de cobertura</div>
+                    <div class="text-[10px] text-slate-500 font-medium">Ver faltantes y estado de cobertura</div>
                   </div>
                 </button>
 
-                <button class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-fuchsia-400 dark:hover:border-fuchsia-500/50 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-500/10 transition-colors group">
+                <button
+                  :disabled="!currentRequest"
+                  @click="showCoursesList = !showCoursesList"
+                  class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-fuchsia-400 dark:hover:border-fuchsia-500/50 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-500/10 transition-colors group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <div class="w-8 h-8 rounded-lg bg-fuchsia-100 dark:bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400 group-hover:scale-110 transition-transform">
                     <UIcon name="i-heroicons-document-magnifying-glass" class="w-5 h-5" />
                   </div>
                   <div class="text-left">
                     <div class="text-sm font-bold text-slate-800 dark:text-slate-200">Ver Cursos & PDFs</div>
-                    <div class="text-[10px] text-slate-500">Separación y descarga de archivos</div>
+                    <div class="text-[10px] text-slate-500 font-medium">Separación y descarga de archivos</div>
                   </div>
                 </button>
+              </div>
+            </div>
+
+            <!-- Courses List Panel -->
+            <div v-if="showCoursesList && currentRequest" class="mt-6 border-t border-slate-200 dark:border-white/5 pt-5 space-y-4">
+              <h4 class="text-xs font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">Listado de Cursos y Archivos</h4>
+              <div class="space-y-3">
+                <div
+                  v-for="course in currentRequest.courses"
+                  :key="course.courseId"
+                  class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm"
+                >
+                  <div class="flex flex-col">
+                    <span class="text-sm font-bold text-slate-850 dark:text-slate-200">
+                      {{ getCourseName(course.courseId) }}
+                    </span>
+                    <span class="text-xs text-slate-500 mt-0.5">
+                      ID: {{ course.courseId }}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-3">
+                    <!-- Status Badge -->
+                    <span
+                      class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                      :class="{
+                        'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20': course.status === 'COMPLETED',
+                        'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20': course.status === 'FAILED',
+                        'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20 animate-pulse': course.status === 'PROCESSING',
+                        'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20': course.status === 'PENDING'
+                      }"
+                    >
+                      {{ course.status === 'COMPLETED' ? 'Listo' : 
+                         course.status === 'FAILED' ? 'Fallido' :
+                         course.status === 'PROCESSING' ? 'En Proceso' : 'Pendiente' }}
+                    </span>
+
+                    <!-- Download Button -->
+                    <UButton
+                      v-if="course.status === 'COMPLETED'"
+                      size="xs"
+                      color="indigo"
+                      icon="i-heroicons-arrow-down-tray"
+                      @click="downloadPdf(course)"
+                    >
+                      Descargar
+                    </UButton>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </transition>
       </div>
+      </div>
+    </Transition>
+
+    <!-- Curation Audit Modal (Custom overlay with high z-index) -->
+    <Transition
+      enter-active-class="transition-opacity duration-300"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isReviewModalOpen"
+        class="fixed inset-0 bg-slate-950/60 dark:bg-black/80 backdrop-blur-md z-[300]"
+      />
+    </Transition>
+
+    <Transition
+      enter-active-class="transform transition ease-out duration-300"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transform transition ease-in duration-200"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div
+        v-if="isReviewModalOpen"
+        class="fixed inset-0 z-[310] flex items-center justify-center p-4 sm:p-6 md:p-10 pointer-events-none"
+      >
+        <div class="bg-white dark:bg-[#1e1e2d] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-200 dark:border-white/5 pointer-events-auto relative">
+          <!-- Floating X Close Button (outside card corner) -->
+          <button
+            type="button"
+            class="absolute -top-12 right-0 lg:-right-12 lg:top-0 z-20 p-2 rounded-xl bg-slate-900/50 hover:bg-slate-900/75 text-white dark:bg-white/10 dark:hover:bg-white/20 border border-white/10 hover:border-white/20 transition-all cursor-pointer flex items-center justify-center backdrop-blur-sm shadow-xl"
+            aria-label="Cerrar modal"
+            @click="isReviewModalOpen = false"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <MaterialReviewList
+              v-if="isReviewModalOpen && currentRequest"
+              :key="currentRequest.id"
+              :materialId="currentRequest.id"
+              @approved="handleReviewApproved"
+              @cancel="isReviewModalOpen = false"
+            />
+          </div>
+        </div>
       </div>
     </Transition>
   </Teleport>

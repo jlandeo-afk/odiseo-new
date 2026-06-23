@@ -4,6 +4,7 @@ import { useSyllabusStore } from '../store';
 import { useAcademicTimeStore } from '../../academic-time/store';
 import { useCatalogsStore } from '../../catalogs/store';
 import SyllabusSubtopicSlideOver from './SyllabusSubtopicSlideOver.vue';
+import { useToast } from '#imports';
 
 const store = useSyllabusStore();
 const timeStore = useAcademicTimeStore();
@@ -12,6 +13,7 @@ const toast = useToast();
 
 const syllabus = computed(() => store.syllabus);
 const slideOverRef = ref<InstanceType<typeof SyllabusSubtopicSlideOver> | null>(null);
+const matrixSearchQuery = ref('');
 
 watch(() => syllabus.value?.id, async (newId) => {
   if (newId) {
@@ -24,7 +26,6 @@ watch(() => syllabus.value?.id, async (newId) => {
 
 const cycle = computed(() => timeStore.cycles.find(c => c.id === syllabus.value?.cycleId));
 const totalWeeks = computed(() => cycle.value?.totalWeeks || 16);
-
 const course = computed(() => catalogsStore.courses.find(c => c.id === syllabus.value?.courseId));
 
 interface RowData {
@@ -60,7 +61,7 @@ const onAddSubtopics = (selected: RowData[]) => {
 const matrixRows = computed(() => {
   const map = new Map<string, RowData>();
   
-  // From store
+  // Desde la base de datos (distribución existente)
   store.distributions.forEach(d => {
     const key = `${d.topicId}|${d.subtopicId}`;
     if (!map.has(key)) {
@@ -73,7 +74,7 @@ const matrixRows = computed(() => {
     }
   });
   
-  // From local additions
+  // Desde adiciones locales temporales
   localRows.value.forEach(row => {
     const key = `${row.topicId}|${row.subtopicId}`;
     if (!map.has(key)) {
@@ -81,7 +82,17 @@ const matrixRows = computed(() => {
     }
   });
   
-  return Array.from(map.values()).sort((a, b) => a.topicName.localeCompare(b.topicName));
+  let list = Array.from(map.values()).sort((a, b) => a.topicName.localeCompare(b.topicName));
+
+  if (matrixSearchQuery.value) {
+    const q = matrixSearchQuery.value.toLowerCase();
+    list = list.filter(row => 
+      row.topicName.toLowerCase().includes(q) || 
+      row.subtopicName.toLowerCase().includes(q)
+    );
+  }
+
+  return list;
 });
 
 const matrixColumns = computed(() => {
@@ -119,11 +130,10 @@ const updateCell = async (row: RowData, weekNumber: number, newValueStr: string)
   const newValue = newValueStr.trim() !== '' ? Number(newValueStr) : null;
   
   if (newValue !== null && (newValue < 1 || newValue > 10)) {
-    toast.add({ title: 'Error', description: 'El peso debe estar entre 1 y 10', color: 'red' });
+    toast.add({ title: 'Rango Incorrecto', description: 'El peso debe estar entre 1 y 10', color: 'red' });
     return;
   }
   
-  // If the value is the same, do nothing
   if (dist && dist.weight === newValue) return;
   
   try {
@@ -140,100 +150,180 @@ const updateCell = async (row: RowData, weekNumber: number, newValueStr: string)
       });
     }
   } catch (e: any) {
-    toast.add({ title: 'Error', description: e.message || 'Hubo un error al actualizar', color: 'red' });
+    toast.add({ title: 'Error de Guardado', description: e.message || 'No se pudo guardar el peso', color: 'red' });
   }
 };
 </script>
 
 <template>
   <div class="space-y-6 w-full pb-10">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-[#2b2b3f] px-6 py-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
-      <div class="space-y-1">
-        <h3 class="text-xl font-bold text-slate-800 dark:text-slate-200 tracking-tight">Matriz Pivote de Sílabo</h3>
-        <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ course?.name || syllabus?.courseId }}</span>
-          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-          <span>{{ totalWeeks }} semanas</span>
+    <!-- Cabecera de la Matriz de Distribución -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white dark:bg-[#2b2b3f] px-6 py-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm gap-4">
+      <div class="flex items-center gap-3">
+        <!-- Icono decorativo -->
+        <div class="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/50 dark:border-indigo-900/50 flex items-center justify-center text-indigo-500 shadow-sm shrink-0">
+          <UIcon name="i-heroicons-table-cells" class="w-5.5 h-5.5" />
+        </div>
+        <div class="space-y-0.5">
+          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+            Matriz de Distribución de Pesos
+          </h3>
+          <p class="text-xs text-slate-400 dark:text-slate-500 font-medium">
+            Curso: <span class="text-slate-700 dark:text-slate-300 font-bold">{{ course?.name }}</span> • {{ totalWeeks }} semanas planificadas
+          </p>
         </div>
       </div>
-    <div class="mt-4 sm:mt-0 flex items-center gap-4">
-        <div class="bg-slate-50 dark:bg-[#1e1e2d] px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700/50 text-right">
-          <p class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mb-0.5">Peso Total</p>
-          <p class="text-3xl font-black text-slate-800 dark:text-slate-200 leading-none">{{ grandTotalWeight }}</p>
+      
+      <div class="flex flex-wrap items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+        <!-- Widget de Peso Total -->
+        <div class="bg-indigo-50/50 dark:bg-[#1e1e2d] px-5 py-2.5 rounded-xl border border-indigo-100/40 dark:border-indigo-900/30 text-right shadow-inner">
+          <p class="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold mb-0.5">Peso Total Acumulado</p>
+          <p class="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none transition-all duration-300">{{ grandTotalWeight }}</p>
         </div>
-        <UButton color="primary" icon="i-heroicons-plus" @click="slideOverRef?.open()">Añadir Temas</UButton>
+        <UButton 
+          color="indigo" 
+          icon="i-heroicons-plus" 
+          class="font-bold rounded-xl shadow"
+          @click="slideOverRef?.open()"
+        >
+          Añadir Temas
+        </UButton>
       </div>
     </div>
 
-    <!-- Information about Weights -->
-    <div class="bg-gradient-to-r from-indigo-50 to-fuchsia-50 dark:from-indigo-900/20 dark:to-fuchsia-900/20 p-4 sm:p-5 rounded-2xl border border-indigo-100/50 dark:border-indigo-500/20 flex flex-col sm:flex-row gap-4 items-start shadow-sm">
-      <div class="bg-white dark:bg-indigo-500/10 p-2.5 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-50 dark:border-indigo-500/20">
-        <UIcon name="i-heroicons-light-bulb" class="w-6 h-6" />
+    <!-- Banner Informativo -->
+    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 p-4.5 rounded-2xl border border-indigo-100/40 dark:border-indigo-900/20 flex gap-4 items-start shadow-sm">
+      <div class="bg-white dark:bg-indigo-500/10 p-2 rounded-xl text-indigo-500 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-100/30 dark:border-indigo-500/20">
+        <UIcon name="i-heroicons-information-circle" class="w-6 h-6" />
       </div>
       <div>
-        <h4 class="text-sm font-bold text-indigo-900 dark:text-indigo-200 mb-1">Tip de Diseño: Pesos Relativos</h4>
-        <p class="text-[13px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed max-w-4xl">
-          Ingresa un valor del <strong>1 al 10</strong> para asignar el nivel de importancia de cada subtema. Este número <strong>no</strong> representa la cantidad exacta de preguntas que se imprimirán, sino su <em>proporción</em>. La cantidad final de ejercicios se calculará automáticamente con base en la <strong>Plantilla de Material</strong> que utilice la academia.
+        <h4 class="text-xs font-bold text-indigo-900 dark:text-indigo-200 mb-0.5">Definición de Pesos Relativos</h4>
+        <p class="text-[12px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed max-w-5xl">
+          Asigna un nivel de importancia del <strong>1 al 10</strong> por subtema y semana. Este valor determina la proporción relativa de preguntas. La cantidad final de ejercicios se calculará de manera automatizada al aplicar una <strong>Plantilla de Material</strong>.
         </p>
       </div>
     </div>
 
-    <!-- Pivot Matrix -->
+    <!-- Tabla Pivote de la Matriz -->
     <div class="border border-slate-200 dark:border-slate-700/50 rounded-2xl bg-white dark:bg-[#2b2b3f] shadow-sm overflow-hidden flex flex-col relative">
+      
+      <!-- Barra de Filtros Interna de la Matriz -->
+      <div class="p-4 bg-slate-50/50 dark:bg-[#1e1e2d]/20 border-b border-slate-200/60 dark:border-slate-750/40 flex items-center justify-between gap-4">
+        <div class="w-full max-w-sm relative">
+          <UInput
+            v-model="matrixSearchQuery"
+            placeholder="Filtrar por tema o subtema..."
+            icon="i-heroicons-funnel"
+            size="sm"
+            color="gray"
+            variant="outline"
+            class="w-full"
+          />
+        </div>
+        <span class="text-xs text-slate-400 dark:text-slate-500 font-medium select-none shrink-0">
+          Mostrando {{ matrixRows.length }} filas
+        </span>
+      </div>
+
       <div class="overflow-x-auto custom-scrollbar">
         <table class="w-full text-left border-collapse min-w-max">
           <thead>
             <tr>
-              <th class="sticky left-0 z-20 bg-slate-50 dark:bg-[#1e1e2d] p-3 border-b border-r border-slate-200 dark:border-slate-700 min-w-[280px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <th class="sticky left-0 z-20 bg-slate-50 dark:bg-[#1e1e2d] p-3.5 border-b border-r border-slate-200 dark:border-slate-700 min-w-[290px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-slate-500 dark:text-slate-450 text-[10px] font-bold uppercase tracking-wider">
                 Tema / Subtema
               </th>
-              <th v-for="col in matrixColumns" :key="col.number" class="p-3 border-b border-r border-slate-200 dark:border-slate-700 text-center text-xs font-semibold w-[60px]" :class="col.isActive ? 'bg-indigo-50/50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300' : 'bg-red-50 dark:bg-red-500/10 text-red-500'">
+              <th 
+                v-for="col in matrixColumns" 
+                :key="col.number" 
+                class="p-3 border-b border-r border-slate-200 dark:border-slate-700 text-center text-[10px] font-bold w-[62px]" 
+                :class="col.isActive 
+                  ? 'bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400' 
+                  : 'bg-slate-50 dark:bg-[#1e1e2d]/60 text-slate-400 dark:text-slate-500'"
+              >
                 S{{ col.number }}
-                <div v-if="!col.isActive" class="text-[9px] font-normal mt-1 flex flex-col items-center"><UIcon name="i-heroicons-lock-closed" class="w-3 h-3" /> Inactiva</div>
+                <div v-if="!col.isActive" class="text-[8px] font-medium mt-1 flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500">
+                  <UIcon name="i-heroicons-lock-closed" class="w-2.5 h-2.5 shrink-0" />
+                  <span>Lock</span>
+                </div>
               </th>
-              <th class="bg-slate-50 dark:bg-[#1e1e2d] p-3 border-b border-slate-200 dark:border-slate-700 text-center font-bold text-sm w-[80px]">Total</th>
+              <th class="bg-slate-50 dark:bg-[#1e1e2d] p-3.5 border-b border-slate-200 dark:border-slate-700 text-center text-[10px] font-bold uppercase tracking-wider w-[82px] text-slate-500 dark:text-slate-450">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody>
+            <!-- Fila cuando no hay temas añadidos -->
             <tr v-if="matrixRows.length === 0">
-              <td :colspan="matrixColumns.length + 2" class="text-center py-16 text-slate-500 bg-slate-50/30 dark:bg-[#1e1e2d]/30">
-                <UIcon name="i-heroicons-document-plus" class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p>No hay temas añadidos a la matriz.</p>
-                <p class="text-sm mt-1">Haz clic en <b>"Añadir Temas"</b> para comenzar a planificar tu sílabo.</p>
+              <td :colspan="matrixColumns.length + 2" class="text-center py-20 text-slate-500 dark:text-slate-400 bg-slate-50/10 dark:bg-[#1e1e2d]/10">
+                <div class="max-w-md mx-auto space-y-3">
+                  <UIcon name="i-heroicons-document-plus" class="w-12 h-12 text-slate-300 dark:text-slate-650 mx-auto mb-2" />
+                  <p class="font-bold text-sm text-slate-700 dark:text-slate-300">No hay temas añadidos en esta matriz</p>
+                  <p class="text-xs text-slate-400 dark:text-slate-500">Haz clic en "Añadir Temas" arriba a la derecha para seleccionar los subtemas que se impartirán.</p>
+                </div>
               </td>
             </tr>
-            <tr v-for="row in matrixRows" :key="row.topicId + '|' + row.subtopicId" class="hover:bg-slate-50/80 dark:hover:bg-[#36364e] transition-colors group">
-              <td class="sticky left-0 z-10 bg-white dark:bg-[#2b2b3f] group-hover:bg-slate-50/80 dark:group-hover:bg-[#36364e] p-3 border-b border-r border-slate-200 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
-                <div class="font-semibold text-sm text-slate-800 dark:text-slate-200 line-clamp-1" :title="row.topicName">{{ row.topicName }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1" :title="row.subtopicName">{{ row.subtopicName }}</div>
+            <!-- Filas de Datos -->
+            <tr 
+              v-for="row in matrixRows" 
+              :key="row.topicId + '|' + row.subtopicId" 
+              class="hover:bg-slate-50/50 dark:hover:bg-[#36364e]/30 transition-colors group"
+            >
+              <!-- Columna izquierda fija -->
+              <td class="sticky left-0 z-10 bg-white dark:bg-[#2b2b3f] group-hover:bg-slate-50/60 dark:group-hover:bg-[#2d2d42] p-3.5 border-b border-r border-slate-200 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
+                <div class="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1" :title="row.topicName">
+                  {{ row.topicName }}
+                </div>
+                <div class="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-1 line-clamp-1" :title="row.subtopicName">
+                  {{ row.subtopicName }}
+                </div>
               </td>
-              <td v-for="col in matrixColumns" :key="col.number" class="p-1 border-b border-r border-slate-200 dark:border-slate-700 text-center" :class="{'bg-slate-50/50 dark:bg-slate-800/30': !col.isActive}">
+              
+              <!-- Celdas de Semanas -->
+              <td 
+                v-for="col in matrixColumns" 
+                :key="col.number" 
+                class="p-1 border-b border-r border-slate-200 dark:border-slate-700 text-center" 
+                :class="{'bg-[linear-gradient(45deg,rgba(148,163,184,0.02)_25%,transparent_25%,transparent_50%,rgba(148,163,184,0.02)_50%,rgba(148,163,184,0.02)_75%,transparent_75%,transparent)] bg-[length:12px_12px] bg-slate-50/30 dark:bg-slate-900/10': !col.isActive}"
+              >
+                <!-- Input de Celda tipo Spreadsheet -->
                 <input 
                   v-if="col.isActive"
                   type="number" 
                   min="1" 
                   max="10" 
-                  class="w-full h-8 text-center border border-transparent rounded text-sm bg-transparent dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 hide-arrows transition-colors" 
+                  class="w-full h-8 text-center border border-transparent rounded-lg text-xs bg-transparent dark:text-slate-250 hover:bg-slate-50 dark:hover:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 hide-arrows transition-all" 
                   :value="getCellValue(row, col.number)"
                   @blur="e => updateCell(row, col.number, (e.target as HTMLInputElement).value)"
                   @keyup.enter="e => (e.target as HTMLInputElement).blur()"
                   placeholder="-"
                 />
+                <!-- Celda bloqueada para semanas inactivas -->
+                <div v-else class="flex items-center justify-center text-slate-300 dark:text-slate-650 h-8" title="Semana Inactiva (Feriado)">
+                  <UIcon name="i-heroicons-lock-closed" class="w-3.5 h-3.5" />
+                </div>
               </td>
-              <td class="p-3 border-b border-slate-200 dark:border-slate-700 text-center font-bold text-sm bg-slate-50/50 dark:bg-[#1e1e2d]/50 text-slate-700 dark:text-slate-300">
+
+              <!-- Columna derecha: Total por Fila -->
+              <td class="p-3.5 border-b border-slate-200 dark:border-slate-700 text-center font-bold text-xs bg-slate-50/30 dark:bg-[#1e1e2d]/20 text-slate-700 dark:text-slate-350">
                 {{ getRowTotal(row) || '-' }}
               </td>
             </tr>
           </tbody>
+          <!-- Fila de Totales del Pie de Tabla -->
           <tfoot v-if="matrixRows.length > 0">
             <tr>
-              <td class="sticky left-0 z-20 bg-slate-100 dark:bg-[#1e1e2d] p-3 border-r border-slate-200 dark:border-slate-700 font-bold text-right text-sm text-slate-700 dark:text-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <td class="sticky left-0 z-20 bg-slate-100 dark:bg-[#1e1e2d] p-3.5 border-r border-slate-200 dark:border-slate-700 font-extrabold text-right text-xs text-slate-750 dark:text-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                 Totales por Semana
               </td>
-              <td v-for="col in matrixColumns" :key="col.number" class="bg-slate-100 dark:bg-[#1e1e2d] p-3 border-r border-slate-200 dark:border-slate-700 text-center font-bold text-sm text-indigo-700 dark:text-indigo-400">
+              <td 
+                v-for="col in matrixColumns" 
+                :key="col.number" 
+                class="bg-slate-100 dark:bg-[#1e1e2d] p-3.5 border-r border-slate-200 dark:border-slate-700 text-center font-extrabold text-xs"
+                :class="col.isActive ? 'text-indigo-650 dark:text-indigo-400' : 'text-slate-450 dark:text-slate-550'"
+              >
                 {{ getColTotal(col.number) || '-' }}
               </td>
-              <td class="bg-indigo-100 dark:bg-indigo-900/30 p-3 border-t border-slate-200 dark:border-slate-700 text-center font-black text-lg text-indigo-800 dark:text-indigo-300">
+              <td class="bg-indigo-100/50 dark:bg-indigo-950/40 p-3.5 border-t border-slate-200 dark:border-slate-700 text-center font-black text-sm text-indigo-700 dark:text-indigo-450 shadow-inner">
                 {{ grandTotalWeight }}
               </td>
             </tr>
@@ -261,9 +351,9 @@ const updateCell = async (row: RowData, weekNumber: number, newValueStr: string)
   -moz-appearance: textfield;
 }
 
-/* Make scrollbar look nice */
+/* Scrollbar estilizada */
 .custom-scrollbar::-webkit-scrollbar {
-  height: 10px;
+  height: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
@@ -271,10 +361,10 @@ const updateCell = async (row: RowData, weekNumber: number, newValueStr: string)
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
   border-radius: 20px;
-  border: 3px solid transparent;
+  border: 2px solid transparent;
   background-clip: padding-box;
 }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+.dark class.custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #475569;
 }
 </style>

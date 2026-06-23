@@ -30,6 +30,7 @@ export class CatalogUseCase {
       id: course.id,
       name: course.name,
       topicsCount: parseInt(course.topics_count, 10) || 0,
+      activeTopicsCount: parseInt(course.active_topics_count, 10) || 0,
     }));
 
     await this.cacheManager.set(cacheKey, result);

@@ -5,11 +5,13 @@ import { MaterialsConsumer } from './materials.consumer';
 import { PdfGeneratorService } from './pdf-generator.service';
 import { QuestionSelectorService } from './question-selector.service';
 import { QuestionBankModule } from '../question-bank/question-bank.module';
+import { MaterialsModule } from '../materials/materials.module';
 
 @Module({
   imports: [
     AwsModule,
     QuestionBankModule,
+    MaterialsModule,
     SqsModule.register({
       consumers: [
         {

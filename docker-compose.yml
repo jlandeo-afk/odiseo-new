@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:3.8.0
     ports:
       - "127.0.0.1:4566:4566"            # LocalStack Gateway
       - "127.0.0.1:4510-4559:4510-4559"  # external services port range
@@ -26,6 +26,8 @@ services:
       - AWS_S3_ENDPOINT=http://localstack:4566
       - AWS_REGION=us-east-1
       - AWS_S3_BUCKET_NAME=odiseo-materials
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
       - B2B_WEBHOOK_URL=http://host.docker.internal:3000/v1/materials/webhook/status
     extra_hosts:
       - "host.docker.internal:host-gateway"

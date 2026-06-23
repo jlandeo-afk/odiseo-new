@@ -68,9 +68,14 @@ export class CatalogRepositoryImpl implements ICatalogRepository {
   async getCourses(search?: string): Promise<Course[]> {
     return this.tenantService.runInTenant(async (manager) => {
       let query = `
-        SELECT c.id, c.name, COUNT(DISTINCT t.id) as topics_count
+        SELECT 
+          c.id, 
+          c.name, 
+          COUNT(DISTINCT t.id) as topics_count,
+          COUNT(DISTINCT CASE WHEN COALESCE(ttv.is_active, true) = true THEN t.id END) as active_topics_count
         FROM public.courses c
         LEFT JOIN public.topics t ON t.course_id = c.id
+        LEFT JOIN tenant_topic_visibility ttv ON ttv.topic_id = t.id
       `;
       const params: any[] = [];
       if (search) {
