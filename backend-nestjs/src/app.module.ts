@@ -7,6 +7,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { DatabaseModule } from './database/database.module';
 import { ClsModule } from 'nestjs-cls';
 import { ConfigModule } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 import { TenantMiddleware } from './database/tenant.middleware';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { AcademicTimeModule } from './academic-time/academic-time.module';
@@ -14,10 +15,22 @@ import { SyllabusModule } from './syllabus/syllabus.module';
 import { MaterialsModule } from './materials/materials.module';
 import { WorkerModule } from './worker/worker.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { ExpressAdapter } from '@bull-board/express';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    BullBoardModule.forRoot({
+      route: '/queues',
+      adapter: ExpressAdapter,
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      },
+    }),
     ScheduleModule.forRoot(),
     ClsModule.forRoot({
       global: true,

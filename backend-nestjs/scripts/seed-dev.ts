@@ -14,6 +14,20 @@ async function seed() {
     await client.connect();
     console.log('🔌 Connected to PostgreSQL database...');
 
+    // Ensure public.companies exists
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.companies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        subdomain VARCHAR(255) UNIQUE NOT NULL,
+        commercial_name VARCHAR(255) NOT NULL,
+        logo_url VARCHAR(255),
+        primary_color VARCHAR(50) DEFAULT '#6366f1',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+      );
+    `);
+
     // 1. Check if the 'colegio' company already exists
     const checkCompanyRes = await client.query(
       `SELECT * FROM public.companies WHERE subdomain = $1`,

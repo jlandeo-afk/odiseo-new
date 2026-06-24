@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TenantService } from './tenant.service';
 import { Company } from '../tenants/entities/tenant.entity';
+import { Question } from '../question-bank/entities/question.entity';
+import { Alternative } from '../question-bank/entities/alternative.entity';
 
 @Global()
 @Module({
@@ -19,6 +21,22 @@ import { Company } from '../tenants/entities/tenant.entity';
         database: config.get<string>('DB_NAME', 'odiseo'),
         autoLoadEntities: true,
         synchronize: true,
+        logging: ['error', 'warn'],
+      }),
+    }),
+    TypeOrmModule.forRootAsync({
+      name: 'questionsConnection',
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST', 'localhost'),
+        port: config.get<number>('DB_PORT', 5432),
+        username: config.get<string>('DB_USER', 'postgres'),
+        password: config.get<string>('DB_PASS', 'postgres'),
+        database: config.get<string>('DB_QUESTIONS_NAME', 'odiseo_pro'),
+        entities: [Question, Alternative],
+        synchronize: false,
         logging: ['error', 'warn'],
       }),
     }),

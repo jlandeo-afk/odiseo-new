@@ -1,5 +1,5 @@
-import { SqsMessageHandler } from '@ssut/nestjs-sqs';
-import * as AWS from '@aws-sdk/client-sqs';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
 import { GenerateMaterialJobDto } from '../materials/dto/generate-material-job.dto';
 import { PdfGeneratorService } from './pdf-generator.service';
 import { QuestionSelectorService } from './question-selector.service';
@@ -9,8 +9,9 @@ import { MaterialRequestStatus } from '../materials/entities/material-request.en
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { S3Service } from '../aws/s3.service';
 
+@Processor('materials-queue')
 @Injectable()
-export class MaterialsConsumer {
+export class MaterialsConsumer extends WorkerHost {
   private readonly logger = new Logger(MaterialsConsumer.name);
 
   constructor(
@@ -19,33 +20,30 @@ export class MaterialsConsumer {
     private readonly s3Service: S3Service,
     @Inject(I_MATERIALS_REPOSITORY)
     private readonly materialsRepository: IMaterialsRepository,
-  ) {}
+  ) {
+    super();
+  }
 
-  @SqsMessageHandler('odiseo-materials-queue', false)
-  async handleMessage(message: AWS.Message) {
+  async process(job: Job<GenerateMaterialJobDto>): Promise<any> {
     try {
-      this.logger.log(`Received SQS message: ${message.MessageId}`);
-      if (!message.Body) {
-        throw new Error('Message body is empty');
-      }
-
-      const job: GenerateMaterialJobDto = JSON.parse(message.Body);
-      this.logger.log(`Processing job ${job.job_id} for tenant ${job.tenant.tenant_id}`);
+      this.logger.log(`Received BullMQ job: ${job.id}`);
+      const jobData = job.data;
+      this.logger.log(`Processing job ${jobData.job_id} for tenant ${jobData.tenant.tenant_id}`);
 
       // 1. Select Questions
-      const questionsData = await this.questionSelector.selectQuestions(job);
+      const questionsData = await this.questionSelector.selectQuestions(jobData);
 
-      // 2. Generate PDF using Puppeteer
-      const pdfBuffer = await this.pdfGenerator.generatePdf(job, questionsData);
+      // 2. Generate PDF using Playwright
+      const pdfBuffer = await this.pdfGenerator.generatePdf(jobData, questionsData);
 
       // 3. Upload to S3
-      const s3Key = `materials/${job.tenant.tenant_id}/${job.job_id}.pdf`;
+      const s3Key = `materials/${jobData.tenant.tenant_id}/${jobData.job_id}.pdf`;
       const downloadUrl = await this.s3Service.uploadBuffer(s3Key, pdfBuffer, 'application/pdf');
 
-      this.logger.log(`Successfully completed job ${job.job_id}. Download URL: ${downloadUrl}`);
+      this.logger.log(`Successfully completed job ${jobData.job_id}. Download URL: ${downloadUrl}`);
 
       // 4. Update Database (MaterialRequest and MaterialRequestCourse)
-      const courseRequest = await this.materialsRepository.findCourseRequest(job.job_id, job.course_id);
+      const courseRequest = await this.materialsRepository.findCourseRequest(jobData.job_id, jobData.course_id);
       if (courseRequest) {
         await this.materialsRepository.updateCourseStatus(
           courseRequest.id,
@@ -56,10 +54,10 @@ export class MaterialsConsumer {
       
       // Update global request if needed, this would usually be done by checking if all courses are done.
       // For simplicity in this demo worker, we mark the main request as completed too.
-      await this.materialsRepository.updateRequestStatus(job.job_id, MaterialRequestStatus.COMPLETED);
+      await this.materialsRepository.updateRequestStatus(jobData.job_id, MaterialRequestStatus.COMPLETED);
     } catch (error) {
-      this.logger.error('Failed to process message', error);
-      throw error; // Let SQS handle the retry if it fails
+      this.logger.error(`Failed to process job ${job.id}`, error);
+      throw error; // Let BullMQ handle retries if configured
     }
   }
 }

@@ -3,13 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Question } from './entities/question.entity';
 import { MaterialReviewQuestion } from '../materials/entities/material-review-question.entity';
+import { convertUuidToIntegerId } from '../database/uuid-converter';
 
 @Injectable()
 export class QuestionBankService {
   private readonly logger = new Logger(QuestionBankService.name);
 
   constructor(
-    @InjectRepository(Question)
+    @InjectRepository(Question, 'questionsConnection')
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(MaterialReviewQuestion)
     private readonly reviewRepository: Repository<MaterialReviewQuestion>,
@@ -27,9 +28,12 @@ export class QuestionBankService {
   ): Promise<Question[]> {
     this.logger.debug(`Buscando ${limit} preguntas para el subtema ${subtopicId}`);
 
+    const numericSubtopicId = convertUuidToIntegerId(subtopicId);
+
     // Query Base: Seleccionar preguntas del subtema
     const qb = this.questionRepository.createQueryBuilder('q')
-      .where('q.subtopic_id = :subtopicId', { subtopicId });
+      .leftJoinAndSelect('q.alternatives', 'a')
+      .where('q.subtopic_id = :subtopicId', { subtopicId: numericSubtopicId });
 
     // TODO: La subquery debería idealmente enlazar "material_review_questions" -> "material_requests" -> "cycles"
     // Para simplificar esta implementación base, filtraremos excluyendo simplemente las preguntas ya presentes
@@ -60,7 +64,8 @@ export class QuestionBankService {
       
       const missingCount = limit - questions.length;
       const fallbackQb = this.questionRepository.createQueryBuilder('q')
-        .where('q.subtopic_id = :subtopicId', { subtopicId });
+        .leftJoinAndSelect('q.alternatives', 'a')
+        .where('q.subtopic_id = :subtopicId', { subtopicId: numericSubtopicId });
       
       if (questions.length > 0) {
         const foundIds = questions.map(q => q.id);

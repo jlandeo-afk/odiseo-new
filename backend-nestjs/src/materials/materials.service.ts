@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, Inject, NotFoundException, ConflictException } from '@nestjs/common';
-import { Between, DataSource } from 'typeorm';
+import { Between, DataSource, EntityManager } from 'typeorm';
+import { InjectEntityManager } from '@nestjs/typeorm';
 import { GenerateMaterialDto } from './dto/generate-material.dto';
 import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { GenerateMaterialJobDto } from './dto/generate-material-job.dto';
@@ -13,25 +14,29 @@ import { SyllabusDistribution } from '../syllabus/entities/syllabus-distribution
 import { Company } from '../tenants/entities/tenant.entity';
 import { Topic } from '../catalogs/entities/topic.entity';
 import { Subtopic } from '../catalogs/entities/subtopic.entity';
+import { Question } from '../question-bank/entities/question.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { SqsService } from '../aws/sqs.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { ClsService } from 'nestjs-cls';
 import { I_MATERIALS_REPOSITORY } from './repositories/i-materials.repository';
 import type { IMaterialsRepository } from './repositories/i-materials.repository';
 import { TenantService } from '../database/tenant.service';
 import { S3Service } from '../aws/s3.service';
 import { Cycle } from '../academic-time/entities/cycle.entity';
+import { convertUuidToIntegerId } from '../database/uuid-converter';
 @Injectable()
 export class MaterialsService {
   private readonly logger = new Logger(MaterialsService.name);
 
   constructor(
-    private readonly sqsService: SqsService,
+    @InjectQueue('materials-queue') private readonly materialsQueue: Queue,
     private readonly cls: ClsService,
     private readonly tenantService: TenantService,
     @Inject(I_MATERIALS_REPOSITORY)
     private readonly materialsRepo: IMaterialsRepository,
     private readonly s3Service: S3Service,
+    @InjectEntityManager('questionsConnection') private readonly questionsEntityManager: EntityManager,
   ) {}
 
   async generate(dto: GenerateMaterialDto): Promise<any> {
@@ -177,13 +182,24 @@ export class MaterialsService {
           }
 
           for (const dist of distributions) {
+            // Fetch actual questions from database for this subtopic
+            const allQuestions = await this.questionsEntityManager.find(Question, {
+              where: { subtopicId: String(convertUuidToIntegerId(dist.subtopicId)) },
+              relations: ['alternatives'],
+            });
+            // Shuffle in memory and take 2
+            const dbQuestions = allQuestions
+              .sort(() => 0.5 - Math.random())
+              .slice(0, 2);
+
             // Generate 2 review questions per subtopic slot
             for (let i = 0; i < 2; i++) {
-              const isVacant = Math.random() < 0.15; // 15% chance of vacancy/empty
+              const dbQ = dbQuestions[i];
+              const isVacant = !dbQ;
               const reviewQ = manager.create(MaterialReviewQuestion, {
                 id: uuidv4(),
                 materialRequestId: requestId,
-                questionId: isVacant ? null : `core-q-${Math.floor(Math.random() * 1000 + 100)}`,
+                questionId: isVacant ? null : dbQ.id,
                 topicId: dist.topicId,
                 subtopicId: dist.subtopicId,
                 position: position++,
@@ -195,15 +211,15 @@ export class MaterialsService {
         }
         this.logger.log(`MaterialRequest ${requestId} paused for curation. Review questions generated.`);
       } else {
-        // Dispatch SQS jobs immediately
+        // Dispatch BullMQ jobs immediately
         for (const job of sqsJobs) {
           // Update status to PROCESSING since we dispatched it
           await manager.update(MaterialRequestCourse, job.job_id, {
             status: CourseRequestStatus.PROCESSING,
           });
-          await this.sqsService.sendGenerateMaterialJob(job);
+          await this.materialsQueue.add('generate', job);
         }
-        this.logger.log(`MaterialRequest ${requestId} dispatched to SQS immediately.`);
+        this.logger.log(`MaterialRequest ${requestId} dispatched to BullMQ immediately.`);
       }
 
       return {
@@ -451,10 +467,10 @@ export class MaterialsService {
           },
         };
 
-        await this.sqsService.sendGenerateMaterialJob(job);
+        await this.materialsQueue.add('generate', job);
       }
 
-      this.logger.log(`Curation approved for MaterialRequest ${id}. Dispatched jobs to SQS.`);
+      this.logger.log(`Curation approved for MaterialRequest ${id}. Dispatched jobs to BullMQ.`);
 
       return {
         status: MaterialRequestStatus.PROCESSING,

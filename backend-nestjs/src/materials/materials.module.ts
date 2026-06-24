@@ -9,10 +9,20 @@ import { MaterialRequestCourse } from './entities/material-request-course.entity
 import { MaterialReviewQuestion } from './entities/material-review-question.entity';
 import { I_MATERIALS_REPOSITORY } from './repositories/i-materials.repository';
 import { MaterialsRepositoryImpl } from './repositories/materials.repository';
+import { BullModule } from '@nestjs/bullmq';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 
 @Module({
   imports: [
     AwsModule,
+    BullModule.registerQueue({
+      name: 'materials-queue',
+    }),
+    BullBoardModule.forFeature({
+      name: 'materials-queue',
+      adapter: BullMQAdapter,
+    }),
     TypeOrmModule.forFeature([
       MaterialRequest,
       MaterialRequestCourse,

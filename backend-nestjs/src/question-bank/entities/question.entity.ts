@@ -1,4 +1,5 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryColumn, Column, OneToMany } from 'typeorm';
+import { Alternative } from './alternative.entity';
 
 export interface QuestionOption {
   label: string;
@@ -6,29 +7,36 @@ export interface QuestionOption {
   is_correct: boolean;
 }
 
-@Entity('questions')
+@Entity({ schema: 'odiseo', name: 'question' })
 export class Question {
-  @PrimaryColumn('uuid')
+  @PrimaryColumn('bigint')
   id: string;
 
-  @Column({ name: 'topic_id', type: 'uuid' })
+  @Column({ name: 'topic_id', type: 'bigint' })
   topicId: string;
 
-  @Column({ name: 'subtopic_id', type: 'uuid' })
+  @Column({ name: 'subtopic_id', type: 'bigint' })
   subtopicId: string;
 
-  @Column({ name: 'difficulty_level', type: 'varchar', length: 50, default: 'MEDIUM' })
-  difficultyLevel: string;
+  @Column({ name: 'answer_id', type: 'bigint', nullable: true })
+  answerId: string;
 
-  @Column({ name: 'html_content', type: 'text' })
+  @Column({ name: 'description', type: 'text' })
   htmlContent: string;
 
-  @Column({ type: 'jsonb' })
-  options: QuestionOption[];
+  @OneToMany(() => Alternative, (alternative) => alternative.question)
+  alternatives: Alternative[];
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  get options(): QuestionOption[] {
+    if (!this.alternatives) return [];
+    
+    const sorted = [...this.alternatives].sort((a, b) => Number(a.id) - Number(b.id));
+    
+    const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+    return sorted.map((alt, index) => ({
+      label: labels[index] || String.fromCharCode(65 + index),
+      text: alt.text,
+      is_correct: String(alt.id) === String(this.answerId),
+    }));
+  }
 }

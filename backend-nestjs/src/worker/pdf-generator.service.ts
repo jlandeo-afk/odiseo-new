@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as puppeteer from 'puppeteer';
+import { chromium } from 'playwright';
 import { GenerateMaterialJobDto } from '../materials/dto/generate-material-job.dto';
 
 @Injectable()
@@ -10,13 +10,14 @@ export class PdfGeneratorService {
     this.logger.log(`Starting PDF generation for job ${job.job_id}...`);
     
     // Launch headless browser
-    const browser = await puppeteer.launch({
+    const browser = await chromium.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     try {
-      const page = await browser.newPage();
+      const context = await browser.newContext();
+      const page = await context.newPage();
 
       // Build HTML string
       const htmlContent = this.buildHtmlTemplate(job, questions);
@@ -46,7 +47,7 @@ export class PdfGeneratorService {
       });
 
       this.logger.log(`PDF successfully generated for job ${job.job_id}`);
-      return Buffer.from(pdfBuffer);
+      return pdfBuffer; // Playwright's page.pdf returns a Buffer directly
     } finally {
       await browser.close();
     }

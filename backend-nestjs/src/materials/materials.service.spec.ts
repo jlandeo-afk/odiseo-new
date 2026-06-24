@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MaterialsService } from './materials.service';
-import { SqsService } from '../aws/sqs.service';
+import { getQueueToken } from '@nestjs/bullmq';
 import { ClsService } from 'nestjs-cls';
 import { TenantService } from '../database/tenant.service';
+import { getEntityManagerToken } from '@nestjs/typeorm';
 import { I_MATERIALS_REPOSITORY } from './repositories/i-materials.repository';
 import { S3Service } from '../aws/s3.service';
 import { BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
@@ -12,7 +13,7 @@ import { CourseRequestStatus } from './entities/material-request-course.entity';
 
 describe('MaterialsService', () => {
   let service: MaterialsService;
-  let sqsService: any;
+  let materialsQueue: any;
   let clsService: any;
   let tenantService: any;
   let materialsRepo: any;
@@ -28,8 +29,8 @@ describe('MaterialsService', () => {
       update: jest.fn(),
     };
 
-    sqsService = {
-      sendGenerateMaterialJob: jest.fn(),
+    materialsQueue = {
+      add: jest.fn(),
     };
     clsService = {
       get: jest.fn().mockReturnValue('mock-tenant-id'),
@@ -49,11 +50,12 @@ describe('MaterialsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MaterialsService,
-        { provide: SqsService, useValue: sqsService },
+        { provide: getQueueToken('materials-queue'), useValue: materialsQueue },
         { provide: ClsService, useValue: clsService },
         { provide: TenantService, useValue: tenantService },
         { provide: I_MATERIALS_REPOSITORY, useValue: materialsRepo },
         { provide: S3Service, useValue: s3Service },
+        { provide: getEntityManagerToken('questionsConnection'), useValue: mockEntityManager },
       ],
     }).compile();
 
@@ -124,7 +126,7 @@ describe('MaterialsService', () => {
       });
 
       expect(result.status).toBe(MaterialRequestStatus.PROCESSING);
-      expect(sqsService.sendGenerateMaterialJob).toHaveBeenCalled();
+      expect(materialsQueue.add).toHaveBeenCalled();
     });
   });
 
@@ -230,7 +232,7 @@ describe('MaterialsService', () => {
 
       expect(result.status).toBe(MaterialRequestStatus.PROCESSING);
       expect(mockEntityManager.update).toHaveBeenCalled();
-      expect(sqsService.sendGenerateMaterialJob).toHaveBeenCalled();
+      expect(materialsQueue.add).toHaveBeenCalled();
     });
   });
 

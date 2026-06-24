@@ -33,3 +33,8 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - localstack
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "127.0.0.1:6380:6379"
