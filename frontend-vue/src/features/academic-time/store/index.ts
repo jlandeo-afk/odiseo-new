@@ -53,9 +53,10 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
 
   async function fetchCycles(loadMore = false, searchStr?: string) {
     if (isLoading.value) return;
-    
-    if (searchStr !== undefined && searchStr !== currentSearch.value) {
-      currentSearch.value = searchStr;
+
+    const targetSearch = searchStr !== undefined ? searchStr : '';
+    if (targetSearch !== currentSearch.value) {
+      currentSearch.value = targetSearch;
       loadMore = false; // Fresh search implies fresh data
     }
 

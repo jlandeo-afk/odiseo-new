@@ -37,7 +37,7 @@ export class MaterialsService {
     private readonly materialsRepo: IMaterialsRepository,
     private readonly s3Service: S3Service,
     @InjectEntityManager('questionsConnection') private readonly questionsEntityManager: EntityManager,
-  ) {}
+  ) { }
 
   async generate(dto: GenerateMaterialDto): Promise<any> {
     const tenantId = this.cls.get('companyId') || '7b89-11c2-d344';

@@ -401,13 +401,26 @@ const saveFiltersToLocal = () => {
 const loadFiltersFromLocal = () => {
   try {
     const savedCycles = localStorage.getItem('materials_selected_cycles');
-    if (savedCycles) selectedCycleIds.value = JSON.parse(savedCycles);
+    if (savedCycles) {
+      const parsed = JSON.parse(savedCycles);
+      if (Array.isArray(parsed)) {
+        // Only keep cycle IDs that actually exist in the current database list
+        selectedCycleIds.value = parsed.filter((id: string) => 
+          timeStore.cycles.some(c => c.id === id)
+        );
+      }
+    }
     
     const savedWeeks = localStorage.getItem('materials_selected_weeks');
     if (savedWeeks) selectedWeeks.value = JSON.parse(savedWeeks);
 
     const savedTemplates = localStorage.getItem('materials_selected_templates');
-    if (savedTemplates) selectedTemplateIds.value = JSON.parse(savedTemplates);
+    if (savedTemplates) {
+      const parsed = JSON.parse(savedTemplates);
+      if (Array.isArray(parsed)) {
+        selectedTemplateIds.value = parsed;
+      }
+    }
   } catch (e) {
     console.error('Failed to parse local filters', e);
   }
@@ -428,12 +441,16 @@ async function fetchHistory() {
   }
 }
 
-// Watch Cycle changes to fetch related templates and clean up orphaned templates
 watch(selectedCycleIds, async (newCycles, oldCycles) => {
   if (newCycles.length > 0) {
     // Fetch templates for the newly added cycles
     const toFetch = newCycles.filter(c => !timeStore.templatesByCycle[c]);
     await Promise.all(toFetch.map(cid => timeStore.fetchTemplates(cid)));
+
+    // Clean up template selections that don't belong to any active cycle templates
+    selectedTemplateIds.value = selectedTemplateIds.value.filter(id => 
+      availableTemplates.value.some(t => t.id === id)
+    );
   }
   
   // Clean up selected templates that belong to cycles no longer selected

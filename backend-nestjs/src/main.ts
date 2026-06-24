@@ -16,7 +16,9 @@ async function bootstrap() {
   });
 
   // Global Prefix
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: ['queues', 'queues/(.*)'],
+  });
 
   // Validation Pipes
   app.useGlobalPipes(

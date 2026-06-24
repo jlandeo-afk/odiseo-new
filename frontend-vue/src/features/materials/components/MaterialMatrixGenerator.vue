@@ -187,7 +187,7 @@ defineExpose({ isOpen, openWithContext });
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-if="isOpen" class="fixed inset-0 bg-slate-900/40 dark:bg-black/40 backdrop-blur-sm z-[100]" @click="isOpen = false" />
+      <div v-if="isOpen" class="fixed inset-0 bg-slate-900/40 dark:bg-black/40 backdrop-blur-sm z-40" @click="isOpen = false" />
     </Transition>
 
     <Transition
@@ -198,7 +198,7 @@ defineExpose({ isOpen, openWithContext });
       leave-from-class="translate-x-0"
       leave-to-class="translate-x-full"
     >
-      <div v-if="isOpen" class="fixed inset-y-0 right-0 w-full max-w-4xl bg-white dark:bg-[#11111a] shadow-2xl z-[110] flex flex-col border-l border-slate-200 dark:border-white/5">
+      <div v-if="isOpen" class="fixed inset-y-0 right-0 w-full max-w-4xl bg-white dark:bg-[#11111a] shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-white/5">
     <div class="flex flex-col h-full bg-slate-50 dark:bg-[#11111a]">
       <!-- HEADER -->
       <div class="px-6 py-5 bg-white dark:bg-[#1a1a24] border-b border-slate-200 dark:border-white/5 shadow-sm z-10">

@@ -15,6 +15,7 @@ export class TenantMiddleware implements NestMiddleware {
   private readonly publicPaths = [
     '/api/v1/tenants/branding',
     '/api/v1/admin/companies',
+    '/queues',
   ];
 
   constructor(
