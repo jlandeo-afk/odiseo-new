@@ -1,11 +1,4 @@
-import {
-  Entity,
-  PrimaryColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { MaterialRequestCourse } from './material-request-course.entity';
 import { MaterialReviewQuestion } from './material-review-question.entity';
 
@@ -21,54 +14,39 @@ export enum MaterialRequestStatus {
 
 @Entity('material_requests')
 export class MaterialRequest {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'tenant_id', type: 'varchar', length: 36 })
+  @Column({ name: 'tenant_id' })
   tenantId: string;
 
   @Column({ name: 'profile_id', type: 'uuid' })
   profileId: string;
 
-  @Column({ name: 'week_number', type: 'integer' })
+  @Column({ name: 'cycle_id', type: 'uuid' })
+  cycleId: string;
+
+  @Column({ name: 'week_number', type: 'int' })
   weekNumber: number;
 
-  @Column({ name: 'material_type', type: 'varchar', default: 'BALOTARIO' })
-  materialType: string;
-
-  @Column({ type: 'integer', default: 1 })
-  version: number;
-
-  @Column({
-    type: 'enum',
-    enum: MaterialRequestStatus,
-    default: MaterialRequestStatus.PENDING,
-  })
+  @Column({ type: 'enum', enum: MaterialRequestStatus, default: MaterialRequestStatus.PENDING })
   status: MaterialRequestStatus;
 
-  @Column({ name: 'requires_review', type: 'boolean', default: true })
+  @Column({ name: 'requires_review', default: false })
   requiresReview: boolean;
 
-  @Column({ name: 'created_by', type: 'uuid', nullable: true })
+  @Column({ name: 'created_by' })
   createdBy: string;
-
-  @OneToMany(
-    () => MaterialRequestCourse,
-    (course) => course.materialRequest,
-    { cascade: true }
-  )
-  courses: MaterialRequestCourse[];
-
-  @OneToMany(
-    () => MaterialReviewQuestion,
-    (question) => question.materialRequest,
-    { cascade: true }
-  )
-  questions: MaterialReviewQuestion[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @OneToMany(() => MaterialRequestCourse, (course) => course.materialRequest, { cascade: true })
+  courses: MaterialRequestCourse[];
+
+  @OneToMany(() => MaterialReviewQuestion, (question) => question.materialRequest, { cascade: true })
+  reviewQuestions: MaterialReviewQuestion[];
 }

@@ -170,7 +170,7 @@ const handleApprove = async () => {
             <UIcon name="i-heroicons-shield-check" class="w-5.5 h-5.5" />
           </div>
           <div>
-            <h2 class="text-xl font-bold tracking-tight">Pipeline de Curaduría de Reactivos</h2>
+            <h2 class="text-xl font-bold tracking-tight">Revisión Académica de Reactivos</h2>
             <p class="text-[11px] text-slate-300 font-medium">Revisa y audita las preguntas seleccionadas por el algoritmo antes de la compilación.</p>
           </div>
         </div>

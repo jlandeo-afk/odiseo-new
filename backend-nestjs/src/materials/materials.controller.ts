@@ -13,11 +13,15 @@ import { GenerateMaterialDto } from './dto/generate-material.dto';
 import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { ApproveReviewDto } from './dto/approve-review.dto';
 import { MaterialsService } from './materials.service';
+import { GenerateMaterialUseCase } from './use-cases/generate-material.use-case';
 
 @ApiTags('Materials')
 @Controller('v1/materials')
 export class MaterialsController {
-  constructor(private readonly materialsService: MaterialsService) {}
+  constructor(
+    private readonly materialsService: MaterialsService,
+    private readonly generateMaterialUseCase: GenerateMaterialUseCase,
+  ) {}
 
   @Post('generate')
   @HttpCode(HttpStatus.ACCEPTED) // 202 Accepted
@@ -30,7 +34,10 @@ export class MaterialsController {
   })
   @ApiResponse({ status: 400, description: 'Error de validación de negocio.' })
   async generateMaterial(@Body() request: GenerateMaterialDto) {
-    return await this.materialsService.generate(request);
+    // Simulamos un userId y tenantId por ahora ya que no hay auth integrado
+    const tenantId = '7b89-11c2-d344';
+    const userId = 'uuid_admin_user';
+    return await this.generateMaterialUseCase.execute(tenantId, userId, request);
   }
 
   @Post('webhook/status')

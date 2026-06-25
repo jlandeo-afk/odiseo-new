@@ -1,20 +1,21 @@
 import { MaterialRequest } from '../entities/material-request.entity';
 import { MaterialRequestCourse } from '../entities/material-request-course.entity';
 import { MaterialReviewQuestion } from '../entities/material-review-question.entity';
+import { MaterialQuestionUsage } from '../entities/material-question-usage.entity';
 
 export const I_MATERIALS_REPOSITORY = 'IMaterialsRepository';
 
 export interface IMaterialsRepository {
   createRequest(request: Partial<MaterialRequest>): Promise<MaterialRequest>;
-  findRequestById(id: string): Promise<MaterialRequest | null>;
-  updateRequestStatus(id: string, status: any): Promise<void>;
+  getRequestById(id: string): Promise<MaterialRequest | null>;
+  updateRequestStatus(id: string, status: string): Promise<void>;
   
-  createCourseRequest(courseRequest: Partial<MaterialRequestCourse>): Promise<MaterialRequestCourse>;
-  findCourseRequest(requestId: string, courseId: string): Promise<MaterialRequestCourse | null>;
-  findCourseRequestById(id: string): Promise<MaterialRequestCourse | null>;
-  updateCourseStatus(id: string, status: any, downloadUrl?: string, warnings?: any): Promise<void>;
+  createCourses(courses: Partial<MaterialRequestCourse>[]): Promise<MaterialRequestCourse[]>;
+  updateCourse(courseId: string, data: Partial<MaterialRequestCourse>): Promise<void>;
   
-  createReviewQuestion(question: Partial<MaterialReviewQuestion>): Promise<MaterialReviewQuestion>;
-  findQuestionsByRequest(requestId: string): Promise<MaterialReviewQuestion[]>;
-  updateReviewQuestionStatus(id: string, status: any, questionId?: string): Promise<void>;
+  saveReviewQuestions(questions: Partial<MaterialReviewQuestion>[]): Promise<void>;
+  getReviewQuestions(requestId: string): Promise<MaterialReviewQuestion[]>;
+  
+  saveQuestionUsage(usages: Partial<MaterialQuestionUsage>[]): Promise<void>;
+  getUsedQuestionsInCycle(cycleId: string, courseId: string): Promise<string[]>;
 }

@@ -23,7 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(false);
   const isInitialized = ref(false);
 
-  const API_BASE = 'http://localhost:3000/api';
+  const API_BASE = '/api';
 
   function getSubdomain() {
     if (typeof window !== 'undefined') {
@@ -47,11 +47,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchBranding(subdomainParam?: string) {
     const subdomain = subdomainParam || getSubdomain();
     try {
-      const res = await fetch(`${API_BASE}/v1/tenants/branding?subdomain=${subdomain}`);
-      if (res.ok) {
-        const data = await res.json() as Branding;
-        branding.value = data;
-      }
+      const data = await $fetch<Branding>(`${API_BASE}/v1/tenants/branding?subdomain=${subdomain}`);
+      branding.value = data;
     } catch (error) {
       console.error('Failed to fetch branding', error);
     }
@@ -60,23 +57,19 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(credentials: any, subdomainParam?: string) {
     const subdomain = subdomainParam || getSubdomain();
     try {
-      const res = await fetch(`${API_BASE}/v1/auth/login`, {
+      const response = await $fetch<{ user: User }>(`${API_BASE}/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-subdomain': subdomain,
         },
-        body: JSON.stringify({ ...credentials, subdomain }),
-        credentials: 'include',
+        body: { ...credentials, subdomain },
       });
       
-      if (res.ok) {
-        const response = await res.json() as { user: User };
-        if (response && response.user) {
-          user.value = response.user;
-          isAuthenticated.value = true;
-          return true;
-        }
+      if (response && response.user) {
+        user.value = response.user;
+        isAuthenticated.value = true;
+        return true;
       }
       return false;
     } catch (error) {
@@ -95,18 +88,14 @@ export const useAuthStore = defineStore('auth', () => {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/v1/auth/me`, {
+      const response = await $fetch<{ user: User }>(`${API_BASE}/v1/auth/me`, {
         method: 'GET',
         headers,
-        credentials: 'include',
       });
-      if (res.ok) {
-        const response = await res.json() as { user: User };
-        if (response && response.user) {
-          user.value = response.user;
-          isAuthenticated.value = true;
-          return;
-        }
+      if (response && response.user) {
+        user.value = response.user;
+        isAuthenticated.value = true;
+        return;
       }
       user.value = null;
       isAuthenticated.value = false;
@@ -124,12 +113,11 @@ export const useAuthStore = defineStore('auth', () => {
 
     const subdomain = getSubdomain();
     try {
-      await fetch(`${API_BASE}/v1/auth/logout`, {
+      await $fetch(`${API_BASE}/v1/auth/logout`, {
         method: 'POST',
         headers: {
           'x-subdomain': subdomain,
         },
-        credentials: 'include',
       });
     } catch (error) {
       console.error('Logout failed:', error);

@@ -11,7 +11,7 @@
             Monitor de Generación
           </h1>
           <p class="text-xs text-slate-400 dark:text-slate-500 font-medium tracking-wide">
-            Centro avanzado de curaduría y seguimiento de materiales académicos en tiempo real.
+            Centro avanzado de revisión y seguimiento de materiales académicos en tiempo real.
           </p>
         </div>
       </div>
@@ -77,7 +77,7 @@
           class="w-full"
           :search-input="true"
         >
-           <template #label>
+           <template #default>
             <span v-if="selectedCycleIds.length" class="truncate font-bold text-slate-800 dark:text-slate-200">{{ selectedCycleIds.length }} ciclos seleccionados</span>
             <span v-else class="text-slate-500 dark:text-slate-400">Seleccionar ciclos...</span>
           </template>
@@ -96,7 +96,7 @@
           multiple
           class="w-full"
         >
-           <template #label>
+           <template #default>
             <span v-if="selectedWeeks.length" class="truncate font-bold text-slate-800 dark:text-slate-200">{{ selectedWeeks.length }} semanas</span>
             <span v-else class="text-slate-500 dark:text-slate-400">Todas las semanas</span>
           </template>
@@ -116,7 +116,7 @@
           class="w-full"
           :disabled="availableTemplates.length === 0"
         >
-           <template #label>
+           <template #default>
             <span v-if="selectedTemplateIds.length" class="truncate font-bold text-slate-800 dark:text-slate-200">{{ selectedTemplateIds.length }} plantillas</span>
             <span v-else class="text-slate-500 dark:text-slate-400">Todas las plantillas</span>
           </template>
@@ -155,7 +155,7 @@
 
       <!-- Column: In Review -->
       <MaterialBoardColumn
-        title="REQUIERE CURADURÍA"
+        title="POR REVISAR"
         icon="i-heroicons-eye"
         iconClass="text-fuchsia-500 dark:text-fuchsia-400"
         bgClass="bg-fuchsia-50/20 dark:bg-fuchsia-950/10 border-fuchsia-200 dark:border-fuchsia-900/30"
@@ -317,7 +317,7 @@ function statusLabel(status: string): string {
   const labels: Record<string, string> = {
     PENDING: 'En Cola',
     PROCESSING: 'Procesando',
-    REVIEW_REQUIRED: 'Curaduría',
+    REVIEW_REQUIRED: 'Por Revisar',
     IN_REVIEW: 'En Revisión',
     COMPLETED: 'Completado',
     FAILED: 'Fallido',

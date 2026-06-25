@@ -1,68 +1,77 @@
-# Contract: WebSocket Notifications
+# Contract: WebSocket - Notificación de Materiales
 
-Las notificaciones en tiempo real se canalizan a través de **AWS API Gateway WebSockets** (según la Restricción CR-003).
+Eventos emitidos vía AWS API Gateway WebSockets desde el Worker / NestJS hacia el cliente frontend.
 
-## 1. Evento: Revisión Requerida
+## Evento: `material.generation.completed`
 
-Emitido por el Worker FastAPI tras finalizar el análisis inicial del banco de preguntas y detectar que la solicitud requiere revisión humana.
+Emitido cuando el Worker FastAPI completa satisfactoriamente la compilación en PDF y lo sube a S3.
 
-**Topic**: `material.review.required`
-
-```json
-{
-  "event": "material.review.required",
-  "data": {
-    "job_id": "uuid-job-456",
-    "status": "REVIEW_REQUIRED",
-    "message": "La extracción inicial ha terminado. El material está listo para revisión."
-  }
-}
-```
-
----
-
-## 2. Evento: Generación Completada
-
-Emitido cuando todos los cursos de la solicitud han sido procesados y subidos a S3 (o al menos uno se completó con advertencias).
-
-**Topic**: `material.generation.completed`
-
+**Payload:**
 ```json
 {
   "event": "material.generation.completed",
   "data": {
-    "job_id": "uuid-job-456",
+    "material_request_id": "uuid-de-la-solicitud",
+    "course_id": "math-101",
     "status": "COMPLETED",
-    "courses": [
+    "download_url": "https://s3.amazonaws.com/.../file.pdf?sig=..."
+  }
+}
+```
+
+## Evento: `material.generation.warnings`
+
+Emitido cuando se completa el material pero hubo vacíos (Core API devolvió menos preguntas de las solicitadas).
+
+**Payload:**
+```json
+{
+  "event": "material.generation.warnings",
+  "data": {
+    "material_request_id": "uuid-de-la-solicitud",
+    "course_id": "math-101",
+    "status": "COMPLETED_WITH_WARNINGS",
+    "download_url": "https://s3.amazonaws.com/.../file.pdf?sig=...",
+    "warnings": [
       {
-        "course_id": "algebra-uuid",
-        "status": "COMPLETED"
-      },
-      {
-        "course_id": "fisica-uuid",
-        "status": "COMPLETED_WITH_WARNINGS",
-        "warnings": ["Faltan 2 preguntas de Estática, se generó con 8 de 10 solicitadas"]
+        "topic_id": "t1",
+        "subtopic_id": "st1",
+        "message": "Se solicitaron 5 preguntas pero solo se encontraron 3 disponibles."
       }
     ]
   }
 }
 ```
 
----
+## Evento: `material.generation.failed`
 
-## 3. Evento: Generación Fallida
+Emitido si el Worker no pudo conectarse al Core API tras los reintentos, o falló la compilación WeasyPrint.
 
-Emitido si ocurre un error irrecuperable en la generación de todos los cursos del material.
-
-**Topic**: `material.generation.failed`
-
+**Payload:**
 ```json
 {
   "event": "material.generation.failed",
   "data": {
-    "job_id": "uuid-job-456",
+    "material_request_id": "uuid-de-la-solicitud",
+    "course_id": "math-101",
     "status": "FAILED",
-    "error_message": "Error crítico al compilar los documentos PDF en WeasyPrint: Timeout al renderizar las imágenes de las preguntas."
+    "error_message": "Core API timeout después de 3 intentos"
+  }
+}
+```
+
+## Evento: `material.review.required`
+
+Emitido si el admin solicitó validación manual antes de generar el PDF (`requires_review: true`).
+
+**Payload:**
+```json
+{
+  "event": "material.review.required",
+  "data": {
+    "material_request_id": "uuid-de-la-solicitud",
+    "status": "REVIEW_REQUIRED",
+    "message": "Preguntas extraídas. Requiere revisión manual."
   }
 }
 ```

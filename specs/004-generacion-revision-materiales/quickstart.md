@@ -1,69 +1,34 @@
-# Quickstart: Material Generation Pipeline
+# Quickstart: Validación End-to-End
 
-This guide outlines the steps to run and verify the `004-generacion-revision-materiales` module end-to-end.
+Esta guía describe cómo verificar localmente la generación de material con las reglas anti-repetición aplicadas.
 
-## Environment Variables
+## Requisitos Previos
 
-### NestJS Backend (`backend-nestjs/.env`)
-Make sure the following variables are configured:
-```bash
-# AWS SQS & S3 Configuration (LocalStack defaults)
-AWS_REGION=us-east-1
-AWS_SQS_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/odiseo-materials-queue
-AWS_SQS_ENDPOINT=http://localhost:4566
-AWS_S3_ENDPOINT=http://localhost:4566
-AWS_S3_BUCKET=odiseo-materials
-```
+1. Instalar LocalStack para simular SQS y S3 localmente.
+2. Levantar los servicios backend (NestJS) y el worker (FastAPI).
+3. Asegurar que existe un `cycle_id` activo con un `cycle_material_profile` configurado.
 
-### FastAPI Worker (`worker-fastapi/.env` or Docker Compose)
-```bash
-AWS_SQS_QUEUE_URL=http://localstack:4566/000000000000/odiseo-materials-queue
-AWS_SQS_ENDPOINT=http://localstack:4566
-AWS_S3_ENDPOINT=http://localstack:4566
-AWS_S3_BUCKET_NAME=odiseo-materials
-AWS_REGION=us-east-1
-B2B_WEBHOOK_URL=http://host.docker.internal:3000/v1/materials/webhook/status
-```
+## Escenario 1: Generación Feliz (Sin repeticiones previas)
 
-## Running the Services
+1. Enviar una petición HTTP `POST /api/v1/materials/generate`
+   - Parámetros: `profile_id` válido, `requires_review: false`.
+2. Verificar HTTP 202 Accepted.
+3. Observar los logs del Worker FastAPI: "Processing SQS message..."
+4. Verificar la recepción del evento WebSocket `material.generation.completed` en el cliente de prueba.
+5. Descargar el PDF mediante la `download_url` proporcionada en el evento.
+6. **Auditoría:** Revisar en PostgreSQL que la tabla `material_question_usage` tenga registros insertados para las preguntas de este material, asociadas a su `cycle_id`.
 
-### 1. Start LocalStack and Worker Containers
-From the root directory of the repository:
-```bash
-docker-compose up --build -d
-```
-This builds and starts:
-- **LocalStack**: Initializes SQS `odiseo-materials-queue` and S3 `odiseo-materials` bucket.
-- **FastAPI Worker**: Automatically listens to the LocalStack queue in the background.
+## Escenario 2: Generación con Exclusión y Vacíos (Strict)
 
-### 2. Start NestJS Backend
-In `backend-nestjs`:
-```bash
-npm run start:dev
-```
+1. Volver a ejecutar el Escenario 1 para el mismo curso.
+2. Como las preguntas ya están registradas en `material_question_usage`, el backend las incluirá en el array `exclude_question_ids` del payload de SQS.
+3. Si el Core API se queda sin preguntas disponibles (retorna 0), el Worker debe emitir el evento `material.generation.warnings` (estado `COMPLETED_WITH_WARNINGS`).
+4. **Validación:** El PDF final NO debe contener preguntas repetidas del Escenario 1. El log de advertencias debe mostrar el "vacío" donde no hubo stock disponible en el banco.
 
-### 3. Start Frontend Vue App
-In `frontend-vue`:
-```bash
-npm run dev
-```
+## Escenario 3: Generación con Revisión Concurrente (Bloqueo Optimista)
 
-## Testing & Verification Scenarios
-
-### Automated Tests
-Run unit tests in both modules to ensure regression safety:
-
-**NestJS Tests:**
-```bash
-cd backend-nestjs
-npm run test src/materials/materials.service.spec.ts
-```
-
-**FastAPI Tests:**
-```bash
-cd worker-fastapi
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt pytest
-pytest tests/
-```
+1. Enviar petición de generación con `requires_review: true`.
+2. Esperar evento WS `material.review.required`.
+3. Simular que el Usuario A llama a `PUT /api/v1/materials/{id}/review/approve`.
+4. Simular que el Usuario B llama concurrentemente a `PUT /api/v1/materials/{id}/review/question-replace`.
+5. **Validación:** El backend debe responder HTTP 409 Conflict a la petición del Usuario B, asegurando que el estado `IN_REVIEW` no fue sobrescrito accidentalmente.

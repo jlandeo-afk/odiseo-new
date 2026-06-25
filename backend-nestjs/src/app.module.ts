@@ -17,6 +17,7 @@ import { WorkerModule } from './worker/worker.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
+import { MaterialsModule } from './src/materials/materials.module';
 
 @Module({
   imports: [

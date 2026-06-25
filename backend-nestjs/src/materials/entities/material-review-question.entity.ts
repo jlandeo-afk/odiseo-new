@@ -1,11 +1,4 @@
-import {
-  Entity,
-  PrimaryColumn,
-  Column,
-  CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { MaterialRequest } from './material-request.entity';
 
 export enum ReviewQuestionStatus {
@@ -17,39 +10,28 @@ export enum ReviewQuestionStatus {
 
 @Entity('material_review_questions')
 export class MaterialReviewQuestion {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ name: 'material_request_id', type: 'uuid' })
   materialRequestId: string;
 
-  @Column({ name: 'question_id', type: 'varchar', length: 36, nullable: true })
-  questionId: string | null;
+  @Column({ name: 'question_id', nullable: true })
+  questionId: string;
 
-  @Column({ name: 'topic_id', type: 'uuid' })
+  @Column({ name: 'topic_id' })
   topicId: string;
 
-  @Column({ name: 'subtopic_id', type: 'uuid' })
+  @Column({ name: 'subtopic_id' })
   subtopicId: string;
 
-  @Column({ type: 'integer' })
+  @Column()
   position: number;
 
-  @Column({
-    type: 'enum',
-    enum: ReviewQuestionStatus,
-    default: ReviewQuestionStatus.FOUND,
-  })
+  @Column({ type: 'enum', enum: ReviewQuestionStatus, default: ReviewQuestionStatus.FOUND })
   status: ReviewQuestionStatus;
 
-  @ManyToOne(
-    () => MaterialRequest,
-    (request) => request.questions,
-    { onDelete: 'CASCADE' }
-  )
+  @ManyToOne(() => MaterialRequest, (request) => request.reviewQuestions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'material_request_id' })
   materialRequest: MaterialRequest;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 }

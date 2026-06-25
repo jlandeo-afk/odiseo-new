@@ -10,3 +10,11 @@ venv/
 *.egg-info/
 coverage/
 .DS_Store
+
+# Nuxt 3 / Vue
+.nuxt/
+.output/
+.vuehq/
+*.tsbuildinfo
+frontend-vue/.nuxt/
+frontend-vue/.output/

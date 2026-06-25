@@ -10,6 +10,18 @@
 
 Este módulo provee el historial de materiales generados y las reglas de negocio para evitar la repetición de preguntas entre materiales. Cada vez que se genera un material, se registra qué preguntas fueron utilizadas. Al solicitar un nuevo material, el sistema consulta este historial para excluir preguntas ya usadas recientemente, garantizando variedad en los contenidos evaluativos.
 
+**Out of Scope**:
+- Reportes analíticos sobre el uso de preguntas (ej. "top preguntas más usadas", "subtopics con menor rotación"). Los reportes son una feature separada.
+
+## Clarifications
+
+### Session 2026-06-24
+
+- Q: ¿Qué modelo de autorización rige quién puede acceder al historial y consultar preguntas usadas? → A: Se difiere a una spec de permisos/roles separada; aquí solo se marca como dependencia.
+- Q: ¿Cuándo se agota el pool de un subtopic, se debe forzar una repetición (soft reset)? → A: No. La exclusión es estricta. Si el pool se agota, el Core API retorna 0 preguntas para ese subtopic y se maneja como un "vacío" en la pantalla de Revisión de Materiales (Spec 004). Nunca se repiten preguntas automáticamente.
+- Q: ¿La Spec 005 incluye reportes analíticos sobre uso de preguntas o se limita a historial + anti-repetición? → A: Solo historial + anti-repetición. Los reportes analíticos son una feature separada.
+- Q: ¿La ventana de exclusión se cuenta por curso individual o por la combinación curso + tipo de material (BALOTARIO vs EXAMEN)? ¿Cuándo quedan libres? → A: Por curso dentro del mismo Ciclo Académico, sin importar el tipo de material. Una pregunta usada en un balotario no saldrá en el examen de ese mismo ciclo. Quedan libres automáticamente al iniciar un nuevo ciclo académico.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Visualización de Historial de Materiales (Priority: P1)
@@ -36,7 +48,7 @@ Como sistema, necesito registrar qué preguntas (`question_id`) fueron utilizada
 
 1. **Given** un material generado con un conjunto de preguntas, **When** el sistema registra las preguntas usadas, **Then** se persiste un registro por cada `question_id` en la tabla `material_question_usage` con el `material_request_id` y la fecha de uso.
 2. **Given** un historial de preguntas usadas para un curso, **When** se solicita un nuevo material para el mismo curso, **Then** el backend incluye la lista de `question_id` a excluir en el payload de SQS para que el Worker las envíe como filtro al Core API.
-3. **Given** que todas las preguntas de un subtopic ya fueron usadas (pool agotado), **When** se solicita un nuevo material, **Then** el sistema reinicia el tracking para ese subtopic específico (permite reusar) y registra una advertencia visible para el admin.
+3. **Given** que todas las preguntas de un subtopic ya fueron usadas (pool agotado) en el ciclo actual, **When** se solicita un nuevo material, **Then** el sistema aplica exclusión estricta: el Core API retorna 0 preguntas para ese subtopic y el Worker lo procesa como un "vacío" (espacio sin pregunta) delegando la resolución a la Revisión de Material (Spec 004).
 
 ---
 
@@ -56,8 +68,8 @@ Como administrador, quiero poder ver qué preguntas específicas fueron incluida
 
 - **FR-001**: Cada material generado exitosamente MUST registrar en la tabla `material_question_usage` todas las `question_id` utilizadas, vinculadas al `material_request_id` y con timestamp de uso.
 - **FR-002**: Al armar el payload de generación de un nuevo material, el backend MUST consultar la tabla `material_question_usage` para obtener las `question_id` usadas recientemente para el mismo curso, e incluirlas como lista de exclusión en el payload de SQS.
-- **FR-003**: La ventana de exclusión MUST ser configurable por tenant (ej. últimos 3 materiales, últimos 30 días, o todas las generaciones). El valor por defecto será excluir preguntas usadas en los últimos 3 materiales del mismo curso.
-- **FR-004**: Si el pool de preguntas disponibles para un subtopic se agota (todas fueron usadas y están en la ventana de exclusión), el sistema MUST reiniciar el tracking para ese subtopic específico y generar una advertencia visible.
+- **FR-003**: La ventana de exclusión MUST estar acotada al Ciclo Académico actual. El sistema MUST excluir todas las preguntas usadas previamente para el mismo curso dentro del mismo ciclo, sin importar el tipo de material generado (ej. un balotario excluye para el examen). Al iniciar un nuevo ciclo, el historial de exclusión para ese nuevo ciclo inicia vacío.
+- **FR-004**: La regla de anti-repetición MUST ser estricta. Si el pool de preguntas disponibles para un subtopic se agota debido a las exclusiones del ciclo actual, el sistema NUNCA repetirá preguntas automáticamente. El Core API retornará menos preguntas (o cero) y el flujo de generación lo manejará como vacíos/inconsistencias según lo definido en la Spec 004 (estado `COMPLETED_WITH_WARNINGS` o resolución manual en `REVIEW_REQUIRED`).
 - **FR-005**: La vista de historial MUST permitir filtrar por: tipo de material, curso, rango de fechas y estado.
 - **FR-006**: Los links de descarga expirados MUST poder regenerarse bajo demanda (nueva URL pre-firmada de S3).
 
@@ -75,8 +87,8 @@ Como administrador, quiero poder ver qué preguntas específicas fueron incluida
 ### Measurable Outcomes
 
 - **SC-001**: El historial muestra todos los materiales generados con datos completos y filtros funcionales.
-- **SC-002**: Las preguntas usadas en los últimos 3 materiales del mismo curso son efectivamente excluidas de nuevas generaciones, verificable via test E2E.
-- **SC-003**: Cuando el pool se agota para un subtopic, el sistema reinicia el tracking y genera advertencia visible — no se bloquea la generación.
+- **SC-002**: Las preguntas usadas en cualquier material anterior del mismo curso dentro del mismo ciclo académico son efectivamente excluidas de nuevas generaciones, verificable via test E2E.
+- **SC-003**: Cuando el pool se agota para un subtopic, el sistema mantiene la exclusión estricta (no repite preguntas) y traslada el faltante a la vista de revisión como vacíos.
 - **SC-004**: Los links de descarga expirados pueden regenerarse sin error.
 
 ## Edge Cases
@@ -90,3 +102,4 @@ Como administrador, quiero poder ver qué preguntas específicas fueron incluida
 - Se asume que el Core API soporta un parámetro de exclusión (ej. `exclude_question_ids`) para filtrar preguntas ya usadas.
 - Se asume que la tabla `material_question_usage` puede crecer significativamente, por lo que los índices son críticos para el rendimiento.
 - Se asume que esta spec complementa la Spec 004 (Generación y Revisión) — ambas comparten la entidad `material_requests`.
+- Se asume que el modelo de autorización (qué roles pueden acceder al historial y consultar preguntas usadas) se definirá en una spec de permisos/roles separada.

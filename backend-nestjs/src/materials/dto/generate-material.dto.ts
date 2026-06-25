@@ -1,17 +1,29 @@
-import { IsUUID, IsInt, IsBoolean, IsArray, IsOptional } from 'class-validator';
+import { IsUUID, IsNumber, IsBoolean, IsArray, ValidateNested, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CourseDto {
+  @IsString()
+  course_id: string;
+}
 
 export class GenerateMaterialDto {
   @IsUUID()
-  profileId: string;
+  profile_id: string;
 
-  @IsInt()
-  weekNumber: number;
+  @IsNumber()
+  @Min(1)
+  week_number: number;
 
   @IsBoolean()
-  requiresReview: boolean;
+  requires_review: boolean;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CourseDto)
+  courses: CourseDto[];
 
   @IsOptional()
   @IsArray()
-  @IsUUID('all', { each: true })
-  examAreas?: string[];
+  @IsString({ each: true })
+  exam_areas?: string[];
 }
