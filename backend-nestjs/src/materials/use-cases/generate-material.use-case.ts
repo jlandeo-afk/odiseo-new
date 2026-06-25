@@ -2,7 +2,7 @@ import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
-import { I_MATERIALS_REPOSITORY, IMaterialsRepository } from '../repositories/i-materials.repository';
+import { I_MATERIALS_REPOSITORY, type IMaterialsRepository } from '../repositories/i-materials.repository';
 import { GenerateMaterialDto } from '../dto/generate-material.dto';
 import { MaterialRequestStatus } from '../entities/material-request.entity';
 import { CourseMaterialStatus } from '../entities/material-request-course.entity';
@@ -29,7 +29,7 @@ export class GenerateMaterialUseCase {
         topics: [
           { topic_id: 't1', subtopic_id: 'st1', quantity: 5 },
         ],
-        exclude_question_ids: [],
+        exclude_question_ids: [] as string[],
       };
     });
 
@@ -39,7 +39,11 @@ export class GenerateMaterialUseCase {
       dist.exclude_question_ids = usedQuestions;
     }
 
-    // 4. Crear el registro en base de datos en estado PENDING
+    const initialStatus = dto.requires_review
+      ? MaterialRequestStatus.REVIEW_REQUIRED
+      : MaterialRequestStatus.PROCESSING;
+
+    // 4. Crear el registro en base de datos en estado inicial
     const materialRequest = await this.materialsRepo.createRequest({
       tenantId,
       profileId: dto.profile_id,
@@ -47,7 +51,7 @@ export class GenerateMaterialUseCase {
       weekNumber: dto.week_number,
       requiresReview: dto.requires_review,
       createdBy: userId,
-      status: MaterialRequestStatus.PENDING,
+      status: initialStatus,
     });
 
     const coursesToCreate = dto.courses.map((c) => ({
@@ -55,7 +59,15 @@ export class GenerateMaterialUseCase {
       courseId: c.course_id,
       status: CourseMaterialStatus.PENDING,
     }));
-    await this.materialsRepo.createCourses(coursesToCreate);
+    const createdCourses = await this.materialsRepo.createCourses(coursesToCreate);
+
+    // Mapear el id del course_request recién creado a cada distribución para que el worker pueda actualizar la base de datos
+    for (const dist of mockDistributions) {
+      const dbCourse = createdCourses.find(c => c.courseId === dist.course_id);
+      if (dbCourse) {
+        (dist as any).course_request_id = dbCourse.id;
+      }
+    }
 
     // 5. Encolar el trabajo en BullMQ
     const jobPayload = {
@@ -69,17 +81,18 @@ export class GenerateMaterialUseCase {
       exam_areas: dto.exam_areas,
     };
 
-    await this.materialsQueue.add('generate-pdf', jobPayload, {
-      removeOnComplete: true,
-      removeOnFail: false,
-    });
+    if (!dto.requires_review) {
+      await this.materialsQueue.add('generate-pdf', jobPayload);
+    }
 
     return {
-      message: 'Solicitud de generación encolada exitosamente',
+      message: dto.requires_review 
+        ? 'Solicitud pausada para revisión intermedia.'
+        : 'Solicitud de generación encolada exitosamente',
       data: {
         material_request_id: materialRequest.id,
-        status: MaterialRequestStatus.PENDING,
-        estimated_completion: '60s',
+        status: initialStatus,
+        estimated_completion: dto.requires_review ? null : '60s',
       },
     };
   }

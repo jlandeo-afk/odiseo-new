@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAcademicTimeStore } from '@/features/academic-time/store';
 import { useMaterialsStore } from '../store/materials';
@@ -61,13 +61,56 @@ watch(selectedCycleId, async (newCycle) => {
   }
 });
 
+let pollingTimer: any = null;
+
+function stopPolling() {
+  if (pollingTimer) {
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+}
+
+function startPolling(cycleId: string) {
+  if (!pollingTimer) {
+    pollingTimer = setInterval(async () => {
+      if (isOpen.value) {
+        await fetchCycleHistory(cycleId);
+      } else {
+        stopPolling();
+      }
+    }, 5000);
+  }
+}
+
+onUnmounted(() => {
+  stopPolling();
+});
+
+watch(isOpen, (newVal) => {
+  if (!newVal) {
+    stopPolling();
+  } else if (selectedCycleId.value) {
+    // If opened and there are processing items, might need to resume polling, handled by fetchCycleHistory
+    fetchCycleHistory(selectedCycleId.value);
+  }
+});
+
 async function fetchCycleHistory(cycleId: string) {
   try {
     const history = await materialsStore.fetchHistory({ cycleIds: [cycleId] });
     cycleHistory.value = history || [];
+    
+    // Si hay items procesando, activar el polling
+    const hasProcessing = cycleHistory.value.some(h => h.status === 'PROCESSING');
+    if (hasProcessing) {
+      startPolling(cycleId);
+    } else {
+      stopPolling();
+    }
   } catch (err) {
     console.error('Failed to load history for matrix:', err);
     cycleHistory.value = [];
+    stopPolling();
   }
 }
 
@@ -103,11 +146,14 @@ const handleGenerate = async () => {
 
   generateError.value = null; // reset previous errors
   try {
+    const coursesPayload = selectedTemplate.value?.courses.map(c => ({ course_id: c.courseId })) || [];
     const result = await materialsStore.generateMaterial({
-      profileId: selectedTemplateId.value,
-      weekNumber: selectedWeek.value,
-      requiresReview: true,
+      profile_id: selectedTemplateId.value,
+      week_number: selectedWeek.value,
+      requires_review: false, // For testing auto-generation, skip curation
+      courses: coursesPayload,
     });
+    await fetchCycleHistory(selectedCycleId.value);
     // Let them see success or generate another week
     alert(`Generación iniciada para la Semana ${selectedWeek.value}. El worker está procesando.`);
     emit('success', result);
@@ -118,7 +164,7 @@ const handleGenerate = async () => {
   }
 };
 
-const openWithContext = async (cycleId: string, templateId: string, weekNumber: number) => {
+const openWithContext = async (cycleId: string, templateId?: string, weekNumber?: number) => {
   isProgrammaticChange = true;
   if (cycles.value.length === 0) {
     await academicStore.fetchCycles();
@@ -128,7 +174,9 @@ const openWithContext = async (cycleId: string, templateId: string, weekNumber: 
   // Ensure templates and history are fetched before selecting the intersection
   await academicStore.fetchTemplates(cycleId);
   await fetchCycleHistory(cycleId);
-  selectIntersection(templateId, weekNumber);
+  if (templateId && weekNumber) {
+    selectIntersection(templateId, weekNumber);
+  }
   await nextTick();
   isProgrammaticChange = false;
 };
@@ -215,7 +263,11 @@ defineExpose({ isOpen, openWithContext });
                 <label class="block text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Ciclo
                   Operativo</label>
                 <USelectMenu v-model="selectedCycleId" :items="cycles" value-key="id" label-key="name"
-                  :search-input="false" :ui="{ content: 'z-[9999]' }" placeholder="Seleccionar ciclo..." class="w-full shadow-sm" size="lg" />
+                  :search-input="false" :ui="{ content: 'z-[9999]' }" placeholder="Seleccionar ciclo..." class="w-full shadow-sm" size="lg">
+                  <template #default>
+                    {{ currentCycle ? currentCycle.name : 'Seleccionar ciclo...' }}
+                  </template>
+                </USelectMenu>
               </div>
             </div>
           </div>

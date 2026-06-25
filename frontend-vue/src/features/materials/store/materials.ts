@@ -30,9 +30,10 @@ export const useMaterialsStore = defineStore('materials', () => {
   const currentReview = ref<ReviewData | null>(null)
 
   async function generateMaterial(data: {
-    profileId: string;
-    weekNumber: number;
-    requiresReview: boolean;
+    profile_id: string;
+    week_number: number;
+    requires_review: boolean;
+    courses?: any[];
   }) {
     isLoading.value = true
     error.value = null

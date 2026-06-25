@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, VersionColumn } from 'typeorm';
 import { MaterialRequestCourse } from './material-request-course.entity';
 import { MaterialReviewQuestion } from './material-review-question.entity';
 
@@ -43,6 +43,9 @@ export class MaterialRequest {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @VersionColumn()
+  version: number;
 
   @OneToMany(() => MaterialRequestCourse, (course) => course.materialRequest, { cascade: true })
   courses: MaterialRequestCourse[];

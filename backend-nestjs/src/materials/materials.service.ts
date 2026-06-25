@@ -6,7 +6,7 @@ import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { GenerateMaterialJobDto } from './dto/generate-material-job.dto';
 import { ApproveReviewDto } from './dto/approve-review.dto';
 import { MaterialRequest, MaterialRequestStatus } from './entities/material-request.entity';
-import { MaterialRequestCourse, CourseRequestStatus } from './entities/material-request-course.entity';
+import { MaterialRequestCourse, CourseMaterialStatus } from './entities/material-request-course.entity';
 import { MaterialReviewQuestion, ReviewQuestionStatus } from './entities/material-review-question.entity';
 import { CycleMaterialTemplate } from '../academic-time/entities/cycle-material-template.entity';
 import { Syllabus } from '../syllabus/entities/syllabus.entity';
@@ -48,7 +48,7 @@ export class MaterialsService {
     return this.tenantService.runInTenant(async (manager) => {
       // 1. Fetch academic template (profile)
       const template = await manager.findOne(CycleMaterialTemplate, {
-        where: { id: dto.profileId },
+        where: { id: dto.profile_id },
         relations: ['courses'],
       });
       if (!template) {
@@ -74,16 +74,16 @@ export class MaterialsService {
         let distributions: SyllabusDistribution[] = [];
         if (template.scope === 'CURRENT_WEEK') {
           distributions = await manager.find(SyllabusDistribution, {
-            where: { syllabusId: syllabus.id, weekNumber: dto.weekNumber },
+            where: { syllabusId: syllabus.id, weekNumber: dto.week_number },
           });
         } else if (template.scope === 'ACCUMULATIVE') {
           const startWeek = template.accumulationWeeks
-            ? Math.max(1, dto.weekNumber - template.accumulationWeeks + 1)
+            ? Math.max(1, dto.week_number - template.accumulationWeeks + 1)
             : 1;
           distributions = await manager.find(SyllabusDistribution, {
             where: {
               syllabusId: syllabus.id,
-              weekNumber: Between(startWeek, dto.weekNumber),
+              weekNumber: Between(startWeek, dto.week_number),
             },
           });
         }
@@ -97,7 +97,7 @@ export class MaterialsService {
           id: courseRequestId,
           materialRequestId: requestId,
           courseId: templateCourse.courseId,
-          status: CourseRequestStatus.PENDING,
+          status: CourseMaterialStatus.PENDING,
         });
 
         coursesResponseList.push({
@@ -138,10 +138,10 @@ export class MaterialsService {
       const mainRequest = manager.create(MaterialRequest, {
         id: requestId,
         tenantId,
-        profileId: dto.profileId,
-        weekNumber: dto.weekNumber,
-        requiresReview: dto.requiresReview,
-        status: dto.requiresReview
+        profileId: dto.profile_id,
+        weekNumber: dto.week_number,
+        requiresReview: dto.requires_review,
+        status: dto.requires_review
           ? MaterialRequestStatus.REVIEW_REQUIRED
           : MaterialRequestStatus.PROCESSING,
         materialType: 'BALOTARIO',
@@ -155,7 +155,7 @@ export class MaterialsService {
       }
 
       // 6. If requiresReview, generate mock review questions and pause SQS
-      if (dto.requiresReview) {
+      if (dto.requires_review) {
         let position = 1;
         for (const cr of courseRequests) {
           const syllabus = await manager.findOne(Syllabus, {
@@ -167,16 +167,16 @@ export class MaterialsService {
           let distributions: SyllabusDistribution[] = [];
           if (template.scope === 'CURRENT_WEEK') {
             distributions = await manager.find(SyllabusDistribution, {
-              where: { syllabusId: syllabus.id, weekNumber: dto.weekNumber },
+              where: { syllabusId: syllabus.id, weekNumber: dto.week_number },
             });
           } else if (template.scope === 'ACCUMULATIVE') {
             const startWeek = template.accumulationWeeks
-              ? Math.max(1, dto.weekNumber - template.accumulationWeeks + 1)
+              ? Math.max(1, dto.week_number - template.accumulationWeeks + 1)
               : 1;
             distributions = await manager.find(SyllabusDistribution, {
               where: {
                 syllabusId: syllabus.id,
-                weekNumber: Between(startWeek, dto.weekNumber),
+                weekNumber: Between(startWeek, dto.week_number),
               },
             });
           }
@@ -199,7 +199,7 @@ export class MaterialsService {
               const reviewQ = manager.create(MaterialReviewQuestion, {
                 id: uuidv4(),
                 materialRequestId: requestId,
-                questionId: isVacant ? null : dbQ.id,
+                questionId: isVacant ? (null as any) : dbQ.id,
                 topicId: dist.topicId,
                 subtopicId: dist.subtopicId,
                 position: position++,
@@ -215,7 +215,7 @@ export class MaterialsService {
         for (const job of sqsJobs) {
           // Update status to PROCESSING since we dispatched it
           await manager.update(MaterialRequestCourse, job.job_id, {
-            status: CourseRequestStatus.PROCESSING,
+            status: CourseMaterialStatus.PROCESSING,
           });
           await this.materialsQueue.add('generate', job);
         }
@@ -224,8 +224,8 @@ export class MaterialsService {
 
       return {
         jobId: requestId,
-        status: dto.requiresReview ? MaterialRequestStatus.REVIEW_REQUIRED : MaterialRequestStatus.PROCESSING,
-        message: dto.requiresReview
+        status: dto.requires_review ? MaterialRequestStatus.REVIEW_REQUIRED : MaterialRequestStatus.PROCESSING,
+        message: dto.requires_review
           ? 'La solicitud requiere revisión intermedia antes de compilar.'
           : 'Solicitud de material encolada exitosamente',
         courses: coursesResponseList,
@@ -260,19 +260,19 @@ export class MaterialsService {
         return;
       }
 
-      let courseStatus: CourseRequestStatus = CourseRequestStatus.FAILED;
+      let courseStatus: CourseMaterialStatus = CourseMaterialStatus.FAILED;
       if (statusData.status === 'completed') {
-        courseStatus = CourseRequestStatus.COMPLETED;
+        courseStatus = CourseMaterialStatus.COMPLETED;
       } else if (statusData.status === 'failed') {
-        courseStatus = CourseRequestStatus.FAILED;
+        courseStatus = CourseMaterialStatus.FAILED;
       } else if (statusData.status === 'processing') {
-        courseStatus = CourseRequestStatus.PROCESSING;
+        courseStatus = CourseMaterialStatus.PROCESSING;
       }
 
       // Update course request
       await manager.update(MaterialRequestCourse, courseReq.id, {
         status: courseStatus,
-        downloadUrl: statusData.download_url || null,
+        downloadUrl: statusData.download_url || undefined,
         warnings: (statusData.error_message ? { error: statusData.error_message } : null) as any,
       });
 
@@ -284,11 +284,11 @@ export class MaterialsService {
       });
 
       const allFinished = siblingCourses.every(
-        (c) => c.status === CourseRequestStatus.COMPLETED || c.status === CourseRequestStatus.FAILED,
+        (c) => c.status === CourseMaterialStatus.COMPLETED || c.status === CourseMaterialStatus.FAILED,
       );
 
       if (allFinished) {
-        const hasFailed = siblingCourses.some((c) => c.status === CourseRequestStatus.FAILED);
+        const hasFailed = siblingCourses.some((c) => c.status === CourseMaterialStatus.FAILED);
         const finalStatus = hasFailed ? MaterialRequestStatus.FAILED : MaterialRequestStatus.COMPLETED;
 
         await manager.update(MaterialRequest, courseReq.materialRequestId, {
@@ -415,7 +415,7 @@ export class MaterialsService {
       for (const courseReq of request.courses) {
         // Update course requests to PROCESSING
         await manager.update(MaterialRequestCourse, courseReq.id, {
-          status: CourseRequestStatus.PROCESSING,
+          status: CourseMaterialStatus.PROCESSING,
         });
 
         const syllabus = await manager.findOne(Syllabus, {
@@ -489,7 +489,7 @@ export class MaterialsService {
         throw new NotFoundException('El curso solicitado no forma parte de esta solicitud de material');
       }
 
-      if (courseReq.status !== CourseRequestStatus.COMPLETED || !courseReq.downloadUrl) {
+      if (courseReq.status !== CourseMaterialStatus.COMPLETED || !courseReq.downloadUrl) {
         throw new BadRequestException('El material aún no está listo o falló su generación');
       }
 

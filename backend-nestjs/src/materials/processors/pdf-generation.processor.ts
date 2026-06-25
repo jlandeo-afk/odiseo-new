@@ -4,8 +4,10 @@ import { Logger, Inject } from '@nestjs/common';
 import { CoreApiService, ExtractedQuestion } from '../services/core-api.service';
 import { PdfGeneratorService } from '../services/pdf-generator.service';
 import { S3Service } from '../../aws/s3.service';
-import { I_MATERIALS_REPOSITORY, IMaterialsRepository } from '../repositories/i-materials.repository';
-import { CourseRequestStatus } from '../entities/material-request-course.entity';
+import { MaterialsService } from '../materials.service';
+import { ClsService } from 'nestjs-cls';
+import { I_MATERIALS_REPOSITORY, type IMaterialsRepository } from '../repositories/i-materials.repository';
+import { CourseMaterialStatus } from '../entities/material-request-course.entity';
 
 @Processor('materials-queue')
 export class PdfGenerationProcessor extends WorkerHost {
@@ -15,6 +17,8 @@ export class PdfGenerationProcessor extends WorkerHost {
     private readonly coreApiService: CoreApiService,
     private readonly pdfGeneratorService: PdfGeneratorService,
     private readonly s3Service: S3Service,
+    private readonly materialsService: MaterialsService,
+    private readonly cls: ClsService,
     @Inject(I_MATERIALS_REPOSITORY)
     private readonly materialsRepo: IMaterialsRepository,
   ) {
@@ -64,8 +68,8 @@ export class PdfGenerationProcessor extends WorkerHost {
 
         // 4. Update Course Request Status
         const status = missingDesglose.length > 0 
-          ? CourseRequestStatus.COMPLETED_WITH_WARNINGS 
-          : CourseRequestStatus.COMPLETED;
+          ? CourseMaterialStatus.COMPLETED_WITH_WARNINGS 
+          : CourseMaterialStatus.COMPLETED;
 
         // Since we don't have the courseRequestId directly mapped in mock job, we'd normally update the DB here.
         // For now we'll just log success. 
@@ -73,6 +77,19 @@ export class PdfGenerationProcessor extends WorkerHost {
         
         this.logger.log(`Generated PDF for course ${courseId}. URL: ${downloadUrl}. Status: ${status}`);
         
+        // Actually update the DB!
+        if (dist.course_request_id) {
+          const schemaName = 'tenant_' + tenant_id;
+          await this.cls.runWith({ tenantSchema: schemaName } as any, async () => {
+            await this.materialsService.updateMaterialStatus({
+              job_id: dist.course_request_id,
+              status: status === CourseMaterialStatus.COMPLETED ? 'completed' : 'failed',
+              download_url: downloadUrl,
+              error_message: missingDesglose.length > 0 ? missingDesglose.join(', ') : undefined
+            });
+          });
+        }
+
         return {
           course_id: courseId,
           download_url: downloadUrl,
@@ -80,8 +97,20 @@ export class PdfGenerationProcessor extends WorkerHost {
           warnings: missingDesglose.length > 0 ? { error: missingDesglose.join(', ') } : null,
         };
 
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(`Error generating PDF for course ${courseId}: ${error.message}`);
+        
+        if (dist.course_request_id) {
+          const schemaName = 'tenant_' + tenant_id;
+          await this.cls.runWith({ tenantSchema: schemaName } as any, async () => {
+            await this.materialsService.updateMaterialStatus({
+              job_id: dist.course_request_id,
+              status: 'failed',
+              error_message: error.message
+            });
+          });
+        }
+
         throw error; // Let BullMQ retry
       }
     }

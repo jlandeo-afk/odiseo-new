@@ -9,7 +9,7 @@ import { S3Service } from '../aws/s3.service';
 import { BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { MaterialRequestStatus } from './entities/material-request.entity';
 import { ReviewQuestionStatus } from './entities/material-review-question.entity';
-import { CourseRequestStatus } from './entities/material-request-course.entity';
+import { CourseMaterialStatus } from './entities/material-request-course.entity';
 
 describe('MaterialsService', () => {
   let service: MaterialsService;
@@ -246,7 +246,7 @@ describe('MaterialsService', () => {
     it('should throw BadRequestException if course generation is not completed', async () => {
       const mockCourseReq = {
         id: 'c-req-id',
-        status: CourseRequestStatus.PROCESSING,
+        status: CourseMaterialStatus.PROCESSING,
         downloadUrl: null,
       };
       mockEntityManager.findOne.mockResolvedValue(mockCourseReq);
@@ -257,7 +257,7 @@ describe('MaterialsService', () => {
     it('should resolve the presigned URL successfully from raw or http keys', async () => {
       const mockCourseReq = {
         id: 'c-req-id',
-        status: CourseRequestStatus.COMPLETED,
+        status: CourseMaterialStatus.COMPLETED,
         downloadUrl: 'http://localhost:4566/odiseo-materials/materiales/job-123/doc.pdf',
       };
       mockEntityManager.findOne.mockResolvedValue(mockCourseReq);
