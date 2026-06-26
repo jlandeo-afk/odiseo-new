@@ -12,7 +12,7 @@ export class S3Service {
     this.s3Client = new S3Client({
       region: process.env.AWS_REGION || 'us-east-1',
       endpoint: process.env.AWS_S3_ENDPOINT || 'http://localhost:4566',
-      forcePathStyle: true, // required for localstack / mock testing
+      forcePathStyle: true,
     });
     this.bucketName = process.env.AWS_S3_BUCKET || 'odiseo-materials';
   }
@@ -45,6 +45,24 @@ export class S3Service {
       return await this.getPresignedDownloadUrl(key);
     } catch (error: any) {
       this.logger.error(`Failed to upload buffer to S3: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getObject(key: string): Promise<Buffer> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    });
+
+    try {
+      const response = await this.s3Client.send(command);
+      if (!response.Body) {
+        throw new Error(`Empty response body for key ${key}`);
+      }
+      return Buffer.from(await response.Body.transformToByteArray());
+    } catch (error: any) {
+      this.logger.error(`Failed to get object from S3 with key ${key}: ${error.message}`);
       throw error;
     }
   }

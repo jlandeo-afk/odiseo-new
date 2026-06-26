@@ -121,13 +121,7 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-2 mb-4">
-      <UButtonGroup size="sm" variant="ghost" class="ml-auto">
-        <UButton :disabled="currentViewMode === 'kanban'" @click="currentViewMode = 'kanban'">Kanban</UButton>
-        <UButton :disabled="currentViewMode === 'list'" @click="currentViewMode = 'list'">Lista</UButton>
-        <UButton :disabled="currentViewMode === 'table'" @click="currentViewMode = 'table'">Tabla</UButton>
-      </UButtonGroup>
-    </div>
+
 
     <div v-if="filteredMaterials && filteredMaterials.length === 0"
       class="flex flex-col items-center justify-center py-10">

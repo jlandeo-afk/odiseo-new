@@ -295,6 +295,21 @@ export class MaterialsService {
           status: finalStatus,
         });
         this.logger.log(`Parent MaterialRequest ${courseReq.materialRequestId} final status: ${finalStatus}`);
+
+        // Dispatch merge job if all courses completed
+        if (!hasFailed && siblingCourses.length >= 2) {
+          const request = await manager.findOne(MaterialRequest, {
+            where: { id: courseReq.materialRequestId },
+          });
+          if (request) {
+            const tenantId = this.cls.get('companyId') || '7b89-11c2-d344';
+            await this.materialsQueue.add('merge-pdf', {
+              material_request_id: courseReq.materialRequestId,
+              tenant_id: tenantId,
+            });
+            this.logger.log(`Merge job dispatched for MaterialRequest ${courseReq.materialRequestId}`);
+          }
+        }
       }
     });
   }
@@ -451,8 +466,13 @@ export class MaterialsService {
           weight: dist.weight,
         }));
 
-        const job: GenerateMaterialJobDto = {
+        const job = {
           job_id: courseReq.id,
+          material_request_id: request.id,
+          tenant_id: tenantId,
+          cycle_id: request.profileId || template?.cycleId,
+          week_number: request.weekNumber,
+          template_name: template?.name || 'Material',
           tenant: {
             tenant_id: tenantId,
             commercial_name: company?.commercialName || 'Colegio Odiseo Innova',
@@ -511,6 +531,60 @@ export class MaterialsService {
         materialId: id,
         courseId,
         downloadUrl: signedUrl,
+        filename: key.split('/').pop(),
+        expiresIn: 3600,
+      };
+    });
+  }
+
+  async updateMergedDownloadUrl(materialRequestId: string, mergedUrl: string): Promise<void> {
+    return this.tenantService.runInTenant(async (manager) => {
+      await manager.update(MaterialRequest, materialRequestId, {
+        mergedDownloadUrl: mergedUrl,
+      });
+      this.logger.log(`Merged download URL updated for MaterialRequest ${materialRequestId}`);
+    });
+  }
+
+  async getCoursesForMerge(materialRequestId: string): Promise<any[]> {
+    return this.tenantService.runInTenant(async (manager) => {
+      return manager.find(MaterialRequestCourse, {
+        where: { materialRequestId },
+      });
+    });
+  }
+
+  async getMergedDownloadUrl(id: string): Promise<any> {
+    return this.tenantService.runInTenant(async (manager) => {
+      const request = await manager.findOne(MaterialRequest, {
+        where: { id },
+      });
+
+      if (!request) {
+        throw new NotFoundException('La solicitud de material no existe');
+      }
+
+      if (!request.mergedDownloadUrl) {
+        throw new BadRequestException('El PDF combinado aún no está disponible');
+      }
+
+      let key = request.mergedDownloadUrl;
+      if (key.startsWith('http')) {
+        try {
+          const urlObj = new URL(key);
+          const parts = urlObj.pathname.split('/');
+          key = parts.slice(2).join('/');
+        } catch (e) {
+          key = request.mergedDownloadUrl;
+        }
+      }
+
+      const signedUrl = await this.s3Service.getPresignedDownloadUrl(key, 3600);
+
+      return {
+        materialId: id,
+        downloadUrl: signedUrl,
+        filename: key.split('/').pop(),
         expiresIn: 3600,
       };
     });

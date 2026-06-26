@@ -100,6 +100,19 @@ export class MaterialsController {
     return await this.materialsService.getDownloadUrl(id, courseId);
   }
 
+  @Get(':id/download-merged')
+  @ApiOperation({
+    summary: 'Obtener URL firmada del PDF combinado de todos los cursos',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Enlace de descarga del PDF combinado devuelto.',
+  })
+  @ApiResponse({ status: 404, description: 'La solicitud no existe.' })
+  async getMergedDownloadUrl(@Param('id') id: string) {
+    return await this.materialsService.getMergedDownloadUrl(id);
+  }
+
   @Get('history')
   @ApiOperation({
     summary: 'Obtener historial de solicitudes de generación',

@@ -26,4 +26,8 @@ export class GenerateMaterialDto {
   @IsArray()
   @IsString({ each: true })
   exam_areas?: string[];
+
+  @IsOptional()
+  @IsUUID()
+  design_template_id?: string;
 }

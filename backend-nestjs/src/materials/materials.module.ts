@@ -8,10 +8,14 @@ import { CoreApiService } from './services/core-api.service';
 import { PdfGeneratorService } from './services/pdf-generator.service';
 import { PdfGenerationProcessor } from './processors/pdf-generation.processor';
 import { AwsModule } from '../aws/aws.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { PdfDesignController } from './pdf-design/pdf-design.controller';
+import { PdfDesignService } from './pdf-design/pdf-design.service';
 import { MaterialRequest } from './entities/material-request.entity';
 import { MaterialRequestCourse } from './entities/material-request-course.entity';
 import { MaterialReviewQuestion } from './entities/material-review-question.entity';
 import { MaterialQuestionUsage } from './entities/material-question-usage.entity';
+import { PdfDesignTemplate } from './entities/pdf-design-template.entity';
 import { I_MATERIALS_REPOSITORY } from './repositories/i-materials.repository';
 import { MaterialsRepository } from './repositories/materials.repository';
 import { BullModule } from '@nestjs/bullmq';
@@ -21,6 +25,7 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 @Module({
   imports: [
     AwsModule,
+    MulterModule.register({ dest: './uploads' }),
     BullModule.registerQueue({
       name: 'materials-queue',
     }),
@@ -33,11 +38,13 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
       MaterialRequestCourse,
       MaterialReviewQuestion,
       MaterialQuestionUsage,
+      PdfDesignTemplate,
     ]),
   ],
-  controllers: [MaterialsController],
+  controllers: [MaterialsController, PdfDesignController],
   providers: [
     MaterialsService,
+    PdfDesignService,
     MaterialsCron,
     GenerateMaterialUseCase,
     CoreApiService,

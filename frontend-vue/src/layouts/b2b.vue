@@ -312,10 +312,12 @@ const navigationData = [
   {
     name: 'Configuración',
     icon: 'i-heroicons-cog-8-tooth',
-    menuKey: null,
+    menuKey: 'config',
     path: '#',
     badge: null,
-    items: []
+    items: [
+      { name: 'Plantillas PDF', path: '/config', badge: null },
+    ]
   }
 ];
 </script>

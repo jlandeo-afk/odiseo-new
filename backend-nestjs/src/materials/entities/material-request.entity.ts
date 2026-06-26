@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, VersionColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, VersionColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { MaterialRequestCourse } from './material-request-course.entity';
 import { MaterialReviewQuestion } from './material-review-question.entity';
+import { PdfDesignTemplate } from './pdf-design-template.entity';
 
 export enum MaterialRequestStatus {
   PENDING = 'PENDING',
@@ -34,6 +35,16 @@ export class MaterialRequest {
 
   @Column({ name: 'requires_review', default: false })
   requiresReview: boolean;
+
+  @Column({ name: 'design_template_id', nullable: true, type: 'uuid' })
+  designTemplateId: string | null;
+
+  @ManyToOne(() => PdfDesignTemplate, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'design_template_id' })
+  designTemplate: PdfDesignTemplate | null;
+
+  @Column({ name: 'merged_download_url', nullable: true, type: 'text' })
+  mergedDownloadUrl: string;
 
   @Column({ name: 'created_by' })
   createdBy: string;

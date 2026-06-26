@@ -34,6 +34,7 @@ export const useMaterialsStore = defineStore('materials', () => {
     week_number: number;
     requires_review: boolean;
     courses?: any[];
+    design_template_id?: string;
   }) {
     isLoading.value = true
     error.value = null
@@ -160,6 +161,26 @@ export const useMaterialsStore = defineStore('materials', () => {
     }
   }
 
+  async function fetchMergedDownloadUrl(materialId: string) {
+    try {
+      const authStore = useAuthStore()
+      const subdomain = authStore.getSubdomain()
+      // @ts-ignore
+      const res = await $fetch(`/api/v1/materials/${materialId}/download-merged`, {
+        headers: { 'x-subdomain': subdomain },
+      })
+      return res as {
+        materialId: string;
+        downloadUrl: string;
+        filename: string;
+        expiresIn: number;
+      }
+    } catch (e: any) {
+      error.value = e.data?.message || e.message || 'Error al obtener enlace de descarga combinada'
+      throw e
+    }
+  }
+
   return {
     isLoading,
     error,
@@ -168,6 +189,7 @@ export const useMaterialsStore = defineStore('materials', () => {
     fetchReviewData,
     approveCuration,
     fetchDownloadUrl,
+    fetchMergedDownloadUrl,
     fetchHistory
   }
 })
