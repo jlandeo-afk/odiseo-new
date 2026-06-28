@@ -31,14 +31,14 @@ const copyToClipboard = async (text: string) => {
       title: 'Variable copiada',
       description: `Se copió ${text} al portapapeles.`,
       icon: 'i-heroicons-check-circle',
-      color: 'green'
+      color: 'success'
     })
   } catch (err) {
     toast.add({
       title: 'Error',
       description: 'No se pudo copiar al portapapeles.',
       icon: 'i-heroicons-x-circle',
-      color: 'red'
+      color: 'error'
     })
   }
 }
@@ -119,19 +119,19 @@ const parseMargin = (val: string) => parseFloat(val) || 0;
 const formatMargin = (val: number) => `${val}cm`;
 
 const marginNumTop = computed({
-  get: () => parseMargin(form.value.marginTop),
+  get: () => parseMargin(form.value.marginTop || ''),
   set: (val) => { form.value.marginTop = formatMargin(val) }
 })
 const marginNumBottom = computed({
-  get: () => parseMargin(form.value.marginBottom),
+  get: () => parseMargin(form.value.marginBottom || ''),
   set: (val) => { form.value.marginBottom = formatMargin(val) }
 })
 const marginNumInside = computed({
-  get: () => parseMargin(form.value.marginInside),
+  get: () => parseMargin(form.value.marginInside || ''),
   set: (val) => { form.value.marginInside = formatMargin(val) }
 })
 const marginNumOutside = computed({
-  get: () => parseMargin(form.value.marginOutside),
+  get: () => parseMargin(form.value.marginOutside || ''),
   set: (val) => { form.value.marginOutside = formatMargin(val) }
 })
 
@@ -221,12 +221,12 @@ onMounted(async () => {
   } else {
     // defaults for new template
     form.value.headerConfig = { left: '', center: '', right: '{curso}' }
-    form.value.footerConfig = { left: '{institucion_nombre}', center: '', right: 'Pág. {page} de {total_pages}' }
+    form.value.footerConfig = { left: '{institucion_nombre}', center: '', right: 'Pág. {pagina} de {total_paginas}' }
   }
 
   ['left', 'center', 'right'].forEach(pos => {
-    gridModes.value.header[pos as 'left'|'center'|'right'] = isImageUrl((form.value.headerConfig as any)[pos]) ? 'image' : 'text';
-    gridModes.value.footer[pos as 'left'|'center'|'right'] = isImageUrl((form.value.footerConfig as any)[pos]) ? 'image' : 'text';
+    gridModes.value.header[pos as 'left' | 'center' | 'right'] = isImageUrl((form.value.headerConfig as any)[pos]) ? 'image' : 'text';
+    gridModes.value.footer[pos as 'left' | 'center' | 'right'] = isImageUrl((form.value.footerConfig as any)[pos]) ? 'image' : 'text';
   });
 
   updatePreview()
@@ -274,17 +274,26 @@ async function removeCover() {
 }
 
 async function handleSubmit() {
+  if (!form.value.name || !form.value.name.trim()) {
+    toast.add({
+      title: 'Validación de Formulario',
+      description: 'El nombre de la plantilla es obligatorio.',
+      icon: 'i-heroicons-exclamation-circle',
+      color: 'error'
+    })
+    return
+  }
   submitting.value = true
   try {
     const uploadGridFiles = async (designId: string) => {
       for (const key in gridFiles) {
         const file = gridFiles[key]
         const [zone, pos] = key.split('-')
-        
+
         // Skip if this zone is currently in 'text' mode
-        const currentMode = zone === 'header' 
-          ? gridModes.value.header[pos as 'left'|'center'|'right'] 
-          : gridModes.value.footer[pos as 'left'|'center'|'right'];
+        const currentMode = zone === 'header'
+          ? gridModes.value.header[pos as 'left' | 'center' | 'right']
+          : gridModes.value.footer[pos as 'left' | 'center' | 'right'];
         if (currentMode === 'text') continue;
 
         const url = await store.uploadAsset(designId, file, 'grid_image')
@@ -323,13 +332,13 @@ async function handleSubmit() {
 const variablesHelper = [
   { token: '{curso}', desc: 'Nombre del curso actual' },
   { token: '{temas}', desc: 'Consolidado de temas abarcados' },
-  { token: '{page}', desc: 'Número de página actual' },
-  { token: '{total_pages}', desc: 'Total de páginas del PDF' },
-  { token: '{week_number}', desc: 'Número de semana' },
+  { token: '{pagina}', desc: 'Número de página actual' },
+  { token: '{total_paginas}', desc: 'Total de páginas del PDF' },
+  { token: '{semana_numero}', desc: 'Número de semana' },
   { token: '{material_titulo}', desc: 'Título del material (Plantilla)' },
   { token: '{fecha_generacion}', desc: 'Fecha actual en formato local' },
   { token: '{institucion_nombre}', desc: 'Nombre del Tenant/Ciclo' },
-  { token: '{cycle_name}', desc: 'Nombre del Ciclo seleccionado' }
+  { token: '{ciclo_nombre}', desc: 'Nombre del Ciclo seleccionado' }
 ]
 </script>
 
@@ -340,37 +349,45 @@ const variablesHelper = [
       class="lg:col-span-6 flex flex-col h-full max-h-full overflow-y-auto pr-2 custom-scrollbar">
 
       <!-- Group: Configuración General -->
-      <div class="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
-        <div class="rounded-t-xl bg-slate-50 dark:bg-slate-800/50 px-5 py-3 border-b border-slate-200 dark:border-white/5 flex items-center gap-2">
+      <div
+        class="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
+        <div
+          class="rounded-t-xl bg-slate-50 dark:bg-slate-800/50 px-5 py-3 border-b border-slate-200 dark:border-white/5 flex items-center gap-2">
           <UIcon name="i-heroicons-document-text" class="text-indigo-500 w-5 h-5" />
           <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Configuración General</h3>
         </div>
-        
+
         <div class="p-5 grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-          
+
           <!-- Left Col: Basics -->
           <div class="flex flex-col gap-5">
             <div>
-              <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">Nombre de la Plantilla</label>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Nombre de la
+                Plantilla</label>
               <UInput v-model="form.name" placeholder="Ej. Diseño Premium 2026" required size="lg" />
             </div>
             <UCheckbox v-model="form.isDefault" label="Establecer como diseño predeterminado global" />
           </div>
 
           <!-- Right Col: Cover & Watermark -->
-          <div class="flex flex-col gap-5 bg-slate-50/50 dark:bg-slate-800/20 p-4 rounded-lg border border-slate-100 dark:border-white/5">
+          <div
+            class="flex flex-col gap-5 bg-slate-50/50 dark:bg-slate-800/20 p-4 rounded-lg border border-slate-100 dark:border-white/5">
             <!-- Cover Section -->
             <div class="flex flex-col gap-3">
               <UCheckbox v-model="form.showCover" label="Generar Portada (Cover Page)" />
-              
+
               <div v-if="form.showCover" class="pl-7 flex items-center gap-3">
-                <div v-if="coverPreview" class="h-14 w-10 flex items-center justify-center bg-white dark:bg-slate-950 rounded shadow-sm border border-slate-200 dark:border-white/10 overflow-hidden shrink-0">
+                <div v-if="coverPreview"
+                  class="h-14 w-10 flex items-center justify-center bg-white dark:bg-slate-950 rounded shadow-sm border border-slate-200 dark:border-white/10 overflow-hidden shrink-0">
                   <img :src="coverPreview" class="max-h-full max-w-full object-cover" />
                 </div>
                 <div class="flex gap-2">
-                  <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo" @click="($refs.coverInput as any)?.click()">Subir</UButton>
-                  <input ref="coverInput" type="file" accept="image/png,image/jpeg" class="hidden" @change="onCoverChange" />
-                  <UButton v-if="coverPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash" @click="removeCover" />
+                  <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo"
+                    @click="($refs.coverInput as any)?.click()">Subir</UButton>
+                  <input ref="coverInput" type="file" accept="image/png,image/jpeg" class="hidden"
+                    @change="onCoverChange" />
+                  <UButton v-if="coverPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash"
+                    @click="removeCover" />
                 </div>
               </div>
             </div>
@@ -380,15 +397,21 @@ const variablesHelper = [
 
             <!-- Watermark Section -->
             <div>
-              <label class="block text-[11px] text-slate-500 font-semibold mb-2 uppercase tracking-wide">Marca de Agua (Fondo global)</label>
+              <label class="block text-[11px] dark:text-slate-400 font-semibold mb-2 uppercase tracking-wide">Marca de
+                Agua
+                (Fondo global)</label>
               <div class="flex items-center gap-3">
-                <div v-if="watermarkPreview" class="h-12 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-white/5 overflow-hidden shrink-0">
+                <div v-if="watermarkPreview"
+                  class="h-12 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-white/5 overflow-hidden shrink-0">
                   <img :src="watermarkPreview" class="max-h-full max-w-full object-contain" />
                 </div>
                 <div class="flex gap-2">
-                  <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo" @click="($refs.watermarkInput as any)?.click()">Subir</UButton>
-                  <input ref="watermarkInput" type="file" accept="image/png,image/jpeg" class="hidden" @change="onWatermarkChange" />
-                  <UButton v-if="watermarkPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash" @click="removeWatermark" />
+                  <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo"
+                    @click="($refs.watermarkInput as any)?.click()">Subir</UButton>
+                  <input ref="watermarkInput" type="file" accept="image/png,image/jpeg" class="hidden"
+                    @change="onWatermarkChange" />
+                  <UButton v-if="watermarkPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash"
+                    @click="removeWatermark" />
                 </div>
               </div>
             </div>
@@ -410,7 +433,7 @@ const variablesHelper = [
 
           <!-- Banner Superior -->
           <div>
-            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">Fondo Superior
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Fondo Superior
               (Banner)</label>
             <div class="flex items-center gap-3">
               <div v-if="bannerPreview"
@@ -430,31 +453,58 @@ const variablesHelper = [
           </div>
 
           <!-- Header Grid -->
-          <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-lg border border-slate-100 dark:border-white/5 transition-all" @mouseenter="setFocus('header')" @mouseleave="setFocus(null)">
-            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Zonas de Encabezado (Header)</label>
+          <div class="dark:bg-slate-800/30 p-4 rounded-lg border border-slate-200 dark:border-white/5 transition-all"
+            @mouseenter="setFocus('header')" @mouseleave="setFocus(null)">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Zonas de Encabezado
+              (Header)</label>
             <div class="grid grid-cols-3 gap-3">
               <div v-for="pos in ['left', 'center', 'right']" :key="'header-' + pos" class="flex flex-col gap-2">
                 <div class="flex justify-between items-center">
-                  <label class="text-[10px] uppercase text-slate-500 font-semibold">{{ pos }}</label>
-                  <div class="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded">
-                    <button type="button" @click="gridModes.header[pos as 'left'|'center'|'right'] = 'text'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.header[pos as 'left'|'center'|'right'] === 'text', 'text-slate-500 hover:text-slate-700': gridModes.header[pos as 'left'|'center'|'right'] !== 'text'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Texto</button>
-                    <button type="button" @click="gridModes.header[pos as 'left'|'center'|'right'] = 'image'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.header[pos as 'left'|'center'|'right'] === 'image', 'text-slate-500 hover:text-slate-700': gridModes.header[pos as 'left'|'center'|'right'] !== 'image'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Imagen</button>
+                  <label class="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-semibold">
+                    {{ pos === 'left' ? 'Izquierda' : pos === 'center' ? 'Centro' : 'Derecha' }}
+                  </label>
+                  <div
+                    class="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-white/5 shadow-inner">
+                    <button type="button" @click="gridModes.header[pos as 'left' | 'center' | 'right'] = 'text'" :class="[
+                      gridModes.header[pos as 'left' | 'center' | 'right'] === 'text'
+                        ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400 font-semibold'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                    ]" class="px-2 py-0.5 rounded-md transition-all duration-200 flex items-center justify-center"
+                      title="Insertar Texto">
+                      <UIcon name="i-lucide-type" class="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" @click="gridModes.header[pos as 'left' | 'center' | 'right'] = 'image'"
+                      :class="[
+                        gridModes.header[pos as 'left' | 'center' | 'right'] === 'image'
+                          ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400 font-semibold'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                      ]" class="px-2 py-0.5 rounded-md transition-all duration-200 flex items-center justify-center"
+                      title="Insertar Imagen">
+                      <UIcon name="i-heroicons-photo" class="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                <template v-if="gridModes.header[pos as 'left'|'center'|'right'] === 'text'">
-                  <RichTextInput v-model="(form.headerConfig as any)[pos]" placeholder="Texto o variables" collapsibleToolbar />
+                <template v-if="gridModes.header[pos as 'left' | 'center' | 'right'] === 'text'">
+                  <RichTextInput v-model="(form.headerConfig as any)[pos]" placeholder="Texto o variables"
+                    collapsibleToolbar />
                 </template>
-                
+
                 <template v-else>
-                  <div class="flex items-center gap-2 border border-slate-200 dark:border-white/10 p-2 rounded bg-white dark:bg-slate-900 mt-1">
-                    <div v-if="isImageUrl((form.headerConfig as any)[pos])" class="h-8 w-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 rounded overflow-hidden">
-                       <img :src="(form.headerConfig as any)[pos]" class="max-h-full max-w-full object-contain" />
+                  <div
+                    class="flex items-center gap-2 border border-slate-200 dark:border-white/10 p-2 rounded bg-white dark:bg-slate-900 mt-1">
+                    <div v-if="isImageUrl((form.headerConfig as any)[pos])"
+                      class="h-8 w-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 rounded overflow-hidden">
+                      <img :src="(form.headerConfig as any)[pos]" class="max-h-full max-w-full object-contain" />
                     </div>
                     <div class="flex flex-col gap-1 flex-1">
-                      <UButton size="xs" variant="outline" color="neutral" icon="i-heroicons-photo" @click="($refs['headerImg_' + pos] as any)?.[0]?.click()">Subir</UButton>
-                      <input :ref="'headerImg_' + pos" type="file" accept="image/*" class="hidden" @change="e => onGridImageChange(e, 'header', pos as any)" />
-                      <UButton v-if="isImageUrl((form.headerConfig as any)[pos])" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" @click="(form.headerConfig as any)[pos] = ''">Borrar</UButton>
+                      <UButton size="xs" variant="outline" color="neutral" icon="i-heroicons-photo"
+                        @click="($refs['headerImg_' + pos] as any)?.[0]?.click()">Subir</UButton>
+                      <input :ref="'headerImg_' + pos" type="file" accept="image/*" class="hidden"
+                        @change="e => onGridImageChange(e, 'header', pos as any)" />
+                      <UButton v-if="isImageUrl((form.headerConfig as any)[pos])" size="xs" variant="ghost"
+                        color="error" icon="i-heroicons-trash" @click="(form.headerConfig as any)[pos] = ''">Borrar
+                      </UButton>
                     </div>
                   </div>
                 </template>
@@ -463,31 +513,58 @@ const variablesHelper = [
           </div>
 
           <!-- Footer Grid -->
-          <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-lg border border-slate-100 dark:border-white/5 transition-all" @mouseenter="setFocus('footer')" @mouseleave="setFocus(null)">
-            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Zonas de Pie de Página (Footer)</label>
+          <div class="dark:bg-slate-800/30 p-4 rounded-lg border border-slate-100 dark:border-white/5 transition-all"
+            @mouseenter="setFocus('footer')" @mouseleave="setFocus(null)">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Zonas de Pie de Página
+              (Footer)</label>
             <div class="grid grid-cols-3 gap-3">
               <div v-for="pos in ['left', 'center', 'right']" :key="'footer-' + pos" class="flex flex-col gap-2">
                 <div class="flex justify-between items-center">
-                  <label class="text-[10px] uppercase text-slate-500 font-semibold">{{ pos }}</label>
-                  <div class="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded">
-                    <button type="button" @click="gridModes.footer[pos as 'left'|'center'|'right'] = 'text'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.footer[pos as 'left'|'center'|'right'] === 'text', 'text-slate-500 hover:text-slate-700': gridModes.footer[pos as 'left'|'center'|'right'] !== 'text'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Texto</button>
-                    <button type="button" @click="gridModes.footer[pos as 'left'|'center'|'right'] = 'image'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.footer[pos as 'left'|'center'|'right'] === 'image', 'text-slate-500 hover:text-slate-700': gridModes.footer[pos as 'left'|'center'|'right'] !== 'image'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Imagen</button>
+                  <label class="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-semibold">
+                    {{ pos === 'left' ? 'Izquierda' : pos === 'center' ? 'Centro' : 'Derecha' }}
+                  </label>
+                  <div
+                    class="flex bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-white/5 shadow-inner">
+                    <button type="button" @click="gridModes.footer[pos as 'left' | 'center' | 'right'] = 'text'" :class="[
+                      gridModes.footer[pos as 'left' | 'center' | 'right'] === 'text'
+                        ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400 font-semibold'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                    ]" class="px-2 py-0.5 rounded-md transition-all duration-200 flex items-center justify-center"
+                      title="Insertar Texto">
+                      <UIcon name="i-lucide-type" class="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" @click="gridModes.footer[pos as 'left' | 'center' | 'right'] = 'image'"
+                      :class="[
+                        gridModes.footer[pos as 'left' | 'center' | 'right'] === 'image'
+                          ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400 font-semibold'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                      ]" class="px-2 py-0.5 rounded-md transition-all duration-200 flex items-center justify-center"
+                      title="Insertar Imagen">
+                      <UIcon name="i-heroicons-photo" class="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                <template v-if="gridModes.footer[pos as 'left'|'center'|'right'] === 'text'">
-                  <RichTextInput v-model="(form.footerConfig as any)[pos]" placeholder="Texto o variables" collapsibleToolbar />
+                <template v-if="gridModes.footer[pos as 'left' | 'center' | 'right'] === 'text'">
+                  <RichTextInput v-model="(form.footerConfig as any)[pos]" placeholder="Texto o variables"
+                    collapsibleToolbar />
                 </template>
-                
+
                 <template v-else>
-                  <div class="flex items-center gap-2 border border-slate-200 dark:border-white/10 p-2 rounded bg-white dark:bg-slate-900 mt-1">
-                    <div v-if="isImageUrl((form.footerConfig as any)[pos])" class="h-8 w-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 rounded overflow-hidden">
-                       <img :src="(form.footerConfig as any)[pos]" class="max-h-full max-w-full object-contain" />
+                  <div
+                    class="flex items-center gap-2 border border-slate-200 dark:border-white/10 p-2 rounded bg-white dark:bg-slate-900 mt-1">
+                    <div v-if="isImageUrl((form.footerConfig as any)[pos])"
+                      class="h-8 w-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 rounded overflow-hidden">
+                      <img :src="(form.footerConfig as any)[pos]" class="max-h-full max-w-full object-contain" />
                     </div>
                     <div class="flex flex-col gap-1 flex-1">
-                      <UButton size="xs" variant="outline" color="neutral" icon="i-heroicons-photo" @click="($refs['footerImg_' + pos] as any)?.[0]?.click()">Subir</UButton>
-                      <input :ref="'footerImg_' + pos" type="file" accept="image/*" class="hidden" @change="e => onGridImageChange(e, 'footer', pos as any)" />
-                      <UButton v-if="isImageUrl((form.footerConfig as any)[pos])" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" @click="(form.footerConfig as any)[pos] = ''">Borrar</UButton>
+                      <UButton size="xs" variant="outline" color="neutral" icon="i-heroicons-photo"
+                        @click="($refs['footerImg_' + pos] as any)?.[0]?.click()">Subir</UButton>
+                      <input :ref="'footerImg_' + pos" type="file" accept="image/*" class="hidden"
+                        @change="e => onGridImageChange(e, 'footer', pos as any)" />
+                      <UButton v-if="isImageUrl((form.footerConfig as any)[pos])" size="xs" variant="ghost"
+                        color="error" icon="i-heroicons-trash" @click="(form.footerConfig as any)[pos] = ''">Borrar
+                      </UButton>
                     </div>
                   </div>
                 </template>
@@ -498,15 +575,21 @@ const variablesHelper = [
           <!-- Helper Variables -->
           <div class="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden text-sm">
             <div
-              class="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-white/10 font-semibold text-xs text-slate-600 dark:text-slate-300">
+              class="dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-white/10 font-semibold text-xs text-slate-600 dark:text-slate-300">
               Variables Dinámicas Soportadas
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 p-3 bg-white dark:bg-slate-900">
-              <div v-for="v in variablesHelper" :key="v.token" class="flex items-center gap-2 text-[11px] cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1 rounded transition-colors" @click="copyToClipboard(v.token)" title="Click para copiar">
-                <code
-                  class="text-indigo-600 dark:text-indigo-400 font-mono bg-indigo-50 dark:bg-indigo-900/30 px-1 py-0.5 rounded pointer-events-none">{{
-                    v.token }}</code>
-                <span class="text-slate-500 truncate pointer-events-none" :title="v.desc">{{ v.desc }}</span>
+              <div v-for="v in variablesHelper" :key="v.token"
+                class="flex items-center justify-between gap-2 text-[11px] cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1 rounded transition-colors group/var-item"
+                @click="copyToClipboard(v.token)" title="Click para copiar">
+                <div class="flex items-center gap-2 truncate pointer-events-none">
+                  <code
+                    class="text-indigo-600 dark:text-indigo-400 font-mono bg-indigo-50 dark:bg-indigo-900/30 px-1 py-0.5 rounded">{{
+                      v.token }}</code>
+                  <span class="text-slate-500 dark:text-slate-400 truncate" :title="v.desc">{{ v.desc }}</span>
+                </div>
+                <UIcon name="i-heroicons-document-duplicate"
+                  class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-40 group-hover/var-item:opacity-100 transition-opacity shrink-0" />
               </div>
             </div>
           </div>
@@ -535,21 +618,29 @@ const variablesHelper = [
               <!-- Font Family -->
               <div title="Tipografía del Contenido" class="relative flex items-center">
                 <select v-model="form.fontFamily"
-                  class="text-[11px] py-1 px-2 bg-transparent border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none focus:ring-1 focus:ring-primary">
-                  <option value="Arial">Arial</option>
-                  <option value="Courier New">Courier</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Times New Roman">Times</option>
-                  <option value="Verdana">Verdana</option>
+                  class="text-[11px] py-1 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none focus:ring-1 focus:ring-primary">
+                  <option value="Arial" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Arial
+                  </option>
+                  <option value="Courier New" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                    Courier
+                  </option>
+                  <option value="Georgia" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Georgia
+                  </option>
+                  <option value="Times New Roman" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                    Times
+                  </option>
+                  <option value="Verdana" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Verdana
+                  </option>
                 </select>
               </div>
 
               <!-- Font Size -->
               <div title="Tamaño de Letra (pt)"
-                class="relative flex items-center bg-transparent border border-slate-300 dark:border-slate-600 rounded overflow-hidden focus-within:ring-1 focus-within:ring-primary w-20">
+                class="relative flex items-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded overflow-hidden focus-within:ring-1 focus-within:ring-primary w-20">
                 <input type="number" v-model="contentFontSizeNum" min="6" max="36"
-                  class="w-full text-[11px] py-1 px-2 bg-transparent outline-none text-center" />
-                <span class="text-[9px] text-slate-400 pr-2 pointer-events-none font-medium">pt</span>
+                  class="w-full text-[11px] py-1 px-2 bg-transparent outline-none text-center text-slate-800 dark:text-slate-100" />
+                <span
+                  class="text-[9px] text-slate-400 dark:text-slate-500 pr-2 pointer-events-none font-medium">pt</span>
               </div>
 
               <div class="w-px h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
@@ -580,7 +671,7 @@ const variablesHelper = [
             </div>
 
             <!-- Previsualización Falsa -->
-            <div class="p-6 bg-white dark:bg-slate-950 overflow-hidden relative">
+            <div class="p-6 bg-white overflow-hidden relative border-t border-slate-100 dark:border-white/5">
               <div class="flex gap-2" :style="{ fontFamily: form.fontFamily, fontSize: form.contentFontSize }">
                 <span class="font-bold shrink-0" :style="{ color: accentColorHex }">1.</span>
                 <div :style="{ color: form.contentTextColor }">
@@ -627,21 +718,22 @@ const variablesHelper = [
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label
-                class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Superior</label>
+                class="block text-[11px] text-slate-500 dark:text-slate-400 font-semibold mb-1 uppercase tracking-wide">Superior</label>
               <UInput type="number" step="0.1" min="2" max="6" v-model="marginNumTop" icon="i-heroicons-arrow-up">
                 <template #trailing><span class="text-xs text-slate-400">cm</span></template>
               </UInput>
             </div>
             <div>
               <label
-                class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Inferior</label>
+                class="block text-[11px] text-slate-500 dark:text-slate-400 font-semibold mb-1 uppercase tracking-wide">Inferior</label>
               <UInput type="number" step="0.1" min="1.5" max="5" v-model="marginNumBottom"
                 icon="i-heroicons-arrow-down">
                 <template #trailing><span class="text-xs text-slate-400">cm</span></template>
               </UInput>
             </div>
             <div>
-              <label class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Interior
+              <label
+                class="block text-[11px] text-slate-500 dark:text-slate-400 font-semibold mb-1 uppercase tracking-wide">Interior
                 (Lomo)</label>
               <UInput type="number" step="0.1" min="1" max="4" v-model="marginNumInside"
                 icon="i-heroicons-arrows-right-left">
@@ -650,7 +742,7 @@ const variablesHelper = [
             </div>
             <div>
               <label
-                class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Exterior</label>
+                class="block text-[11px] text-slate-500 dark:text-slate-400 font-semibold mb-1 uppercase tracking-wide">Exterior</label>
               <UInput type="number" step="0.1" min="1" max="4" v-model="marginNumOutside"
                 icon="i-heroicons-arrows-left-right">
                 <template #trailing><span class="text-xs text-slate-400">cm</span></template>
@@ -687,14 +779,14 @@ const variablesHelper = [
         <!-- Toolbar for Zoom Controls -->
         <div
           class="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 dark:bg-slate-900 px-1 py-1 rounded-md border border-slate-200 dark:border-white/5 shrink-0 shadow-sm z-10">
-          <UButton color="gray" variant="ghost" icon="i-heroicons-minus" size="2xs" @click="zoomOut"
+          <UButton color="neutral" variant="ghost" icon="i-heroicons-minus" size="xs" @click="zoomOut"
             :disabled="zoom <= 40" />
           <span class="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 w-9 text-center">{{ zoom
           }}%</span>
-          <UButton color="gray" variant="ghost" icon="i-heroicons-plus" size="2xs" @click="zoomIn"
+          <UButton color="neutral" variant="ghost" icon="i-heroicons-plus" size="xs" @click="zoomIn"
             :disabled="zoom >= 150" />
           <div class="w-px h-3 bg-slate-200 dark:bg-white/10 mx-0.5"></div>
-          <UButton color="gray" variant="ghost" size="2xs" class="text-[10px] font-semibold tracking-wide"
+          <UButton color="neutral" variant="ghost" size="xs" class="text-[10px] font-semibold tracking-wide"
             @click="resetZoom">Ajustar</UButton>
         </div>
 

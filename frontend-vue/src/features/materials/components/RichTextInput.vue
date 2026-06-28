@@ -71,11 +71,19 @@ const showToolbar = ref(!props.collapsibleToolbar)
 </script>
 
 <template>
-  <div class="border border-slate-200 dark:border-white/10 rounded-md overflow-hidden bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-shadow">
+  <div class="relative border border-slate-200 dark:border-white/10 rounded-md overflow-hidden bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-shadow">
     
     <!-- Collapsible Toolbar Toggle (When hidden) -->
-    <div v-if="collapsibleToolbar && !showToolbar" class="flex justify-end p-1 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-800/50">
-      <UButton size="2xs" variant="ghost" color="neutral" icon="i-heroicons-adjustments-horizontal" @click="showToolbar = true" class="text-[10px] font-medium text-slate-500 hover:text-indigo-600">Personalizar texto</UButton>
+    <div v-if="collapsibleToolbar && !showToolbar" class="absolute right-1.5 top-1.5 z-10">
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-adjustments-horizontal"
+        @click="showToolbar = true"
+        title="Personalizar texto"
+        class="opacity-60 hover:opacity-100 rounded-md bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-white/10 shadow-sm hover:shadow transition-all duration-200"
+      />
     </div>
 
     <!-- Toolbar -->
@@ -91,25 +99,25 @@ const showToolbar = ref(!props.collapsibleToolbar)
       
       <!-- Font Family Picker -->
       <div title="Tipografía" class="relative">
-        <select class="text-[10px] py-1 px-1 bg-transparent border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none" @change="e => applyFormat('fontName', (e.target as HTMLSelectElement).value)">
-          <option value="Arial">Arial</option>
-          <option value="Courier New">Courier</option>
-          <option value="Georgia">Georgia</option>
-          <option value="Times New Roman">Times</option>
-          <option value="Verdana">Verdana</option>
+        <select class="text-[11px] py-1 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none" @change="e => applyFormat('fontName', (e.target as HTMLSelectElement).value)">
+          <option value="Arial" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Arial</option>
+          <option value="Courier New" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Courier</option>
+          <option value="Georgia" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Georgia</option>
+          <option value="Times New Roman" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Times</option>
+          <option value="Verdana" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Verdana</option>
         </select>
       </div>
 
       <!-- Font Size Picker -->
       <div title="Tamaño" class="relative">
-        <select class="text-[10px] py-1 px-1 bg-transparent border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none" @change="e => applyFormat('fontSize', (e.target as HTMLSelectElement).value)">
-          <option value="1">8pt</option>
-          <option value="2">10pt</option>
-          <option value="3" selected>12pt</option>
-          <option value="4">14pt</option>
-          <option value="5">18pt</option>
-          <option value="6">24pt</option>
-          <option value="7">36pt</option>
+        <select class="text-[11px] py-1 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none" @change="e => applyFormat('fontSize', (e.target as HTMLSelectElement).value)">
+          <option value="1" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">8pt</option>
+          <option value="2" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">10pt</option>
+          <option value="3" selected class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">12pt</option>
+          <option value="4" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">14pt</option>
+          <option value="5" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">18pt</option>
+          <option value="6" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">24pt</option>
+          <option value="7" class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">36pt</option>
         </select>
       </div>
 
@@ -120,14 +128,17 @@ const showToolbar = ref(!props.collapsibleToolbar)
         </div>
         
         <div v-if="collapsibleToolbar" class="ml-auto">
-           <UButton size="2xs" variant="ghost" color="neutral" icon="i-heroicons-x-mark" @click="showToolbar = false" title="Ocultar herramientas" />
+           <UButton size="xs" variant="ghost" color="neutral" icon="i-heroicons-x-mark" @click="showToolbar = false" title="Ocultar herramientas" />
         </div>
     </div>
     <!-- Editor -->
     <div
       ref="editorRef"
       contenteditable="true"
-      class="p-2 min-h-[60px] text-sm outline-none overflow-y-auto max-h-[150px] empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 cursor-text break-words"
+      :class="[
+        'p-2 min-h-[60px] text-sm outline-none overflow-y-auto max-h-[150px] empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 cursor-text break-words text-slate-800 dark:text-slate-100',
+        collapsibleToolbar && !showToolbar ? 'pr-9' : ''
+      ]"
       :data-placeholder="placeholder"
       @input="updateValue"
       @mouseup="saveSelection"

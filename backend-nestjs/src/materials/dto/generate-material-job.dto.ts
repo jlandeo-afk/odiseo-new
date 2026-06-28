@@ -29,4 +29,9 @@ export interface GenerateMaterialJobDto {
   exam_areas?: ExamArea[];
   syllabus_distribution: SyllabusDistribution[];
   notification: NotificationInfo;
+  design_template_id?: string | null;
+  material_request_id?: string;
+  cycle_id?: string;
+  week_number?: number;
+  template_name?: string;
 }

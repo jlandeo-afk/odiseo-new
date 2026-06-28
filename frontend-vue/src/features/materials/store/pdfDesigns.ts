@@ -20,6 +20,8 @@ export interface PdfDesignTemplate {
   isBookMode: boolean
   fontFamily: string
   borderRadius: string
+  contentFontSize: string
+  contentTextColor: string
   blocksConfig: any | null
   headerConfig: any | null
   footerConfig: any | null

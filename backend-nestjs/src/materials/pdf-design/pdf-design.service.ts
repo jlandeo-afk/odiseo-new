@@ -136,7 +136,7 @@ export class PdfDesignService {
   async generatePreview(
     tenantId: string,
     designId: string,
-    overrides?: Partial<CreatePdfDesignDto>,
+    overrides?: any,
   ): Promise<{ html: string }> {
     let design: Partial<PdfDesignTemplate>;
     if (overrides && Object.keys(overrides).length > 0) {
@@ -155,10 +155,10 @@ export class PdfDesignService {
     const marginOutside = design.marginOutside || '1cm';
     const isBookMode = design.isBookMode || false;
 
-    const wNum = 1;
-    const tplName = 'Material de Estudio';
-    const courseName = 'Aritmética';
-    const cycleName = 'Ciclo Especial 2026';
+    const wNum = overrides?.weekNumber || overrides?.week_number || 1;
+    const tplName = overrides?.templateName || overrides?.template_name || 'Material de Estudio';
+    const courseName = overrides?.courseName || overrides?.course_name || 'Aritmética';
+    const cycleName = overrides?.cycleName || overrides?.cycle_name || 'Ciclo Especial 2026';
 
     const headerConfig = design.headerConfig || {};
     const footerConfig = design.footerConfig || {};
@@ -167,17 +167,21 @@ export class PdfDesignService {
       if (!text) return '';
       return text
         .replace(/\{page\}/g, String(pageNum))
+        .replace(/\{pagina\}/g, String(pageNum))
         .replace(/\{total_pages\}/g, '2')
+        .replace(/\{total_paginas\}/g, '2')
         .replace(/\{total\}/g, '2')
         .replace(/\{curso\}/g, courseName)
         .replace(/\{course_name\}/g, courseName)
         .replace(/\{temas\}/g, 'Temas Consolidados')
         .replace(/\{week_number\}/g, String(wNum))
+        .replace(/\{semana_numero\}/g, String(wNum))
         .replace(/\{material_titulo\}/g, tplName)
         .replace(/\{template_name\}/g, tplName)
         .replace(/\{fecha_generacion\}/g, new Date().toLocaleDateString('es-ES'))
         .replace(/\{institucion_nombre\}/g, cycleName)
-        .replace(/\{cycle_name\}/g, cycleName);
+        .replace(/\{cycle_name\}/g, cycleName)
+        .replace(/\{ciclo_nombre\}/g, cycleName);
     };
 
     const buildGridHtml = (config: any, isHeader: boolean, pageNum: number) => {

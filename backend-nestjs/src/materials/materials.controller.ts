@@ -7,7 +7,9 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { GenerateMaterialDto } from './dto/generate-material.dto';
 import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
@@ -86,31 +88,54 @@ export class MaterialsController {
 
   @Get(':id/courses/:courseId/download')
   @ApiOperation({
-    summary: 'Obtener URL firmada dinámica de descarga de S3 para un curso',
+    summary: 'Descargar PDF de un curso directamente (streaming)',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Enlace dinámico de descarga devuelto.',
-  })
+  @ApiResponse({ status: 200, description: 'Archivo PDF devuelto como stream.' })
   @ApiResponse({ status: 404, description: 'La solicitud o el curso no existen.' })
-  async getDownloadUrl(
+  async downloadCoursePdf(
     @Param('id') id: string,
     @Param('courseId') courseId: string,
+    @Res() res: Response,
   ) {
-    return await this.materialsService.getDownloadUrl(id, courseId);
+    const result = await this.materialsService.getDownloadUrl(id, courseId);
+    try {
+      const buffer = await this.materialsService.streamDownload(result.s3Key);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.filename}"`,
+      );
+      res.setHeader('Content-Length', buffer.length);
+      res.end(buffer);
+    } catch {
+      // Fallback: redirect to presigned URL if streaming fails
+      res.redirect(result.downloadUrl);
+    }
   }
 
   @Get(':id/download-merged')
   @ApiOperation({
-    summary: 'Obtener URL firmada del PDF combinado de todos los cursos',
+    summary: 'Descargar PDF combinado directamente (streaming)',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Enlace de descarga del PDF combinado devuelto.',
-  })
+  @ApiResponse({ status: 200, description: 'Archivo PDF combinado devuelto como stream.' })
   @ApiResponse({ status: 404, description: 'La solicitud no existe.' })
-  async getMergedDownloadUrl(@Param('id') id: string) {
-    return await this.materialsService.getMergedDownloadUrl(id);
+  async downloadMergedPdf(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const result = await this.materialsService.getMergedDownloadUrl(id);
+    try {
+      const buffer = await this.materialsService.streamDownload(result.s3Key);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.filename}"`,
+      );
+      res.setHeader('Content-Length', buffer.length);
+      res.end(buffer);
+    } catch {
+      res.redirect(result.downloadUrl);
+    }
   }
 
   @Get('history')

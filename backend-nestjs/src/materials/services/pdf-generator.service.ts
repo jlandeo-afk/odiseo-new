@@ -78,17 +78,21 @@ export class PdfGeneratorService {
       if (!text) return '';
       return text
         .replace(/\{page\}/g, '<span class="pageNumber"></span>')
+        .replace(/\{pagina\}/g, '<span class="pageNumber"></span>')
         .replace(/\{total_pages\}/g, '<span class="totalPages"></span>')
+        .replace(/\{total_paginas\}/g, '<span class="totalPages"></span>')
         .replace(/\{total\}/g, '<span class="totalPages"></span>')
         .replace(/\{curso\}/g, courseName)
         .replace(/\{course_name\}/g, courseName)
         .replace(/\{temas\}/g, 'Temas Consolidados')
         .replace(/\{week_number\}/g, String(wNum))
+        .replace(/\{semana_numero\}/g, String(wNum))
         .replace(/\{material_titulo\}/g, tplName)
         .replace(/\{template_name\}/g, tplName)
         .replace(/\{fecha_generacion\}/g, new Date().toLocaleDateString('es-ES'))
         .replace(/\{institucion_nombre\}/g, instName)
-        .replace(/\{cycle_name\}/g, cycleName);
+        .replace(/\{cycle_name\}/g, cycleName)
+        .replace(/\{ciclo_nombre\}/g, cycleName);
     };
 
     const marginInside = resolvedDesign.marginInside || '1cm';
@@ -217,11 +221,18 @@ export class PdfGeneratorService {
       if (!text) return '';
       return text
         .replace(/\{page\}/g, '<span class="pageNumber"></span>')
+        .replace(/\{pagina\}/g, '<span class="pageNumber"></span>')
         .replace(/\{total\}/g, '<span class="totalPages"></span>')
+        .replace(/\{total_pages\}/g, '<span class="totalPages"></span>')
+        .replace(/\{total_paginas\}/g, '<span class="totalPages"></span>')
+        .replace(/\{curso\}/g, courseName)
         .replace(/\{course_name\}/g, courseName)
         .replace(/\{week_number\}/g, String(wNum))
+        .replace(/\{semana_numero\}/g, String(wNum))
+        .replace(/\{material_titulo\}/g, tplName)
         .replace(/\{template_name\}/g, tplName)
-        .replace(/\{cycle_name\}/g, cycleName);
+        .replace(/\{cycle_name\}/g, cycleName)
+        .replace(/\{ciclo_nombre\}/g, cycleName);
     };
 
     const headerTitle = resolveVars('{template_name}');

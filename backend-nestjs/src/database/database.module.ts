@@ -12,17 +12,22 @@ import { Alternative } from '../question-bank/entities/alternative.entity';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USER', 'postgres'),
-        password: config.get<string>('DB_PASS', 'postgres'),
-        database: config.get<string>('DB_NAME', 'odiseo'),
-        autoLoadEntities: true,
-        synchronize: true,
-        logging: ['error', 'warn'],
-      }),
+      useFactory: (config: ConfigService) => {
+        const dbName = config.get<string>('DB_NAME', 'odiseo');
+        const dbUser = config.get<string>('DB_USER', 'postgres');
+        console.log(`📡 TypeORM Default Connection Details: host=${config.get('DB_HOST')}, port=${config.get('DB_PORT')}, database=${dbName}, username=${dbUser}`);
+        return {
+          type: 'postgres',
+          host: config.get<string>('DB_HOST', 'localhost'),
+          port: config.get<number>('DB_PORT', 5432),
+          username: dbUser,
+          password: config.get<string>('DB_PASS', 'postgres'),
+          database: dbName,
+          autoLoadEntities: true,
+          synchronize: true,
+          logging: ['error', 'warn'],
+        };
+      },
     }),
     TypeOrmModule.forRootAsync({
       name: 'questionsConnection',

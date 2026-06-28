@@ -15,6 +15,7 @@ import { Company } from '../tenants/entities/tenant.entity';
 import { Topic } from '../catalogs/entities/topic.entity';
 import { Subtopic } from '../catalogs/entities/subtopic.entity';
 import { Question } from '../question-bank/entities/question.entity';
+import { PdfDesignTemplate } from './entities/pdf-design-template.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -53,6 +54,17 @@ export class MaterialsService {
       });
       if (!template) {
         throw new BadRequestException('El perfil seleccionado no existe');
+      }
+
+      // Resolve design template
+      let designTemplateId = dto.design_template_id || null;
+      if (!designTemplateId) {
+        const defaultDesign = await manager.findOne(PdfDesignTemplate, {
+          where: { tenantId, isDefault: true },
+        });
+        if (defaultDesign) {
+          designTemplateId = defaultDesign.id;
+        }
       }
 
       // 2. Fetch company info for branding
@@ -125,6 +137,11 @@ export class MaterialsService {
           notification: {
             admin_user_id: 'uuid_admin_user',
           },
+          design_template_id: designTemplateId,
+          material_request_id: requestId,
+          cycle_id: template.cycleId,
+          week_number: dto.week_number,
+          template_name: template.name || 'Material',
         });
       }
 
@@ -145,6 +162,7 @@ export class MaterialsService {
           ? MaterialRequestStatus.REVIEW_REQUIRED
           : MaterialRequestStatus.PROCESSING,
         materialType: 'BALOTARIO',
+        designTemplateId,
       });
       await manager.save(mainRequest);
 
@@ -154,61 +172,62 @@ export class MaterialsService {
         await manager.save(courseRequest);
       }
 
-      // 6. If requiresReview, generate mock review questions and pause SQS
-      if (dto.requires_review) {
-        let position = 1;
-        for (const cr of courseRequests) {
-          const syllabus = await manager.findOne(Syllabus, {
-            where: { courseId: cr.courseId, cycleId: template.cycleId, isActive: true },
+      // 6. Generate review questions (always pre-generate so they are available in case of curation/warnings)
+      let position = 1;
+      for (const cr of courseRequests) {
+        const syllabus = await manager.findOne(Syllabus, {
+          where: { courseId: cr.courseId, cycleId: template.cycleId, isActive: true },
+        });
+        if (!syllabus) continue;
+
+        // Fetch distributions again to map questions to correct subtopics
+        let distributions: SyllabusDistribution[] = [];
+        if (template.scope === 'CURRENT_WEEK') {
+          distributions = await manager.find(SyllabusDistribution, {
+            where: { syllabusId: syllabus.id, weekNumber: dto.week_number },
           });
-          if (!syllabus) continue;
+        } else if (template.scope === 'ACCUMULATIVE') {
+          const startWeek = template.accumulationWeeks
+            ? Math.max(1, dto.week_number - template.accumulationWeeks + 1)
+            : 1;
+          distributions = await manager.find(SyllabusDistribution, {
+            where: {
+              syllabusId: syllabus.id,
+              weekNumber: Between(startWeek, dto.week_number),
+            },
+          });
+        }
 
-          // Fetch distributions again to map questions to correct subtopics
-          let distributions: SyllabusDistribution[] = [];
-          if (template.scope === 'CURRENT_WEEK') {
-            distributions = await manager.find(SyllabusDistribution, {
-              where: { syllabusId: syllabus.id, weekNumber: dto.week_number },
-            });
-          } else if (template.scope === 'ACCUMULATIVE') {
-            const startWeek = template.accumulationWeeks
-              ? Math.max(1, dto.week_number - template.accumulationWeeks + 1)
-              : 1;
-            distributions = await manager.find(SyllabusDistribution, {
-              where: {
-                syllabusId: syllabus.id,
-                weekNumber: Between(startWeek, dto.week_number),
-              },
-            });
-          }
+        for (const dist of distributions) {
+          // Fetch actual questions from database for this subtopic
+          const allQuestions = await this.questionsEntityManager.find(Question, {
+            where: { subtopicId: String(convertUuidToIntegerId(dist.subtopicId)) },
+            relations: ['alternatives'],
+          });
+          // Shuffle in memory and take 2
+          const dbQuestions = allQuestions
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 2);
 
-          for (const dist of distributions) {
-            // Fetch actual questions from database for this subtopic
-            const allQuestions = await this.questionsEntityManager.find(Question, {
-              where: { subtopicId: String(convertUuidToIntegerId(dist.subtopicId)) },
-              relations: ['alternatives'],
+          // Generate 2 review questions per subtopic slot
+          for (let i = 0; i < 2; i++) {
+            const dbQ = dbQuestions[i];
+            const isVacant = !dbQ;
+            const reviewQ = manager.create(MaterialReviewQuestion, {
+              id: uuidv4(),
+              materialRequestId: requestId,
+              questionId: isVacant ? (null as any) : dbQ.id,
+              topicId: dist.topicId,
+              subtopicId: dist.subtopicId,
+              position: position++,
+              status: isVacant ? ReviewQuestionStatus.EMPTY : ReviewQuestionStatus.FOUND,
             });
-            // Shuffle in memory and take 2
-            const dbQuestions = allQuestions
-              .sort(() => 0.5 - Math.random())
-              .slice(0, 2);
-
-            // Generate 2 review questions per subtopic slot
-            for (let i = 0; i < 2; i++) {
-              const dbQ = dbQuestions[i];
-              const isVacant = !dbQ;
-              const reviewQ = manager.create(MaterialReviewQuestion, {
-                id: uuidv4(),
-                materialRequestId: requestId,
-                questionId: isVacant ? (null as any) : dbQ.id,
-                topicId: dist.topicId,
-                subtopicId: dist.subtopicId,
-                position: position++,
-                status: isVacant ? ReviewQuestionStatus.EMPTY : ReviewQuestionStatus.FOUND,
-              });
-              await manager.save(reviewQ);
-            }
+            await manager.save(reviewQ);
           }
         }
+      }
+
+      if (dto.requires_review) {
         this.logger.log(`MaterialRequest ${requestId} paused for curation. Review questions generated.`);
       } else {
         // Dispatch BullMQ jobs immediately
@@ -263,6 +282,8 @@ export class MaterialsService {
       let courseStatus: CourseMaterialStatus = CourseMaterialStatus.FAILED;
       if (statusData.status === 'completed') {
         courseStatus = CourseMaterialStatus.COMPLETED;
+      } else if (statusData.status === 'completed_with_warnings') {
+        courseStatus = CourseMaterialStatus.COMPLETED_WITH_WARNINGS;
       } else if (statusData.status === 'failed') {
         courseStatus = CourseMaterialStatus.FAILED;
       } else if (statusData.status === 'processing') {
@@ -284,12 +305,22 @@ export class MaterialsService {
       });
 
       const allFinished = siblingCourses.every(
-        (c) => c.status === CourseMaterialStatus.COMPLETED || c.status === CourseMaterialStatus.FAILED,
+        (c) =>
+          c.status === CourseMaterialStatus.COMPLETED ||
+          c.status === CourseMaterialStatus.COMPLETED_WITH_WARNINGS ||
+          c.status === CourseMaterialStatus.FAILED,
       );
 
       if (allFinished) {
         const hasFailed = siblingCourses.some((c) => c.status === CourseMaterialStatus.FAILED);
-        const finalStatus = hasFailed ? MaterialRequestStatus.FAILED : MaterialRequestStatus.COMPLETED;
+        const hasWarnings = siblingCourses.some((c) => c.status === CourseMaterialStatus.COMPLETED_WITH_WARNINGS);
+
+        let finalStatus = MaterialRequestStatus.COMPLETED;
+        if (hasFailed) {
+          finalStatus = MaterialRequestStatus.FAILED;
+        } else if (hasWarnings) {
+          finalStatus = MaterialRequestStatus.REVIEW_REQUIRED;
+        }
 
         await manager.update(MaterialRequest, courseReq.materialRequestId, {
           status: finalStatus,
@@ -473,6 +504,7 @@ export class MaterialsService {
           cycle_id: request.profileId || template?.cycleId,
           week_number: request.weekNumber,
           template_name: template?.name || 'Material',
+          design_template_id: request.designTemplateId,
           tenant: {
             tenant_id: tenantId,
             commercial_name: company?.commercialName || 'Colegio Odiseo Innova',
@@ -509,7 +541,11 @@ export class MaterialsService {
         throw new NotFoundException('El curso solicitado no forma parte de esta solicitud de material');
       }
 
-      if (courseReq.status !== CourseMaterialStatus.COMPLETED || !courseReq.downloadUrl) {
+      if (
+        (courseReq.status !== CourseMaterialStatus.COMPLETED &&
+          courseReq.status !== CourseMaterialStatus.COMPLETED_WITH_WARNINGS) ||
+        !courseReq.downloadUrl
+      ) {
         throw new BadRequestException('El material aún no está listo o falló su generación');
       }
 
@@ -531,6 +567,7 @@ export class MaterialsService {
         materialId: id,
         courseId,
         downloadUrl: signedUrl,
+        s3Key: key,
         filename: key.split('/').pop(),
         expiresIn: 3600,
       };
@@ -584,10 +621,15 @@ export class MaterialsService {
       return {
         materialId: id,
         downloadUrl: signedUrl,
+        s3Key: key,
         filename: key.split('/').pop(),
         expiresIn: 3600,
       };
     });
+  }
+
+  async streamDownload(s3Key: string): Promise<Buffer> {
+    return this.s3Service.getObject(s3Key);
   }
 
   async getHistory(cycleIds?: string[], weekNumbers?: number[], templateIds?: string[]): Promise<any[]> {
