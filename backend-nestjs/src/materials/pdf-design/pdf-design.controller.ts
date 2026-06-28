@@ -71,30 +71,18 @@ export class PdfDesignController {
     await this.pdfDesignService.delete(id, this.getTenantId(subdomain));
   }
 
-  @Post(':id/upload-logo')
+  @Post(':id/upload-asset')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload logo for design template' })
+  @ApiOperation({ summary: 'Upload logo, banner, or watermark for design template' })
   @ApiConsumes('multipart/form-data')
-  async uploadLogo(
+  async uploadAsset(
     @Param('id') id: string,
+    @Query('type') type: 'banner' | 'watermark' | 'grid_image',
     @UploadedFile() file: Express.Multer.File,
     @Headers('x-subdomain') subdomain?: string,
   ) {
-    const logoUrl = await this.pdfDesignService.uploadLogo(id, this.getTenantId(subdomain), file);
-    return { logoUrl };
-  }
-
-  @Post(':id/upload-background')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload background image for design template' })
-  @ApiConsumes('multipart/form-data')
-  async uploadBackground(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Headers('x-subdomain') subdomain?: string,
-  ) {
-    const backgroundUrl = await this.pdfDesignService.uploadBackground(id, this.getTenantId(subdomain), file);
-    return { backgroundUrl };
+    const url = await this.pdfDesignService.uploadAsset(id, this.getTenantId(subdomain), file, type);
+    return { url };
   }
 
   @Post(':id/preview')
@@ -112,7 +100,7 @@ export class PdfDesignController {
   @ApiOperation({ summary: 'Delete asset from design template' })
   async deleteAsset(
     @Param('id') id: string,
-    @Query('type') type: 'logo' | 'background',
+    @Query('type') type: 'banner' | 'watermark',
     @Headers('x-subdomain') subdomain?: string,
   ) {
     await this.pdfDesignService.deleteAsset(id, this.getTenantId(subdomain), type);

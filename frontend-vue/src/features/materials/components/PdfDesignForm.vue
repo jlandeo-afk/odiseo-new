@@ -1,6 +1,47 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { usePdfDesignsStore, type PdfDesignTemplate } from '../store/pdfDesigns'
+import { computed } from 'vue'
+
+function rgbToHex(rgbStr: string): string {
+  const parts = rgbStr.split(',').map(p => parseInt(p.trim()))
+  if (parts.length !== 3 || parts.some(isNaN)) return '#000000'
+  return '#' + parts.map(x => {
+    const hex = x.toString(16)
+    return hex.length === 1 ? '0' + hex : hex
+  }).join('')
+}
+
+function hexToRgbStr(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!result) return '0, 0, 0'
+  return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+}
+
+import PdfDesignPreview from './PdfDesignPreview.vue'
+import RichTextInput from './RichTextInput.vue'
+import { useToast } from '#imports'
+
+const toast = useToast()
+
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.add({
+      title: 'Variable copiada',
+      description: `Se copió ${text} al portapapeles.`,
+      icon: 'i-heroicons-check-circle',
+      color: 'green'
+    })
+  } catch (err) {
+    toast.add({
+      title: 'Error',
+      description: 'No se pudo copiar al portapapeles.',
+      icon: 'i-heroicons-x-circle',
+      color: 'red'
+    })
+  }
+}
 
 const props = defineProps<{
   designId?: string
@@ -14,23 +55,142 @@ const emit = defineEmits<{
 const store = usePdfDesignsStore()
 const isEditing = ref(false)
 const submitting = ref(false)
-const logoFile = ref<File | null>(null)
-const bgFile = ref<File | null>(null)
-const logoPreview = ref<string | null>(null)
-const bgPreview = ref<string | null>(null)
 
-const form = ref({
+const zoom = ref(85)
+function zoomIn() { if (zoom.value < 150) zoom.value += 10 }
+function zoomOut() { if (zoom.value > 40) zoom.value -= 10 }
+function resetZoom() { zoom.value = 85 }
+
+const bannerFile = ref<File | null>(null)
+const watermarkFile = ref<File | null>(null)
+const coverFile = ref<File | null>(null)
+
+const bannerPreview = ref<string | null>(null)
+const watermarkPreview = ref<string | null>(null)
+const coverPreview = ref<string | null>(null)
+const focusedSection = ref<string | null>(null)
+
+function setFocus(section: string | null) {
+  if (focusedSection.value !== section) {
+    focusedSection.value = section
+    updatePreview()
+  }
+}
+
+const gridFiles: Record<string, File> = {}
+
+const previewHtml = ref('')
+const loadingPreview = ref(false)
+let debounceTimeout: any = null
+
+const form = ref<Partial<PdfDesignTemplate>>({
   name: '',
-  primaryColor: '#6366f1',
-  fontFamily: 'Arial, sans-serif',
-  headerText: '',
-  footerText: 'Página {page} de {total}',
-  showCover: true,
-  showPagination: true,
-  showFrame: true,
-  contactInfo: '',
+  showCover: false,
+  primaryTitleColor: '2, 113, 184',
+  secondaryTitleColor: '2, 113, 184',
+  backgroundHighlightColor: '214, 238, 253',
+  marginTop: '3cm',
+  marginBottom: '1.5cm',
+  marginInside: '1cm',
+  marginOutside: '1cm',
+  isBookMode: false,
+  fontFamily: 'Arial',
+  contentFontSize: '11pt',
+  contentTextColor: '#000000',
+  borderRadius: '4px',
+  blocksConfig: ['cover', 'banner', 'topics', 'content'],
+  headerConfig: { left: '', center: '', right: '' },
+  footerConfig: { left: '', center: '', right: '' },
   isDefault: false,
 })
+
+type GridMode = 'text' | 'image'
+const gridModes = ref({
+  header: { left: 'text' as GridMode, center: 'text' as GridMode, right: 'text' as GridMode },
+  footer: { left: 'text' as GridMode, center: 'text' as GridMode, right: 'text' as GridMode }
+})
+
+const isImageUrl = (val: string) => val && (typeof val === 'string') && (val.startsWith('http') || val.startsWith('data:image'));
+
+
+
+
+const parseMargin = (val: string) => parseFloat(val) || 0;
+const formatMargin = (val: number) => `${val}cm`;
+
+const marginNumTop = computed({
+  get: () => parseMargin(form.value.marginTop),
+  set: (val) => { form.value.marginTop = formatMargin(val) }
+})
+const marginNumBottom = computed({
+  get: () => parseMargin(form.value.marginBottom),
+  set: (val) => { form.value.marginBottom = formatMargin(val) }
+})
+const marginNumInside = computed({
+  get: () => parseMargin(form.value.marginInside),
+  set: (val) => { form.value.marginInside = formatMargin(val) }
+})
+const marginNumOutside = computed({
+  get: () => parseMargin(form.value.marginOutside),
+  set: (val) => { form.value.marginOutside = formatMargin(val) }
+})
+
+const contentFontSizeNum = computed({
+  get: () => parseFloat(form.value.contentFontSize || '11') || 11,
+  set: (val) => { form.value.contentFontSize = `${val}pt` }
+})
+
+const accentColorHex = computed({
+  get: () => rgbToHex(form.value.secondaryTitleColor || '2, 113, 184'),
+  set: (val) => { form.value.secondaryTitleColor = hexToRgbStr(val) || '2, 113, 184' }
+})
+
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = error => reject(error)
+  })
+}
+
+async function onGridImageChange(e: Event, zone: 'header' | 'footer', position: 'left' | 'center' | 'right') {
+  const input = e.target as HTMLInputElement
+  if (input.files?.[0]) {
+    const file = input.files[0]
+    const key = `${zone}-${position}`
+    gridFiles[key] = file
+    const b64 = await fileToBase64(file)
+    if (zone === 'header') (form.value.headerConfig as any)[position] = b64
+    if (zone === 'footer') (form.value.footerConfig as any)[position] = b64
+    input.value = ''
+  }
+}
+
+function updatePreview() {
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  debounceTimeout = setTimeout(async () => {
+    loadingPreview.value = true
+    try {
+      const overrides = {
+        ...form.value,
+        bannerImageUrl: bannerPreview.value,
+        watermarkImageUrl: watermarkPreview.value,
+        coverImageUrl: coverPreview.value,
+        focusedSection: focusedSection.value
+      }
+      previewHtml.value = await store.fetchPreview(props.designId || 'new', overrides)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      loadingPreview.value = false
+    }
+  }, 400)
+}
+
+watch(form, updatePreview, { deep: true })
+watch([bannerPreview, watermarkPreview, coverPreview], updatePreview)
 
 onMounted(async () => {
   if (props.designId) {
@@ -38,184 +198,528 @@ onMounted(async () => {
     const design = await store.fetchDesign(props.designId)
     if (design) {
       form.value.name = design.name
-      form.value.primaryColor = design.primaryColor || '#6366f1'
-      form.value.fontFamily = design.fontFamily || 'Arial, sans-serif'
-      form.value.headerText = design.headerText || ''
-      form.value.footerText = design.footerText || 'Página {page} de {total}'
-      form.value.showCover = design.showCover
-      form.value.showPagination = design.showPagination
-      form.value.showFrame = design.showFrame
-      form.value.contactInfo = design.contactInfo || ''
+      form.value.primaryTitleColor = design.primaryTitleColor || '2, 113, 184'
+      form.value.secondaryTitleColor = design.secondaryTitleColor || '2, 113, 184'
+      form.value.backgroundHighlightColor = design.backgroundHighlightColor || '214, 238, 253'
+      form.value.headerConfig = design.headerConfig || { left: '', center: '', right: '' }
+      form.value.footerConfig = design.footerConfig || { left: '', center: '', right: '' }
       form.value.isDefault = design.isDefault
-      logoPreview.value = design.logoUrl
-      bgPreview.value = design.backgroundUrl
+      form.value.showCover = design.showCover || false
+      form.value.marginTop = design.marginTop || '3cm'
+      form.value.marginBottom = design.marginBottom || '1.5cm'
+      form.value.marginInside = design.marginInside || '1cm'
+      form.value.marginOutside = design.marginOutside || '1cm'
+      form.value.isBookMode = design.isBookMode || false
+      form.value.fontFamily = design.fontFamily || 'Arial'
+      form.value.borderRadius = design.borderRadius || '4px'
+      form.value.blocksConfig = design.blocksConfig || ['cover', 'banner', 'topics', 'content']
+
+      bannerPreview.value = design.bannerImageUrl
+      watermarkPreview.value = design.watermarkImageUrl
+      coverPreview.value = design.coverImageUrl
     }
+  } else {
+    // defaults for new template
+    form.value.headerConfig = { left: '', center: '', right: '{curso}' }
+    form.value.footerConfig = { left: '{institucion_nombre}', center: '', right: 'Pág. {page} de {total_pages}' }
   }
+
+  ['left', 'center', 'right'].forEach(pos => {
+    gridModes.value.header[pos as 'left'|'center'|'right'] = isImageUrl((form.value.headerConfig as any)[pos]) ? 'image' : 'text';
+    gridModes.value.footer[pos as 'left'|'center'|'right'] = isImageUrl((form.value.footerConfig as any)[pos]) ? 'image' : 'text';
+  });
+
+  updatePreview()
 })
 
-function onLogoChange(e: Event) {
+function onBannerChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files?.[0]) {
-    logoFile.value = input.files[0]
-    logoPreview.value = URL.createObjectURL(input.files[0])
+    bannerFile.value = input.files[0]
+    bannerPreview.value = URL.createObjectURL(input.files[0])
   }
 }
 
-function onBgChange(e: Event) {
+function onWatermarkChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files?.[0]) {
-    bgFile.value = input.files[0]
-    bgPreview.value = URL.createObjectURL(input.files[0])
+    watermarkFile.value = input.files[0]
+    watermarkPreview.value = URL.createObjectURL(input.files[0])
   }
 }
 
-async function removeLogo() {
-  if (props.designId) {
-    await store.deleteAsset(props.designId, 'logo')
+function onCoverChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files?.[0]) {
+    coverFile.value = input.files[0]
+    coverPreview.value = URL.createObjectURL(input.files[0])
   }
-  logoPreview.value = null
-  logoFile.value = null
 }
 
-async function removeBg() {
-  if (props.designId) {
-    await store.deleteAsset(props.designId, 'background')
-  }
-  bgPreview.value = null
-  bgFile.value = null
+async function removeBanner() {
+  if (props.designId) await store.deleteAsset(props.designId, 'banner')
+  bannerPreview.value = null
+  bannerFile.value = null
+}
+
+async function removeWatermark() {
+  if (props.designId) await store.deleteAsset(props.designId, 'watermark')
+  watermarkPreview.value = null
+  watermarkFile.value = null
+}
+
+async function removeCover() {
+  coverPreview.value = null
+  coverFile.value = null
 }
 
 async function handleSubmit() {
   submitting.value = true
   try {
+    const uploadGridFiles = async (designId: string) => {
+      for (const key in gridFiles) {
+        const file = gridFiles[key]
+        const [zone, pos] = key.split('-')
+        
+        // Skip if this zone is currently in 'text' mode
+        const currentMode = zone === 'header' 
+          ? gridModes.value.header[pos as 'left'|'center'|'right'] 
+          : gridModes.value.footer[pos as 'left'|'center'|'right'];
+        if (currentMode === 'text') continue;
+
+        const url = await store.uploadAsset(designId, file, 'grid_image')
+        if (zone === 'header') (form.value.headerConfig as any)[pos] = url
+        if (zone === 'footer') (form.value.footerConfig as any)[pos] = url
+      }
+    }
+
     if (isEditing.value && props.designId) {
+      await uploadGridFiles(props.designId)
       await store.updateDesign(props.designId, form.value)
-      if (logoFile.value) await store.uploadLogo(props.designId, logoFile.value)
-      if (bgFile.value) await store.uploadBackground(props.designId, bgFile.value)
+      if (bannerFile.value) await store.uploadAsset(props.designId, bannerFile.value, 'banner')
+      if (watermarkFile.value) await store.uploadAsset(props.designId, watermarkFile.value, 'watermark')
     } else {
       const created = await store.createDesign(form.value)
-      if (logoFile.value && created) await store.uploadLogo(created.id, logoFile.value)
-      if (bgFile.value && created) await store.uploadBackground(created.id, bgFile.value)
+      if (created) {
+        let needsUpdate = false
+        if (Object.keys(gridFiles).length > 0) {
+          await uploadGridFiles(created.id)
+          needsUpdate = true
+        }
+        if (needsUpdate) {
+          await store.updateDesign(created.id, form.value)
+        }
+        if (bannerFile.value) await store.uploadAsset(created.id, bannerFile.value, 'banner')
+        if (watermarkFile.value) await store.uploadAsset(created.id, watermarkFile.value, 'watermark')
+      }
     }
     emit('saved')
   } catch {
-    // handled by store
   } finally {
     submitting.value = false
   }
 }
+
+const variablesHelper = [
+  { token: '{curso}', desc: 'Nombre del curso actual' },
+  { token: '{temas}', desc: 'Consolidado de temas abarcados' },
+  { token: '{page}', desc: 'Número de página actual' },
+  { token: '{total_pages}', desc: 'Total de páginas del PDF' },
+  { token: '{week_number}', desc: 'Número de semana' },
+  { token: '{material_titulo}', desc: 'Título del material (Plantilla)' },
+  { token: '{fecha_generacion}', desc: 'Fecha actual en formato local' },
+  { token: '{institucion_nombre}', desc: 'Nombre del Tenant/Ciclo' },
+  { token: '{cycle_name}', desc: 'Nombre del Ciclo seleccionado' }
+]
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" class="space-y-5">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Name -->
-      <div>
-        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Nombre</label>
-        <UInput v-model="form.name" placeholder="Mi diseño" required />
-      </div>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start h-full">
+    <!-- Form (Left Column) -->
+    <form @submit.prevent="handleSubmit"
+      class="lg:col-span-6 flex flex-col h-full max-h-full overflow-y-auto pr-2 custom-scrollbar">
 
-      <!-- Default -->
-      <div class="flex items-end pb-1">
-        <UCheckbox v-model="form.isDefault" label="Plantilla por defecto" />
-      </div>
-    </div>
+      <!-- Group: Configuración General -->
+      <div class="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
+        <div class="rounded-t-xl bg-slate-50 dark:bg-slate-800/50 px-5 py-3 border-b border-slate-200 dark:border-white/5 flex items-center gap-2">
+          <UIcon name="i-heroicons-document-text" class="text-indigo-500 w-5 h-5" />
+          <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Configuración General</h3>
+        </div>
+        
+        <div class="p-5 grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+          
+          <!-- Left Col: Basics -->
+          <div class="flex flex-col gap-5">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">Nombre de la Plantilla</label>
+              <UInput v-model="form.name" placeholder="Ej. Diseño Premium 2026" required size="lg" />
+            </div>
+            <UCheckbox v-model="form.isDefault" label="Establecer como diseño predeterminado global" />
+          </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Primary Color -->
-      <div>
-        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Color primario</label>
-        <div class="flex gap-2 items-center">
-          <input type="color" v-model="form.primaryColor"
-            class="w-9 h-9 rounded-lg border border-slate-200 dark:border-white/10 cursor-pointer" />
-          <UInput v-model="form.primaryColor" class="flex-1" placeholder="#6366f1" />
+          <!-- Right Col: Cover & Watermark -->
+          <div class="flex flex-col gap-5 bg-slate-50/50 dark:bg-slate-800/20 p-4 rounded-lg border border-slate-100 dark:border-white/5">
+            <!-- Cover Section -->
+            <div class="flex flex-col gap-3">
+              <UCheckbox v-model="form.showCover" label="Generar Portada (Cover Page)" />
+              
+              <div v-if="form.showCover" class="pl-7 flex items-center gap-3">
+                <div v-if="coverPreview" class="h-14 w-10 flex items-center justify-center bg-white dark:bg-slate-950 rounded shadow-sm border border-slate-200 dark:border-white/10 overflow-hidden shrink-0">
+                  <img :src="coverPreview" class="max-h-full max-w-full object-cover" />
+                </div>
+                <div class="flex gap-2">
+                  <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo" @click="($refs.coverInput as any)?.click()">Subir</UButton>
+                  <input ref="coverInput" type="file" accept="image/png,image/jpeg" class="hidden" @change="onCoverChange" />
+                  <UButton v-if="coverPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash" @click="removeCover" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Separator -->
+            <hr class="border-slate-200 dark:border-white/10" />
+
+            <!-- Watermark Section -->
+            <div>
+              <label class="block text-[11px] text-slate-500 font-semibold mb-2 uppercase tracking-wide">Marca de Agua (Fondo global)</label>
+              <div class="flex items-center gap-3">
+                <div v-if="watermarkPreview" class="h-12 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-white/5 overflow-hidden shrink-0">
+                  <img :src="watermarkPreview" class="max-h-full max-w-full object-contain" />
+                </div>
+                <div class="flex gap-2">
+                  <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo" @click="($refs.watermarkInput as any)?.click()">Subir</UButton>
+                  <input ref="watermarkInput" type="file" accept="image/png,image/jpeg" class="hidden" @change="onWatermarkChange" />
+                  <UButton v-if="watermarkPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash" @click="removeWatermark" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Font -->
-      <div>
-        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Tipografía</label>
-        <USelectMenu v-model="form.fontFamily" :items="[
-          { value: 'Arial, sans-serif', label: 'Arial' },
-          { value: 'Times New Roman, serif', label: 'Times New Roman' },
-          { value: 'Helvetica, sans-serif', label: 'Helvetica' },
-          { value: 'Georgia, serif', label: 'Georgia' },
-          { value: 'Verdana, sans-serif', label: 'Verdana' },
-        ]" value-key="value" label-key="label" />
+      <!-- Group: Encabezado y Pie de Página -->
+      <details
+        class="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm group">
+        <summary
+          class="sticky top-0 z-10 cursor-pointer rounded-xl group-open:rounded-b-none bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-sm px-5 py-3 border-b border-transparent group-open:border-slate-200 dark:group-open:border-white/5 flex items-center gap-2 list-none hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+          <UIcon name="i-heroicons-bars-3-bottom-left" class="text-indigo-500 w-5 h-5" />
+          <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Encabezado y Pie de Página</h3>
+          <UIcon name="i-heroicons-chevron-down"
+            class="ml-auto w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" />
+        </summary>
+        <div class="p-5 space-y-6">
+
+          <!-- Banner Superior -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">Fondo Superior
+              (Banner)</label>
+            <div class="flex items-center gap-3">
+              <div v-if="bannerPreview"
+                class="h-10 w-24 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-white/5 overflow-hidden shrink-0">
+                <img :src="bannerPreview" class="max-h-full max-w-full object-cover" />
+              </div>
+              <div class="flex gap-2">
+                <UButton color="neutral" variant="outline" size="xs" icon="i-heroicons-photo"
+                  @click="($refs.bannerInput as any)?.click()">
+                  Subir</UButton>
+                <input ref="bannerInput" type="file" accept="image/png,image/jpeg" class="hidden"
+                  @change="onBannerChange" />
+                <UButton v-if="bannerPreview" color="error" variant="ghost" size="xs" icon="i-heroicons-trash"
+                  @click="removeBanner" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Header Grid -->
+          <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-lg border border-slate-100 dark:border-white/5 transition-all" @mouseenter="setFocus('header')" @mouseleave="setFocus(null)">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Zonas de Encabezado (Header)</label>
+            <div class="grid grid-cols-3 gap-3">
+              <div v-for="pos in ['left', 'center', 'right']" :key="'header-' + pos" class="flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                  <label class="text-[10px] uppercase text-slate-500 font-semibold">{{ pos }}</label>
+                  <div class="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded">
+                    <button type="button" @click="gridModes.header[pos as 'left'|'center'|'right'] = 'text'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.header[pos as 'left'|'center'|'right'] === 'text', 'text-slate-500 hover:text-slate-700': gridModes.header[pos as 'left'|'center'|'right'] !== 'text'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Texto</button>
+                    <button type="button" @click="gridModes.header[pos as 'left'|'center'|'right'] = 'image'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.header[pos as 'left'|'center'|'right'] === 'image', 'text-slate-500 hover:text-slate-700': gridModes.header[pos as 'left'|'center'|'right'] !== 'image'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Imagen</button>
+                  </div>
+                </div>
+
+                <template v-if="gridModes.header[pos as 'left'|'center'|'right'] === 'text'">
+                  <RichTextInput v-model="(form.headerConfig as any)[pos]" placeholder="Texto o variables" collapsibleToolbar />
+                </template>
+                
+                <template v-else>
+                  <div class="flex items-center gap-2 border border-slate-200 dark:border-white/10 p-2 rounded bg-white dark:bg-slate-900 mt-1">
+                    <div v-if="isImageUrl((form.headerConfig as any)[pos])" class="h-8 w-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 rounded overflow-hidden">
+                       <img :src="(form.headerConfig as any)[pos]" class="max-h-full max-w-full object-contain" />
+                    </div>
+                    <div class="flex flex-col gap-1 flex-1">
+                      <UButton size="xs" variant="outline" color="neutral" icon="i-heroicons-photo" @click="($refs['headerImg_' + pos] as any)?.[0]?.click()">Subir</UButton>
+                      <input :ref="'headerImg_' + pos" type="file" accept="image/*" class="hidden" @change="e => onGridImageChange(e, 'header', pos as any)" />
+                      <UButton v-if="isImageUrl((form.headerConfig as any)[pos])" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" @click="(form.headerConfig as any)[pos] = ''">Borrar</UButton>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Grid -->
+          <div class="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-lg border border-slate-100 dark:border-white/5 transition-all" @mouseenter="setFocus('footer')" @mouseleave="setFocus(null)">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Zonas de Pie de Página (Footer)</label>
+            <div class="grid grid-cols-3 gap-3">
+              <div v-for="pos in ['left', 'center', 'right']" :key="'footer-' + pos" class="flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                  <label class="text-[10px] uppercase text-slate-500 font-semibold">{{ pos }}</label>
+                  <div class="flex bg-slate-200 dark:bg-slate-700 p-0.5 rounded">
+                    <button type="button" @click="gridModes.footer[pos as 'left'|'center'|'right'] = 'text'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.footer[pos as 'left'|'center'|'right'] === 'text', 'text-slate-500 hover:text-slate-700': gridModes.footer[pos as 'left'|'center'|'right'] !== 'text'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Texto</button>
+                    <button type="button" @click="gridModes.footer[pos as 'left'|'center'|'right'] = 'image'" :class="{'bg-white dark:bg-slate-800 shadow-sm text-slate-800 dark:text-slate-200': gridModes.footer[pos as 'left'|'center'|'right'] === 'image', 'text-slate-500 hover:text-slate-700': gridModes.footer[pos as 'left'|'center'|'right'] !== 'image'}" class="px-2 py-0.5 text-[9px] rounded font-medium transition-colors">Imagen</button>
+                  </div>
+                </div>
+
+                <template v-if="gridModes.footer[pos as 'left'|'center'|'right'] === 'text'">
+                  <RichTextInput v-model="(form.footerConfig as any)[pos]" placeholder="Texto o variables" collapsibleToolbar />
+                </template>
+                
+                <template v-else>
+                  <div class="flex items-center gap-2 border border-slate-200 dark:border-white/10 p-2 rounded bg-white dark:bg-slate-900 mt-1">
+                    <div v-if="isImageUrl((form.footerConfig as any)[pos])" class="h-8 w-12 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 rounded overflow-hidden">
+                       <img :src="(form.footerConfig as any)[pos]" class="max-h-full max-w-full object-contain" />
+                    </div>
+                    <div class="flex flex-col gap-1 flex-1">
+                      <UButton size="xs" variant="outline" color="neutral" icon="i-heroicons-photo" @click="($refs['footerImg_' + pos] as any)?.[0]?.click()">Subir</UButton>
+                      <input :ref="'footerImg_' + pos" type="file" accept="image/*" class="hidden" @change="e => onGridImageChange(e, 'footer', pos as any)" />
+                      <UButton v-if="isImageUrl((form.footerConfig as any)[pos])" size="xs" variant="ghost" color="error" icon="i-heroicons-trash" @click="(form.footerConfig as any)[pos] = ''">Borrar</UButton>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Helper Variables -->
+          <div class="border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden text-sm">
+            <div
+              class="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-white/10 font-semibold text-xs text-slate-600 dark:text-slate-300">
+              Variables Dinámicas Soportadas
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 p-3 bg-white dark:bg-slate-900">
+              <div v-for="v in variablesHelper" :key="v.token" class="flex items-center gap-2 text-[11px] cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1 rounded transition-colors" @click="copyToClipboard(v.token)" title="Click para copiar">
+                <code
+                  class="text-indigo-600 dark:text-indigo-400 font-mono bg-indigo-50 dark:bg-indigo-900/30 px-1 py-0.5 rounded pointer-events-none">{{
+                    v.token }}</code>
+                <span class="text-slate-500 truncate pointer-events-none" :title="v.desc">{{ v.desc }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+
+      <!-- Group: Estilo del Contenido -->
+      <details
+        class="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm group">
+        <summary
+          class="sticky top-0 z-10 cursor-pointer rounded-xl group-open:rounded-b-none bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-sm px-5 py-3 border-b border-transparent group-open:border-slate-200 dark:group-open:border-white/5 flex items-center gap-2 list-none hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+          <UIcon name="i-heroicons-paint-brush" class="text-indigo-500 w-5 h-5" />
+          <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Estilo del Contenido (Preguntas)</h3>
+          <UIcon name="i-heroicons-chevron-down"
+            class="ml-auto w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" />
+        </summary>
+        <div class="p-4">
+          <div
+            class="border border-slate-200 dark:border-white/10 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+
+            <!-- Toolbar Fila Única -->
+            <div
+              class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/10 flex flex-wrap items-center gap-2 p-1.5 px-2">
+
+              <!-- Font Family -->
+              <div title="Tipografía del Contenido" class="relative flex items-center">
+                <select v-model="form.fontFamily"
+                  class="text-[11px] py-1 px-2 bg-transparent border border-slate-300 dark:border-slate-600 rounded cursor-pointer outline-none focus:ring-1 focus:ring-primary">
+                  <option value="Arial">Arial</option>
+                  <option value="Courier New">Courier</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times</option>
+                  <option value="Verdana">Verdana</option>
+                </select>
+              </div>
+
+              <!-- Font Size -->
+              <div title="Tamaño de Letra (pt)"
+                class="relative flex items-center bg-transparent border border-slate-300 dark:border-slate-600 rounded overflow-hidden focus-within:ring-1 focus-within:ring-primary w-20">
+                <input type="number" v-model="contentFontSizeNum" min="6" max="36"
+                  class="w-full text-[11px] py-1 px-2 bg-transparent outline-none text-center" />
+                <span class="text-[9px] text-slate-400 pr-2 pointer-events-none font-medium">pt</span>
+              </div>
+
+              <div class="w-px h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+
+              <!-- Text Color -->
+              <div title="Color de Texto Base"
+                class="flex items-center gap-1.5 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 p-1 rounded transition-colors cursor-pointer relative">
+                <div
+                  class="relative w-5 h-5 rounded overflow-hidden border border-slate-300 dark:border-slate-600 shrink-0">
+                  <input type="color" v-model="form.contentTextColor"
+                    class="absolute inset-0 w-8 h-8 -top-1 -left-1 cursor-pointer" />
+                </div>
+                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 uppercase">Texto</span>
+              </div>
+
+              <div class="w-px h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+
+              <!-- Accent Color -->
+              <div title="Color de Acentos (Números y Letras)"
+                class="flex items-center gap-1.5 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 p-1 rounded transition-colors cursor-pointer relative">
+                <div
+                  class="relative w-5 h-5 rounded overflow-hidden border border-slate-300 dark:border-slate-600 shrink-0">
+                  <input type="color" v-model="accentColorHex"
+                    class="absolute inset-0 w-8 h-8 -top-1 -left-1 cursor-pointer" />
+                </div>
+                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 uppercase">Acentos</span>
+              </div>
+            </div>
+
+            <!-- Previsualización Falsa -->
+            <div class="p-6 bg-white dark:bg-slate-950 overflow-hidden relative">
+              <div class="flex gap-2" :style="{ fontFamily: form.fontFamily, fontSize: form.contentFontSize }">
+                <span class="font-bold shrink-0" :style="{ color: accentColorHex }">1.</span>
+                <div :style="{ color: form.contentTextColor }">
+                  <p class="m-0 leading-snug">¿Cuál es el principal objetivo del diseño de plantillas en Odiseo?</p>
+                  <div class="mt-2 space-y-1 pl-1">
+                    <div class="flex gap-2"><span class="font-bold" :style="{ color: accentColorHex }">A)</span>
+                      <span>Reducir
+                        la eficiencia.</span>
+                    </div>
+                    <div class="flex gap-2"><span class="font-bold" :style="{ color: accentColorHex }">B)</span>
+                      <span>Mejorar
+                        la presentación y estandarización.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </details>
+
+      <!-- Group: Márgenes y Modo Imprenta -->
+      <details
+        class="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm group">
+        <summary
+          class="sticky top-0 z-10 cursor-pointer rounded-xl group-open:rounded-b-none bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-sm px-5 py-3 border-b border-transparent group-open:border-slate-200 dark:group-open:border-white/5 flex items-center gap-2 list-none hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+          <UIcon name="i-heroicons-document-duplicate" class="text-indigo-500 w-5 h-5" />
+          <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Márgenes y Modo Imprenta</h3>
+          <UIcon name="i-heroicons-chevron-down"
+            class="ml-auto w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" />
+        </summary>
+        <div class="p-5 space-y-5">
+          <div
+            class="bg-indigo-50/50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
+            <UCheckbox v-model="form.isBookMode" label="Activar Modo Imprenta (Márgenes Espejados)"
+              class="font-medium text-indigo-900 dark:text-indigo-200" />
+            <p class="text-[11px] text-indigo-600/70 dark:text-indigo-300/70 mt-1 ml-6 leading-relaxed">
+              Ideal para impresión a doble cara. El margen interior y exterior se invierten automáticamente en páginas
+              pares e impares, permitiendo espacio para la encuadernación.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Superior</label>
+              <UInput type="number" step="0.1" min="2" max="6" v-model="marginNumTop" icon="i-heroicons-arrow-up">
+                <template #trailing><span class="text-xs text-slate-400">cm</span></template>
+              </UInput>
+            </div>
+            <div>
+              <label
+                class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Inferior</label>
+              <UInput type="number" step="0.1" min="1.5" max="5" v-model="marginNumBottom"
+                icon="i-heroicons-arrow-down">
+                <template #trailing><span class="text-xs text-slate-400">cm</span></template>
+              </UInput>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Interior
+                (Lomo)</label>
+              <UInput type="number" step="0.1" min="1" max="4" v-model="marginNumInside"
+                icon="i-heroicons-arrows-right-left">
+                <template #trailing><span class="text-xs text-slate-400">cm</span></template>
+              </UInput>
+            </div>
+            <div>
+              <label
+                class="block text-[11px] text-slate-500 font-semibold mb-1 uppercase tracking-wide">Exterior</label>
+              <UInput type="number" step="0.1" min="1" max="4" v-model="marginNumOutside"
+                icon="i-heroicons-arrows-left-right">
+                <template #trailing><span class="text-xs text-slate-400">cm</span></template>
+              </UInput>
+            </div>
+          </div>
+        </div>
+      </details>
+
+    </form>
+
+    <!-- Live Preview (Right Column) -->
+    <div
+      class="lg:sticky lg:top-4 h-[calc(100vh-2rem)] max-h-[85vh] flex flex-col lg:col-span-6 bg-slate-100/50 dark:bg-slate-900/80 p-0 rounded-2xl border border-slate-200/60 dark:border-white/10 shadow-lg overflow-hidden backdrop-blur-xl">
+      <!-- Toolbar of the Preview -->
+      <div
+        class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md px-4 py-3 border-b border-slate-200/60 dark:border-white/10 flex items-center justify-between shrink-0 w-full overflow-hidden relative">
+
+        <div class="flex items-center gap-2 min-w-0">
+          <label
+            class="flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-300 uppercase truncate">
+            <UIcon name="i-heroicons-computer-desktop" class="w-4 h-4 text-indigo-500 shrink-0" />
+            <span class="hidden sm:inline">Previsualización Dinámica</span>
+            <span class="sm:hidden">Previsualización</span>
+          </label>
+
+          <span v-if="loadingPreview"
+            class="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/20 rounded-full shadow-sm shrink-0 ml-1">
+            <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 animate-spin" /> <span
+              class="hidden md:inline">Sincronizando...</span>
+          </span>
+        </div>
+
+        <!-- Toolbar for Zoom Controls -->
+        <div
+          class="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-100 dark:bg-slate-900 px-1 py-1 rounded-md border border-slate-200 dark:border-white/5 shrink-0 shadow-sm z-10">
+          <UButton color="gray" variant="ghost" icon="i-heroicons-minus" size="2xs" @click="zoomOut"
+            :disabled="zoom <= 40" />
+          <span class="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 w-9 text-center">{{ zoom
+          }}%</span>
+          <UButton color="gray" variant="ghost" icon="i-heroicons-plus" size="2xs" @click="zoomIn"
+            :disabled="zoom >= 150" />
+          <div class="w-px h-3 bg-slate-200 dark:bg-white/10 mx-0.5"></div>
+          <UButton color="gray" variant="ghost" size="2xs" class="text-[10px] font-semibold tracking-wide"
+            @click="resetZoom">Ajustar</UButton>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="ml-auto flex items-center gap-2">
+          <UButton color="neutral" variant="ghost" size="xs" @click="emit('cancelled')">Cancelar</UButton>
+          <UButton color="primary" :loading="submitting" size="xs" @click="handleSubmit">
+            {{ isEditing ? 'Guardar Cambios' : 'Crear Plantilla' }}
+          </UButton>
+        </div>
+      </div>
+      <!-- Canvas Area -->
+      <div class="flex-1 bg-slate-300/40 dark:bg-[#0f111a] relative overflow-auto rounded-b-2xl p-6 lg:p-10">
+        <PdfDesignPreview :html="previewHtml" :loading="loadingPreview" :zoom="zoom" class="w-full" />
       </div>
     </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Header Text -->
-      <div>
-        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-          Texto de encabezado
-          <span class="text-[9px] text-slate-400 font-normal ml-1">{course_name}, {week_number}, {template_name}</span>
-        </label>
-        <UInput v-model="form.headerText" placeholder="Universidad - {course_name}" />
-      </div>
-
-      <!-- Footer Text -->
-      <div>
-        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-          Texto de pie de página
-          <span class="text-[9px] text-slate-400 font-normal ml-1">{page}, {total}</span>
-        </label>
-        <UInput v-model="form.footerText" placeholder="Página {page} de {total}" />
-      </div>
-    </div>
-
-    <!-- Contact Info -->
-    <div>
-      <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Información de contacto</label>
-      <UTextarea v-model="form.contactInfo" placeholder="info@institucion.edu.ec | Tel: 123456789" :rows="2" />
-    </div>
-
-    <!-- Toggles -->
-    <div class="grid grid-cols-3 gap-4">
-      <UCheckbox v-model="form.showCover" label="Mostrar portada" />
-      <UCheckbox v-model="form.showPagination" label="Numeración de páginas" />
-      <UCheckbox v-model="form.showFrame" label="Bordes / marco" />
-    </div>
-
-    <!-- Logo Upload -->
-    <div>
-      <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Logo institucional</label>
-      <div class="flex items-center gap-3">
-        <UButton color="gray" variant="outline" size="sm"
-          @click="$refs.logoInput?.click()">
-          <UIcon name="i-heroicons-cloud-arrow-up" class="w-4 h-4 mr-1" />
-          {{ logoPreview ? 'Cambiar' : 'Subir' }}
-        </UButton>
-        <input ref="logoInput" type="file" accept="image/png,image/jpeg" class="hidden" @change="onLogoChange" />
-        <UButton v-if="logoPreview" color="red" variant="ghost" size="xs" icon="i-heroicons-trash"
-          @click="removeLogo" />
-        <span v-if="logoPreview" class="text-xs text-slate-500">Logo cargado</span>
-      </div>
-    </div>
-
-    <!-- Background Upload -->
-    <div>
-      <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Fondo de portada</label>
-      <div class="flex items-center gap-3">
-        <UButton color="gray" variant="outline" size="sm"
-          @click="$refs.bgInput?.click()">
-          <UIcon name="i-heroicons-cloud-arrow-up" class="w-4 h-4 mr-1" />
-          {{ bgPreview ? 'Cambiar' : 'Subir' }}
-        </UButton>
-        <input ref="bgInput" type="file" accept="image/png,image/jpeg" class="hidden" @change="onBgChange" />
-        <UButton v-if="bgPreview" color="red" variant="ghost" size="xs" icon="i-heroicons-trash"
-          @click="removeBg" />
-        <span v-if="bgPreview" class="text-xs text-slate-500">Fondo cargado</span>
-      </div>
-    </div>
-
-    <!-- Submit -->
-    <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-white/5">
-      <UButton color="gray" variant="ghost" @click="emit('cancelled')">Cancelar</UButton>
-      <UButton type="submit" color="indigo" :loading="submitting">
-        {{ isEditing ? 'Guardar cambios' : 'Crear diseño' }}
-      </UButton>
-    </div>
-  </form>
+  </div>
 </template>
+
+<style scoped>
+details>summary::-webkit-details-marker {
+  display: none;
+}
+
+details>summary {
+  list-style: none;
+}
+</style>

@@ -41,6 +41,7 @@ El ecosistema Odiseo se divide en dos dominios estrictamente separados:
 - Las funciones de base de datos en PostgreSQL DEBEN retornar tipos exactos (específicamente `void` al ejecutar funciones de actualización) y contar con cobertura de pruebas.
 - **Convención de nombres en BD**: Todas las tablas, columnas, índices, constraints y funciones en PostgreSQL DEBEN nombrarse exclusivamente en inglés (snake_case). Queda prohibido el uso de nombres en español u otros idiomas en la capa de datos.
 - Contratos de API estrictamente definidos mediante OpenAPI/Swagger para la comunicación entre el SaaS y el Core.
+- **UX & Notificaciones**: Para notificar acciones del usuario (éxito, error, eliminación), se DEBE usar notificaciones UI no bloqueantes (por ejemplo, Toasts de Nuxt UI) y NUNCA ventanas nativas del navegador como `alert()`.
 
 ### V. Restricciones de Integración (Integration Constraints)
 - **Aislamiento físico**: Las empresas operadoras del SaaS B2B JAMÁS tendrán conexión directa a la base de datos global del Banco. La comunicación fluye SOLO a través de REST o eventos de mensajería.
@@ -68,4 +69,4 @@ El ecosistema Odiseo se divide en dos dominios estrictamente separados:
 - **Versioning Policy**: Sigue SemVer (MAJOR para cambios arquitectónicos incompatibles, MINOR para nuevas guías, PATCH para correcciones menores).
 - **Compliance Review**: Todos los PRs deben verificar el cumplimiento con las restricciones de integración, separación de dominios y asincronía extrema. El incumplimiento de los antipatrones será causa de rechazo de PR.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
+**Version**: 1.0.1 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-27

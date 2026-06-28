@@ -245,6 +245,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAcademicTimeStore } from '@/features/academic-time/store'
 import { useCatalogsStore } from '@/features/catalogs/store'
+import { useToast } from '#imports'
 
 definePageMeta({
   layout: 'b2b',
@@ -255,6 +256,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useAcademicTimeStore()
 const catalogsStore = useCatalogsStore()
+const toast = useToast()
 
 const cycleId = computed(() => route.params.id as string)
 const templateId = computed(() => route.params.templateId as string)
@@ -456,12 +458,17 @@ async function saveTemplate() {
       await store.createTemplate(cycleId.value, payload)
     }
     
+    toast.add({ title: 'Cambios guardados exitosamente', color: 'green' })
     // Redirigir de vuelta a la lista
     router.push(`/academic-time/cycles/${cycleId.value}/materials`)
   } catch (e: any) {
     console.error(e)
     const errorMsg = e.data?.message || e.message || JSON.stringify(e);
-    alert('Error al guardar el tipo de material: ' + (Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg))
+    toast.add({ 
+      title: 'Error al guardar', 
+      description: Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg,
+      color: 'red'
+    })
   } finally {
     isSaving.value = false
   }

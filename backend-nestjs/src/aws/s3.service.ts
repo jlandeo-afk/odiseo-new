@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
@@ -63,6 +63,21 @@ export class S3Service {
       return Buffer.from(await response.Body.transformToByteArray());
     } catch (error: any) {
       this.logger.error(`Failed to get object from S3 with key ${key}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    });
+
+    try {
+      await this.s3Client.send(command);
+      this.logger.log(`Successfully deleted object from S3 with key ${key}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to delete object from S3 with key ${key}: ${error.message}`);
       throw error;
     }
   }

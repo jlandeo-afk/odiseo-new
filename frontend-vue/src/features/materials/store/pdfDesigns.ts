@@ -5,16 +5,24 @@ import { useAuthStore } from '@/stores/auth.store'
 export interface PdfDesignTemplate {
   id: string
   name: string
-  logoUrl: string | null
-  primaryColor: string | null
-  fontFamily: string | null
-  headerText: string | null
-  footerText: string | null
+  bannerImageUrl: string | null
+  watermarkImageUrl: string | null
+  coverImageUrl: string | null
   showCover: boolean
-  backgroundUrl: string | null
-  showPagination: boolean
-  showFrame: boolean
-  contactInfo: string | null
+  showTopicsList: boolean
+  primaryTitleColor: string | null
+  secondaryTitleColor: string | null
+  backgroundHighlightColor: string | null
+  marginTop: string
+  marginBottom: string
+  marginInside: string
+  marginOutside: string
+  isBookMode: boolean
+  fontFamily: string
+  borderRadius: string
+  blocksConfig: any | null
+  headerConfig: any | null
+  footerConfig: any | null
   isDefault: boolean
   createdAt: string
 }
@@ -116,55 +124,39 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
     }
   }
 
-  async function uploadLogo(designId: string, file: File) {
+  async function uploadAsset(designId: string, file: File, type: 'banner' | 'watermark' | 'grid_image') {
     isLoading.value = true
     error.value = null
     try {
       const form = new FormData()
       form.append('file', file)
-      const data = await $fetch(`/api/v1/pdf-designs/${designId}/upload-logo`, {
+      const data = await $fetch(`/api/v1/pdf-designs/${designId}/upload-asset?type=${type}`, {
         method: 'POST',
         headers: getHeaders(),
         body: form,
       })
-      const result = data as { logoUrl: string }
-      const design = designs.value.find(d => d.id === designId)
-      if (design) design.logoUrl = result.logoUrl
-      if (currentDesign.value?.id === designId) currentDesign.value.logoUrl = result.logoUrl
-      return result.logoUrl
+      const result = data as { url: string }
+      if (type !== 'grid_image') {
+        const design = designs.value.find(d => d.id === designId)
+        if (design) {
+          if (type === 'banner') design.bannerImageUrl = result.url
+          else if (type === 'watermark') design.watermarkImageUrl = result.url
+        }
+        if (currentDesign.value?.id === designId) {
+          if (type === 'banner') currentDesign.value.bannerImageUrl = result.url
+          else if (type === 'watermark') currentDesign.value.watermarkImageUrl = result.url
+        }
+      }
+      return result.url
     } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Error al subir logo'
+      error.value = e.data?.message || e.message || 'Error al subir asset'
       throw e
     } finally {
       isLoading.value = false
     }
   }
 
-  async function uploadBackground(designId: string, file: File) {
-    isLoading.value = true
-    error.value = null
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const data = await $fetch(`/api/v1/pdf-designs/${designId}/upload-background`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: form,
-      })
-      const result = data as { backgroundUrl: string }
-      const design = designs.value.find(d => d.id === designId)
-      if (design) design.backgroundUrl = result.backgroundUrl
-      if (currentDesign.value?.id === designId) currentDesign.value.backgroundUrl = result.backgroundUrl
-      return result.backgroundUrl
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Error al subir fondo'
-      throw e
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function deleteAsset(designId: string, type: 'logo' | 'background') {
+  async function deleteAsset(designId: string, type: 'banner' | 'watermark') {
     isLoading.value = true
     error.value = null
     try {
@@ -174,12 +166,12 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
       })
       const design = designs.value.find(d => d.id === designId)
       if (design) {
-        if (type === 'logo') design.logoUrl = null
-        else design.backgroundUrl = null
+        if (type === 'banner') design.bannerImageUrl = null
+        else if (type === 'watermark') design.watermarkImageUrl = null
       }
       if (currentDesign.value?.id === designId) {
-        if (type === 'logo') currentDesign.value.logoUrl = null
-        else currentDesign.value.backgroundUrl = null
+        if (type === 'banner') currentDesign.value.bannerImageUrl = null
+        else if (type === 'watermark') currentDesign.value.watermarkImageUrl = null
       }
     } catch (e: any) {
       error.value = e.data?.message || e.message || 'Error al eliminar asset'
@@ -206,6 +198,6 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
   return {
     designs, currentDesign, isLoading, error,
     fetchDesigns, fetchDesign, createDesign, updateDesign, deleteDesign,
-    uploadLogo, uploadBackground, deleteAsset, fetchPreview,
+    uploadAsset, deleteAsset, fetchPreview,
   }
 })

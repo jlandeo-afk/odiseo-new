@@ -9,6 +9,7 @@ import { GenerateMaterialDto } from '../dto/generate-material.dto';
 import { MaterialRequestStatus } from '../entities/material-request.entity';
 import { CourseMaterialStatus } from '../entities/material-request-course.entity';
 import { CycleMaterialTemplate } from '../../academic-time/entities/cycle-material-template.entity';
+import { PdfDesignTemplate } from '../entities/pdf-design-template.entity';
 
 @Injectable()
 export class GenerateMaterialUseCase {
@@ -51,14 +52,25 @@ export class GenerateMaterialUseCase {
       ? MaterialRequestStatus.REVIEW_REQUIRED
       : MaterialRequestStatus.PROCESSING;
 
-    // 4. Crear el registro en base de datos en estado inicial
+    // 4. Resolver plantilla de diseño por defecto si no se especificó una
+    let designTemplateId = dto.design_template_id || null;
+    if (!designTemplateId) {
+      const defaultDesign = await this.entityManager.findOne(PdfDesignTemplate, {
+        where: { tenantId, isDefault: true },
+      });
+      if (defaultDesign) {
+        designTemplateId = defaultDesign.id;
+      }
+    }
+
+    // Crear el registro en base de datos en estado inicial
     const materialRequest = await this.materialsRepo.createRequest({
       tenantId,
       profileId: dto.profile_id,
       cycleId,
       weekNumber: dto.week_number,
       requiresReview: dto.requires_review,
-      designTemplateId: dto.design_template_id || null,
+      designTemplateId,
       createdBy: userId,
       status: initialStatus,
     });
@@ -84,7 +96,7 @@ export class GenerateMaterialUseCase {
       cycle_id: cycleId,
       week_number: dto.week_number,
       template_name: templateName,
-      design_template_id: dto.design_template_id || null,
+      design_template_id: designTemplateId,
       requires_review: dto.requires_review,
       material_type: dto.exam_areas ? 'EXAMEN' : 'BALOTARIO',
       distributions: mockDistributions,

@@ -96,6 +96,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAcademicTimeStore } from '@/features/academic-time/store'
+import { useToast } from '#imports'
 
 definePageMeta({
   layout: 'b2b',
@@ -104,6 +105,7 @@ definePageMeta({
 
 const route = useRoute()
 const store = useAcademicTimeStore()
+const toast = useToast()
 
 const cycleId = computed(() => route.params.id as string)
 const cycle = computed(() => store.cycles.find(c => c.id === cycleId.value))
@@ -119,12 +121,13 @@ onMounted(async () => {
 })
 
 async function handleDelete(templateId: string) {
-  if (!confirm('¿Seguro que deseas eliminar esta plantilla? Los exámenes generados con ella no se borrarán.')) return
+  if (!confirm('¿Seguro que deseas eliminar esta plantilla?')) return
   try {
     await store.deleteTemplate(cycleId.value, templateId)
+    toast.add({ title: 'Plantilla eliminada', color: 'success' })
   } catch (e) {
     console.error(e)
-    alert('Error al eliminar.')
+    toast.add({ title: 'Error al eliminar', description: 'Inténtalo de nuevo más tarde.', color: 'red' })
   }
 }
 </script>

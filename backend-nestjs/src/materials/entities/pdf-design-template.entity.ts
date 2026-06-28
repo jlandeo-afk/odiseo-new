@@ -12,35 +12,63 @@ export class PdfDesignTemplate {
   @Column({ length: 255 })
   name: string;
 
-  @Column({ name: 'logo_url', nullable: true, type: 'text' })
-  logoUrl: string | null;
 
-  @Column({ name: 'primary_color', nullable: true, type: 'varchar', length: 7 })
-  primaryColor: string | null;
+  @Column({ name: 'banner_image_url', nullable: true, type: 'text' })
+  bannerImageUrl: string | null;
 
-  @Column({ name: 'font_family', nullable: true, type: 'varchar', length: 100 })
-  fontFamily: string | null;
+  @Column({ name: 'watermark_image_url', nullable: true, type: 'text' })
+  watermarkImageUrl: string | null;
 
-  @Column({ name: 'header_text', nullable: true, type: 'text' })
-  headerText: string | null;
+  @Column({ name: 'cover_image_url', nullable: true, type: 'text' })
+  coverImageUrl: string | null;
 
-  @Column({ name: 'footer_text', nullable: true, type: 'text' })
-  footerText: string | null;
-
-  @Column({ name: 'show_cover', default: true })
+  @Column({ name: 'show_cover', default: false })
   showCover: boolean;
 
-  @Column({ name: 'background_url', nullable: true, type: 'text' })
-  backgroundUrl: string | null;
+  @Column({ name: 'primary_title_color', type: 'varchar', length: 20, default: '2, 113, 184' })
+  primaryTitleColor: string;
 
-  @Column({ name: 'show_pagination', default: true })
-  showPagination: boolean;
+  @Column({ name: 'secondary_title_color', type: 'varchar', length: 20, default: '2, 113, 184' })
+  secondaryTitleColor: string;
 
-  @Column({ name: 'show_frame', default: true })
-  showFrame: boolean;
+  @Column({ name: 'background_highlight_color', type: 'varchar', length: 20, default: '214, 238, 253' })
+  backgroundHighlightColor: string;
 
-  @Column({ name: 'contact_info', nullable: true, type: 'text' })
-  contactInfo: string | null;
+  @Column({ name: 'margin_top', type: 'varchar', length: 20, default: '3cm' })
+  marginTop: string;
+
+  @Column({ name: 'margin_bottom', type: 'varchar', length: 20, default: '1.5cm' })
+  marginBottom: string;
+
+  @Column({ name: 'margin_inside', type: 'varchar', length: 20, default: '1cm' })
+  marginInside: string;
+
+  @Column({ name: 'margin_outside', type: 'varchar', length: 20, default: '1cm' })
+  marginOutside: string;
+
+  @Column({ name: 'is_book_mode', default: false })
+  isBookMode: boolean;
+
+  @Column({ name: 'font_family', type: 'varchar', length: 50, default: 'Arial' })
+  fontFamily: string;
+
+  @Column({ name: 'border_radius', type: 'varchar', length: 20, default: '4px' })
+  borderRadius: string;
+
+  @Column({ name: 'content_font_size', type: 'varchar', length: 20, default: '11pt' })
+  contentFontSize: string;
+
+  @Column({ name: 'content_text_color', type: 'varchar', length: 20, default: '#000000' })
+  contentTextColor: string;
+
+  @Column({ name: 'blocks_config', type: 'jsonb', nullable: true })
+  blocksConfig: any | null;
+
+  @Column({ name: 'header_config', type: 'jsonb', nullable: true })
+  headerConfig: any | null;
+
+  @Column({ name: 'footer_config', type: 'jsonb', nullable: true })
+  footerConfig: any | null;
 
   @Column({ name: 'is_default', default: false })
   isDefault: boolean;

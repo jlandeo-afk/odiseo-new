@@ -40,16 +40,23 @@ export class PdfGenerationProcessor extends WorkerHost {
       });
       if (!design) return null;
       return {
-        logoUrl: design.logoUrl,
-        primaryColor: design.primaryColor,
-        fontFamily: design.fontFamily,
-        headerText: design.headerText,
-        footerText: design.footerText,
+        bannerImageUrl: design.bannerImageUrl,
+        watermarkImageUrl: design.watermarkImageUrl,
+        coverImageUrl: design.coverImageUrl,
         showCover: design.showCover,
-        backgroundUrl: design.backgroundUrl,
-        showPagination: design.showPagination,
-        showFrame: design.showFrame,
-        contactInfo: design.contactInfo,
+        primaryTitleColor: design.primaryTitleColor,
+        secondaryTitleColor: design.secondaryTitleColor,
+        backgroundHighlightColor: design.backgroundHighlightColor,
+        marginTop: design.marginTop,
+        marginBottom: design.marginBottom,
+        marginInside: design.marginInside,
+        marginOutside: design.marginOutside,
+        isBookMode: design.isBookMode,
+        fontFamily: design.fontFamily,
+        borderRadius: design.borderRadius,
+        blocksConfig: design.blocksConfig,
+        headerConfig: design.headerConfig,
+        footerConfig: design.footerConfig,
       };
     } catch (err: any) {
       this.logger.warn(`Failed to load design template ${designTemplateId}: ${err.message}`);

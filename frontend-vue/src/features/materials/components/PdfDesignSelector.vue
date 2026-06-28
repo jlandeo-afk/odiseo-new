@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { usePdfDesignsStore, type PdfDesignTemplate } from '../store/pdfDesigns'
+import PdfDesignPreview from './PdfDesignPreview.vue'
 
 const props = defineProps<{
   modelValue: string | null
+  courseName?: string
+  weekNumber?: number
+  templateName?: string
+  cycleName?: string
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +34,13 @@ async function openPreview() {
   loadingPreview.value = true
   showPreview.value = true
   try {
-    previewHtml.value = await store.fetchPreview(selectedId.value)
+    const contextBody = {
+      courseName: props.courseName,
+      weekNumber: props.weekNumber,
+      templateName: props.templateName,
+      cycleName: props.cycleName
+    }
+    previewHtml.value = await store.fetchPreview(selectedId.value, contextBody)
   } catch {
     previewHtml.value = '<p class="p-4 text-rose-500">Error al cargar preview</p>'
   } finally {
@@ -46,12 +57,12 @@ async function openPreview() {
     <div class="flex gap-2">
       <USelectMenu v-model="selectedId" :items="store.designs" value-key="id" label-key="name"
         placeholder="Sin personalización" class="flex-1" size="sm">
-        <template #label>
+        <template #default>
           {{ store.designs.find(d => d.id === selectedId)?.name || 'Sin personalización' }}
         </template>
         <template #option="{ option }">
           <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full" :style="{ background: option.primaryColor || '#6366f1' }" />
+            <span class="w-3 h-3 rounded-full" :style="{ background: 'rgb(' + (option.primaryTitleColor || '2, 113, 184') + ')' }" />
             <span>{{ option.name }}</span>
             <UBadge v-if="option.isDefault" size="xs" color="indigo" variant="solid">Default</UBadge>
           </div>
@@ -71,7 +82,7 @@ async function openPreview() {
           class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
           <div class="bg-white dark:bg-[#1a1a24] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto">
             <div class="flex items-center justify-between px-6 pt-4 pb-2">
-              <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Vista Previa</h3>
+              <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Vista Previa (Diseño Seleccionado)</h3>
               <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="showPreview = false" />
             </div>
             <div class="overflow-y-auto flex-1 px-6 pb-6">

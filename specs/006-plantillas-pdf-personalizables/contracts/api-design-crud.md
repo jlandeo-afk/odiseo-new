@@ -1,4 +1,4 @@
-# API: CRUD de Plantillas de Diseño
+# API: CRUD de Diseños de PDF
 
 Base path (tenant schema): `/api/v1/pdf-designs`
 
@@ -18,19 +18,17 @@ GET /api/v1/pdf-designs
   "data": [
     {
       "id": "uuid",
-      "name": "Diseño Universidad del Norte",
+      "name": "Diseño Institucional Azul",
       "logoUrl": "https://...",
-      "primaryColor": "#1a56db",
-      "fontFamily": "Arial",
-      "headerText": "Universidad del Norte - {course_name}",
+      "bannerImageUrl": "https://...",
+      "watermarkImageUrl": null,
+      "primaryTitleColor": "2, 113, 184",
+      "secondaryTitleColor": "2, 113, 184",
+      "backgroundHighlightColor": "214, 238, 253",
+      "headerText": "{template_name} - Semana {week_number}",
       "footerText": "Página {page} de {total}",
-      "showCover": true,
-      "backgroundUrl": null,
-      "showPagination": true,
-      "showFrame": true,
-      "contactInfo": "info@unorte.edu.ec | Telf: 123456789",
       "isDefault": true,
-      "createdAt": "2026-06-25T00:00:00Z"
+      "createdAt": "2026-06-27T00:00:00Z"
     }
   ]
 }
@@ -57,15 +55,12 @@ POST /api/v1/pdf-designs
 **Body**:
 ```json
 {
-  "name": "Diseño Universidad del Norte",
-  "primaryColor": "#1a56db",
-  "fontFamily": "Arial",
-  "headerText": "Universidad del Norte - {course_name}",
+  "name": "Diseño Institucional Azul",
+  "primaryTitleColor": "2, 113, 184",
+  "secondaryTitleColor": "2, 113, 184",
+  "backgroundHighlightColor": "214, 238, 253",
+  "headerText": "{template_name} - Semana {week_number}",
   "footerText": "Página {page} de {total}",
-  "showCover": true,
-  "showPagination": true,
-  "showFrame": true,
-  "contactInfo": "info@unorte.edu.ec | Telf: 123456789",
   "isDefault": false
 }
 ```
@@ -73,10 +68,13 @@ POST /api/v1/pdf-designs
 **Response** `201`: Created design object (with id).
 
 **Validation**:
-- `name`: required, max 255 chars
-- `primaryColor`: optional, must match `^#[0-9A-Fa-f]{6}$`
-- `showCover`, `showPagination`, `showFrame`: boolean, default `true`
+- `name`: required, max 255 chars, unique per tenant
+- `primaryTitleColor`: optional, RGB format `"R, G, B"` (each 0-255)
+- `secondaryTitleColor`: optional, RGB format
+- `backgroundHighlightColor`: optional, RGB format
+- `headerText`, `footerText`: optional, text
 - `isDefault`: if `true`, system unsets previous default for tenant
+- If first design for tenant, `isDefault` is set to `true` automatically
 
 ---
 
@@ -101,5 +99,5 @@ DELETE /api/v1/pdf-designs/:id
 **Response** `204`: No content.
 
 **Behavior**: 
-- Cannot delete the last default design for tenant (error 422).
 - Sets `design_template_id = NULL` on referencing MaterialRequests.
+- If deleted design was default, no design is auto-promoted to default (system uses base HTML without customization).

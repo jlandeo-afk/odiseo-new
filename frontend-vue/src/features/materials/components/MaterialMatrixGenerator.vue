@@ -475,7 +475,13 @@ defineExpose({ isOpen, openWithContext });
 
                   <!-- Design Selector -->
                   <div class="border-t border-slate-200 dark:border-white/5 pt-4">
-                    <PdfDesignSelector v-model="selectedDesignId" />
+                    <PdfDesignSelector
+                      v-model="selectedDesignId"
+                      :course-name="selectedTemplate?.courses?.[0] ? getCourseName(selectedTemplate.courses[0].courseId || selectedTemplate.courses[0].course_id) : 'Aritmética'"
+                      :week-number="selectedWeek || 1"
+                      :template-name="selectedTemplate?.name || 'Material'"
+                      :cycle-name="currentCycle?.name || 'Ciclo'"
+                    />
                   </div>
 
                   <!-- Actions -->

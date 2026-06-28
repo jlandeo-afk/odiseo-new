@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PdfDesignTemplate } from '../entities/pdf-design-template.entity';
 import { MaterialRequest } from '../entities/material-request.entity';
 import { CreatePdfDesignDto } from '../dto/create-pdf-design.dto';
@@ -59,56 +59,77 @@ export class PdfDesignService {
 
   async delete(id: string, tenantId: string): Promise<void> {
     const design = await this.findById(id, tenantId);
-    const totalCount = await this.designRepo.count({ where: { tenantId } });
-    if (design.isDefault && totalCount <= 1) {
-      throw new ConflictException('Cannot delete the only default design template. Set another as default first.');
-    }
     const materialCount = await this.materialRequestRepo.count({ where: { designTemplateId: id } });
     if (materialCount > 0) {
       throw new ConflictException(
         `Cannot delete design template "${design.name}" because it is used by ${materialCount} material request(s).`
       );
     }
-    await this.designRepo.remove(design);
-    const remainingDefault = await this.designRepo.count({ where: { tenantId, isDefault: true } });
-    if (remainingDefault === 0 && totalCount > 1) {
-      const nextDesign = await this.designRepo.findOne({ where: { tenantId }, order: { createdAt: 'ASC' } });
-      if (nextDesign) {
-        nextDesign.isDefault = true;
-        await this.designRepo.save(nextDesign);
+    
+    // Clean up S3 assets if present
+    const assets: ('banner' | 'watermark')[] = ['banner', 'watermark'];
+    for (const type of assets) {
+      try {
+        const key = `designs/${tenantId}/${id}-${type}.png`;
+        await this.s3Service.deleteObject(key);
+      } catch (error) {
+        // S3 object might not exist, ignore and proceed
       }
     }
+
+    await this.designRepo.remove(design);
   }
 
-  async uploadLogo(designId: string, tenantId: string, file: Express.Multer.File): Promise<string> {
+  async uploadAsset(
+    designId: string,
+    tenantId: string,
+    file: Express.Multer.File,
+    type: 'banner' | 'watermark' | 'grid_image',
+  ): Promise<string> {
     const design = await this.findById(designId, tenantId);
-    const resized = await sharp(file.buffer)
-      .resize({ width: 200, withoutEnlargement: true })
-      .png()
-      .toBuffer();
-    const key = `designs/${tenantId}/${designId}-logo.png`;
-    const url = await this.s3Service.uploadBuffer(key, resized, 'image/png');
-    design.logoUrl = url;
-    await this.designRepo.save(design);
-    return url;
-  }
+    let bufferToUpload = file.buffer;
+    let mimeType = file.mimetype;
 
-  async uploadBackground(designId: string, tenantId: string, file: Express.Multer.File): Promise<string> {
-    const design = await this.findById(designId, tenantId);
-    const key = `designs/${tenantId}/${designId}-background.png`;
-    const url = await this.s3Service.uploadBuffer(key, file.buffer, file.mimetype);
-    design.backgroundUrl = url;
-    await this.designRepo.save(design);
-    return url;
-  }
-
-  async deleteAsset(designId: string, tenantId: string, type: 'logo' | 'background'): Promise<void> {
-    const design = await this.findById(designId, tenantId);
-    if (type === 'logo') {
-      design.logoUrl = null;
-    } else {
-      design.backgroundUrl = null;
+    if (type === 'grid_image') {
+      console.log(`uploadAsset: file.size=${file.size}, buffer.length=${file.buffer?.length}, mimetype=${file.mimetype}`);
+      bufferToUpload = await sharp(file.buffer)
+        .resize({ width: 200, withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      mimeType = 'image/png';
     }
+
+    const keySuffix = type === 'grid_image' ? `grid-${Date.now()}` : type;
+    const key = `designs/${tenantId}/${designId}-${keySuffix}.png`;
+    const url = await this.s3Service.uploadBuffer(key, bufferToUpload, mimeType);
+
+    if (type === 'banner') {
+      design.bannerImageUrl = url;
+    } else if (type === 'watermark') {
+      design.watermarkImageUrl = url;
+    }
+
+    if (type !== 'grid_image') {
+      await this.designRepo.save(design);
+    }
+    return url;
+  }
+
+  async deleteAsset(designId: string, tenantId: string, type: 'banner' | 'watermark'): Promise<void> {
+    const design = await this.findById(designId, tenantId);
+    if (type === 'banner') {
+      design.bannerImageUrl = null;
+    } else if (type === 'watermark') {
+      design.watermarkImageUrl = null;
+    }
+    
+    try {
+      const key = `designs/${tenantId}/${designId}-${type}.png`;
+      await this.s3Service.deleteObject(key);
+    } catch (error) {
+      // S3 object might not exist, ignore
+    }
+
     await this.designRepo.save(design);
   }
 
@@ -124,94 +145,230 @@ export class PdfDesignService {
       design = await this.findById(designId, tenantId);
     }
 
-    const primaryColor = design.primaryColor || '#1a56db';
-    const fontFamily = design.fontFamily || 'Arial, sans-serif';
-    const headerText = design.headerText || '';
-    const footerText = design.footerText || '{page} / {total}';
-    const contactInfo = design.contactInfo || '';
-    const showCover = design.showCover !== false;
-    const showPagination = design.showPagination !== false;
-    const showFrame = design.showFrame !== false;
-    const logoHtml = design.logoUrl
-      ? `<img src="${design.logoUrl}" class="logo" alt="Logo" />`
-      : '';
-    const bgStyle = design.backgroundUrl
-      ? `background-image: url('${design.backgroundUrl}'); background-size: cover; background-position: center;`
+    const primaryTitleColor = design.primaryTitleColor || '2, 113, 184';
+    const secondaryTitleColor = design.secondaryTitleColor || '2, 113, 184';
+    const backgroundHighlightColor = design.backgroundHighlightColor || '214, 238, 253';
+
+    const marginTop = design.marginTop || '3cm';
+    const marginBottom = design.marginBottom || '1.5cm';
+    const marginInside = design.marginInside || '1cm';
+    const marginOutside = design.marginOutside || '1cm';
+    const isBookMode = design.isBookMode || false;
+
+    const wNum = 1;
+    const tplName = 'Material de Estudio';
+    const courseName = 'Aritmética';
+    const cycleName = 'Ciclo Especial 2026';
+
+    const headerConfig = design.headerConfig || {};
+    const footerConfig = design.footerConfig || {};
+
+    const resolveVars = (text: string, pageNum: number): string => {
+      if (!text) return '';
+      return text
+        .replace(/\{page\}/g, String(pageNum))
+        .replace(/\{total_pages\}/g, '2')
+        .replace(/\{total\}/g, '2')
+        .replace(/\{curso\}/g, courseName)
+        .replace(/\{course_name\}/g, courseName)
+        .replace(/\{temas\}/g, 'Temas Consolidados')
+        .replace(/\{week_number\}/g, String(wNum))
+        .replace(/\{material_titulo\}/g, tplName)
+        .replace(/\{template_name\}/g, tplName)
+        .replace(/\{fecha_generacion\}/g, new Date().toLocaleDateString('es-ES'))
+        .replace(/\{institucion_nombre\}/g, cycleName)
+        .replace(/\{cycle_name\}/g, cycleName);
+    };
+
+    const buildGridHtml = (config: any, isHeader: boolean, pageNum: number) => {
+      const left = config?.left ? resolveVars(config.left, pageNum) : '';
+      const center = config?.center ? resolveVars(config.center, pageNum) : '';
+      const right = config?.right ? resolveVars(config.right, pageNum) : '';
+      return `
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: ${isHeader ? 'flex-end' : 'center'};">
+          <div class="grid-zone" style="flex: 1; text-align: left;">${(left.includes('http') || left.includes('data:image')) && !left.includes('<img') ? `<img src="${left}" style="height: 35px; object-fit: contain;">` : left}</div>
+          <div class="grid-zone" style="flex: 1; text-align: center;">${(center.includes('http') || center.includes('data:image')) && !center.includes('<img') ? `<img src="${center}" style="height: 35px; object-fit: contain;">` : center}</div>
+          <div class="grid-zone" style="flex: 1; text-align: right;">${(right.includes('http') || right.includes('data:image')) && !right.includes('<img') ? `<img src="${right}" style="height: 35px; object-fit: contain;">` : right}</div>
+        </div>
+      `;
+    };
+
+    const focusedSection = (design as any).focusedSection || null;
+
+    const bannerStyle = design.bannerImageUrl
+      ? `background-image: url('${design.bannerImageUrl}');`
+      : `background-color: transparent;`;
+
+    const watermarkHtml = design.watermarkImageUrl
+      ? `<img src="${design.watermarkImageUrl}" alt="Watermark">`
       : '';
 
-    const resolvedHeader = headerText
-      .replace(/\{page\}/g, '1')
-      .replace(/\{total\}/g, '2')
-      .replace(/\{course_name\}/g, 'Matemáticas')
-      .replace(/\{week_number\}/g, '1')
-      .replace(/\{template_name\}/g, 'Examen Parcial')
-      .replace(/\{cycle_name\}/g, '2026-1');
+    const questionsHtml = `
+      <div class="question__block">
+          <div class="question__container">
+              <div class="question__number">1.</div>
+              <div class="question__content">
+                  <div class="question__description">
+                      <p>Dada la proposición lógica: "Si estudio entonces apruebo". Indique cuál es su equivalente contrarrecíproca.</p>
+                  </div>
+                  <div class="alternatives__grid alternatives--cols-1">
+                      <div class="alternative__item">
+                          <div class="alternative__letter">A)</div>
+                          <div class="alternative__text"><span class="alternative__bg">Si no estudio entonces apruebo.</span></div>
+                      </div>
+                      <div class="alternative__item">
+                          <div class="alternative__letter">B)</div>
+                          <div class="alternative__text"><span class="alternative__bg">Si no apruebo entonces no estudio.</span></div>
+                      </div>
+                      <div class="alternative__item">
+                          <div class="alternative__letter">C)</div>
+                          <div class="alternative__text"><span class="alternative__bg">Estudio y no apruebo.</span></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      <div class="question__block">
+          <div class="question__container">
+              <div class="question__number">2.</div>
+              <div class="question__content">
+                  <div class="question__description">
+                      <p>Determine el valor de verdad de las siguientes afirmaciones sobre conjuntos numéricos.</p>
+                  </div>
+                  <div class="alternatives__grid alternatives--cols-1">
+                      <div class="alternative__item">
+                          <div class="alternative__letter">A)</div>
+                          <div class="alternative__text"><span class="alternative__bg">V - F - V</span></div>
+                      </div>
+                      <div class="alternative__item">
+                          <div class="alternative__letter">B)</div>
+                          <div class="alternative__text"><span class="alternative__bg">F - F - V</span></div>
+                      </div>
+                      <div class="alternative__item">
+                          <div class="alternative__letter">C)</div>
+                          <div class="alternative__text"><span class="alternative__bg">V - V - V</span></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    `;
 
-    const resolvedFooter = footerText
-      .replace(/\{page\}/g, '1')
-      .replace(/\{total\}/g, '2')
-      .replace(/\{course_name\}/g, 'Matemáticas')
-      .replace(/\{week_number\}/g, '1')
-      .replace(/\{template_name\}/g, 'Examen Parcial')
-      .replace(/\{cycle_name\}/g, '2026-1');
+    const getPadding = (isEven: boolean) => {
+      if (!isBookMode) return `${marginTop} ${marginOutside} ${marginBottom} ${marginInside}`;
+      return isEven 
+        ? `${marginTop} ${marginInside} ${marginBottom} ${marginOutside}` // Left page
+        : `${marginTop} ${marginOutside} ${marginBottom} ${marginInside}`; // Right page
+    };
 
-    const frameStyle = showFrame
-      ? 'border: 1.5px solid #e5e7eb; border-radius: 4px;'
-      : '';
+    const getPageHtml = (contentHtml: string, isEven: boolean, pageNum: number) => {
+      const headerContentHtml = buildGridHtml(headerConfig, true, pageNum);
+      const footerContentHtml = buildGridHtml(footerConfig, false, pageNum);
+      
+      return `
+      <div class="preview-page" style="padding: ${getPadding(isEven)};">
+          <div class="layout__header-fixed ${focusedSection === 'header' ? 'focused-section' : ''}">
+              <div class="header__banner" style="${bannerStyle}">
+                  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column;">
+                     <div style="flex: 1;"></div>
+                     <div style="width: 100%; padding: 0 ${isBookMode && isEven ? marginOutside : marginInside} 0.2cm ${isBookMode && isEven ? marginInside : marginOutside};">
+                        ${headerContentHtml}
+                     </div>
+                  </div>
+              </div>
+          </div>
+          <div class="layout__watermark-fixed">${watermarkHtml}</div>
+          <div class="content__wrapper columns-2 ${focusedSection ? 'dimmed-section' : ''}">${contentHtml}</div>
+          <div class="footer ${focusedSection === 'footer' ? 'focused-section' : ''}" style="padding: 0 ${isBookMode && isEven ? marginOutside : marginInside} 0 ${isBookMode && isEven ? marginInside : marginOutside};">
+              <div style="width: 100%;">${footerContentHtml}</div>
+          </div>
+      </div>
+    `;
+    };
+
+    let coverPageHtml = '';
+    if (design.showCover && design.coverImageUrl) {
+      coverPageHtml = `
+      <div class="preview-page" style="padding: 0;">
+        <div style="width: 100%; height: 100%; background-image: url('${design.coverImageUrl}'); background-size: cover; background-position: center;"></div>
+      </div>
+      `;
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<style>
-  :root { --primary: ${primaryColor}; --font: ${fontFamily}; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: var(--font); color: #1f2937; line-height: 1.6; }
-  .page { width: 210mm; min-height: 297mm; padding: 2cm; margin: 0 auto; position: relative; ${bgStyle} }
-  ${showFrame ? '.page { border: 1.5px solid #e5e7eb; border-radius: 4px; }' : ''}
-  .header { display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; border-bottom: 2px solid var(--primary); margin-bottom: 1.5rem; }
-  .header .logo { height: 40px; object-fit: contain; }
-  .header-text { font-size: 11px; color: #6b7280; margin-left: auto; }
-  .footer { position: absolute; bottom: 1.5cm; left: 2cm; right: 2cm; display: flex; justify-content: center; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 0.5cm; }
-  .cover-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90%; text-align: center; }
-  .cover-page .logo-lg { max-height: 80px; margin-bottom: 2rem; object-fit: contain; }
-  .cover-page h1 { font-size: 28px; color: var(--primary); margin-bottom: 0.5rem; }
-  .cover-page .divider { width: 60px; height: 3px; background: var(--primary); margin: 1rem auto; border-radius: 2px; }
-  .cover-page .subtitle { font-size: 16px; color: #6b7280; }
-  .cover-page .contact { margin-top: 2rem; font-size: 11px; color: #9ca3af; }
-  .content { padding: 0 0.5cm; }
-  .content h2 { font-size: 16px; color: var(--primary); margin-bottom: 1rem; }
-  .content p { font-size: 12px; margin-bottom: 0.5rem; color: #4b5563; }
-  ${design.logoUrl ? '.cover-page .logo-placeholder { display: none; }' : '.cover-page .logo-placeholder { width: 80px; height: 80px; background: #f3f4f6; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; font-size: 10px; color: #9ca3af; }'}
-</style>
+    <meta charset="utf-8">
+    <title>Vista Previa de Diseño</title>
+    <style>
+        :root {
+            --width-page: 100%;
+            --correct-answer: #00ff00;
+            --text-color: ${design.contentTextColor || '#000000'};
+            --text-font-family: ${design.fontFamily || 'Arial'}, "Roboto", sans-serif;
+            --text-font-size: ${design.contentFontSize || '11pt'};
+            --text-line-height: 1.15;
+            --title-font-family: Arial, "Roboto", sans-serif;
+            --title-font-size: 14pt;
+            --title-line-height: 1.15;
+            --v-theme-primary-title: ${primaryTitleColor};
+            --v-theme-secondary-title: ${secondaryTitleColor};
+            --v-theme-primary-background: ${backgroundHighlightColor};
+        }
+        html, body {
+            box-sizing: border-box; margin: 0; padding: 0; color: var(--text-color);
+            font-family: var(--text-font-family); font-size: var(--text-font-size);
+            line-height: var(--text-line-height); background-color: transparent;
+        }
+        *, *:before, *:after { box-sizing: inherit; }
+        .preview-page {
+            width: 21cm; height: 29.7cm; background-color: #ffffff;
+            margin: 0 auto; position: relative; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px; overflow: hidden; flex-shrink: 0; box-sizing: border-box;
+        }
+        img { max-width: 100%; height: auto !important; display: block; }
+        .layout__header-fixed { position: absolute; top: 0; left: 0; width: 100%; height: ${marginTop}; z-index: 50; display: flex; align-items: center; }
+        .header__banner { width: 100%; height: 100%; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center; position: relative; }
+        .layout__watermark-fixed { position: absolute; top: 20%; left: 1cm; width: calc(100% - 2cm); height: 60%; z-index: 10; opacity: 0.1; pointer-events: none; display: flex; justify-content: center; align-items: center; }
+        .layout__watermark-fixed img { width: 100%; object-fit: contain; }
+        .content__wrapper { width: 100%; margin-top: 0.5cm; }
+        .columns-2 { column-count: 2; column-gap: 1cm; column-fill: balance; }
+        .question__block { break-inside: auto; margin-bottom: 0.5cm; }
+        .question__container { display: grid; grid-template-columns: 0.65cm 1fr; column-gap: 0.1cm; align-items: baseline; break-inside: avoid; }
+        .question__number { font-weight: bold; color: rgb(var(--v-theme-secondary-title)); }
+        .question__description { text-align: justify; word-break: break-word; hyphens: auto; margin-bottom: 0.2cm; }
+        .alternatives__grid { display: grid; gap: 0.1cm; width: 100%; }
+        .alternative__item { display: flex; align-items: baseline; gap: 6px; break-inside: avoid; }
+        .alternative__letter { font-weight: bold; color: rgb(var(--v-theme-secondary-title)); white-space: nowrap; }
+        .alternative__text { word-break: break-word; }
+        .alternative__bg { display: inline-block; position: relative; padding: 2px 4px; border-radius: 6px; }
+        .footer { position: absolute; bottom: 0; left: 0; width: 100%; height: ${marginBottom}; display: flex; align-items: center; justify-content: center; }
+        .preview-container { display: flex; flex-direction: column; gap: 1.5rem; align-items: center; padding: 1.5rem; }
+        .focused-section {
+          outline: 2px dashed rgb(var(--v-theme-primary-title));
+          background: rgba(var(--v-theme-primary-title), 0.05);
+          z-index: 100;
+          transition: all 0.2s ease;
+        }
+        .focused-section .grid-zone {
+          outline: 1px dashed rgba(var(--v-theme-primary-title), 0.4);
+          background: rgba(var(--v-theme-primary-title), 0.03);
+          min-height: 1.5rem;
+        }
+        .dimmed-section {
+          opacity: 0.3;
+          filter: grayscale(50%);
+          pointer-events: none;
+          transition: all 0.2s ease;
+        }
+    </style>
 </head>
 <body>
-${showCover ? `
-<div class="page">
-  <div class="cover-page">
-    ${logoHtml || '<div class="logo-placeholder">Sin Logo</div>'}
-    <h1>Semana 1 - Matemáticas</h1>
-    <div class="divider"></div>
-    <p class="subtitle">Examen Parcial</p>
-    <p class="contact">${contactInfo}</p>
-  </div>
-</div>
-` : ''}
-<div class="page">
-  <div class="header">
-    ${logoHtml}
-    <span class="header-text">${resolvedHeader}</span>
-  </div>
-  <div class="content">
-    <h2>Pregunta 1</h2>
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-    <h2>Pregunta 2</h2>
-    <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-    <h2>Pregunta 3</h2>
-    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
-  </div>
-  ${showPagination ? `<div class="footer"><span>${resolvedFooter}</span></div>` : ''}
-</div>
+    <div class="preview-container">
+        ${coverPageHtml}
+        ${getPageHtml(questionsHtml, false, 1)}
+        ${getPageHtml(questionsHtml, true, 2)}
+    </div>
 </body>
 </html>`;
 

@@ -96,12 +96,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useToast } from '#imports'
 import { useAcademicTimeStore } from '@/features/academic-time/store'
 import MaterialGenerateModal from '@/features/materials/components/MaterialGenerateModal.vue'
 
 const props = defineProps<{ cycleId: string }>()
 
 const store = useAcademicTimeStore()
+const toast = useToast()
 const generateModalRef = ref<any>(null)
 const activeTemplateId = ref<string>('')
 
@@ -115,9 +117,10 @@ async function handleDelete(templateId: string) {
   if (!confirm('¿Seguro que deseas eliminar esta plantilla? Los exámenes generados con ella no se borrarán.')) return
   try {
     await store.deleteTemplate(props.cycleId, templateId)
+    toast.add({ title: 'Plantilla eliminada', color: 'success', timeout: 2000 })
   } catch (e) {
     console.error(e)
-    alert('Error al eliminar.')
+    toast.add({ title: 'Error al eliminar', description: 'Ocurrió un problema, inténtalo de nuevo.', color: 'red' })
   }
 }
 
@@ -129,8 +132,11 @@ function openGenerateModal(templateId: string) {
 }
 
 function handleGenerateSuccess() {
-  // Option: show a toast or redirect to the global material board.
-  // We can just close the modal, which happens automatically inside it.
-  alert('Generación iniciada con éxito. Revisa el Workspace de Materiales.')
+  toast.add({
+    title: 'Generación iniciada',
+    description: 'Revisa el Workspace de Materiales para seguir el progreso.',
+    color: 'success',
+    timeout: 3000
+  })
 }
 </script>

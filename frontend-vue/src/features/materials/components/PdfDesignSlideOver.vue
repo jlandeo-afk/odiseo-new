@@ -45,8 +45,9 @@ function handleCancelled() {
       enter-to-class="translate-x-0" leave-active-class="transform transition ease-in-out duration-350"
       leave-from-class="translate-x-0" leave-to-class="translate-x-full">
       <div v-if="isOpen"
-        class="fixed inset-y-0 right-0 w-full max-w-lg bg-white dark:bg-[#11111a] shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-white/5">
-        <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-white/5">
+        class="fixed inset-y-0 right-0 w-full bg-white dark:bg-[#11111a] shadow-2xl z-50 flex flex-col border-l border-slate-200 dark:border-white/5 transition-all duration-300"
+        :class="view === 'form' ? 'max-w-6xl' : 'max-w-xl'">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-white/5 shrink-0">
           <div class="flex items-center gap-3">
             <div
               class="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
@@ -57,7 +58,10 @@ function handleCancelled() {
               <p class="text-xs text-slate-500 dark:text-slate-400">Personaliza la apariencia de tus PDFs</p>
             </div>
           </div>
-          <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="isOpen = false" />
+          <div class="flex items-center gap-2">
+            <UButton v-if="view === 'list'" color="indigo" size="xs" icon="i-heroicons-plus" @click="openCreate">Nueva Plantilla</UButton>
+            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark" @click="isOpen = false" />
+          </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-6">

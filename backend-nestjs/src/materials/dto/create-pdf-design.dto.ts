@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, MaxLength, Matches } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, MaxLength, Matches, IsObject } from 'class-validator';
 
 export class CreatePdfDesignDto {
   @IsString()
@@ -7,45 +7,87 @@ export class CreatePdfDesignDto {
 
   @IsOptional()
   @IsString()
-  logoUrl?: string;
+  bannerImageUrl?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^#[0-9A-Fa-f]{6}$/)
-  primaryColor?: string;
+  watermarkImageUrl?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(100)
-  fontFamily?: string;
+  coverImageUrl?: string;
 
-  @IsOptional()
-  @IsString()
-  headerText?: string;
-
-  @IsOptional()
-  @IsString()
-  footerText?: string;
-
-  @IsOptional()
   @IsBoolean()
+  @IsOptional()
   showCover?: boolean;
 
   @IsOptional()
   @IsString()
-  backgroundUrl?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  showPagination?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  showFrame?: boolean;
+  @Matches(/^\d{1,3},\s?\d{1,3},\s?\d{1,3}$/, {
+    message: 'primaryTitleColor must be a valid RGB triplet (e.g. "2, 113, 184")',
+  })
+  primaryTitleColor?: string;
 
   @IsOptional()
   @IsString()
-  contactInfo?: string;
+  @Matches(/^\d{1,3},\s?\d{1,3},\s?\d{1,3}$/, {
+    message: 'secondaryTitleColor must be a valid RGB triplet (e.g. "2, 113, 184")',
+  })
+  secondaryTitleColor?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,3},\s?\d{1,3},\s?\d{1,3}$/, {
+    message: 'backgroundHighlightColor must be a valid RGB triplet (e.g. "214, 238, 253")',
+  })
+  backgroundHighlightColor?: string;
+
+  @IsOptional()
+  @IsString()
+  marginTop?: string;
+
+  @IsOptional()
+  @IsString()
+  marginBottom?: string;
+
+  @IsOptional()
+  @IsString()
+  marginInside?: string;
+
+  @IsOptional()
+  @IsString()
+  marginOutside?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isBookMode?: boolean;
+
+  @IsOptional()
+  @IsString()
+  fontFamily?: string;
+
+  @IsOptional()
+  @IsString()
+  contentFontSize?: string;
+
+  @IsOptional()
+  @IsString()
+  contentTextColor?: string;
+
+  @IsOptional()
+  @IsString()
+  borderRadius?: string;
+
+  @IsOptional()
+  blocksConfig?: any;
+
+  @IsOptional()
+  @IsObject()
+  headerConfig?: any;
+
+  @IsOptional()
+  @IsObject()
+  footerConfig?: any;
 
   @IsOptional()
   @IsBoolean()

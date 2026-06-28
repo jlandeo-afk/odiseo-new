@@ -68,9 +68,9 @@ describe('MaterialsService', () => {
 
       await expect(
         service.generate({
-          profileId: 'non-existent-id',
-          weekNumber: 1,
-          requiresReview: false,
+          profile_id: 'non-existent-id',
+          week_number: 1,
+          requires_review: false,
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -93,9 +93,9 @@ describe('MaterialsService', () => {
 
       await expect(
         service.generate({
-          profileId: 'template-id',
-          weekNumber: 1,
-          requiresReview: false,
+          profile_id: 'template-id',
+          week_number: 1,
+          requires_review: false,
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -120,9 +120,9 @@ describe('MaterialsService', () => {
       mockEntityManager.find.mockResolvedValue(mockDistributions);
 
       const result = await service.generate({
-        profileId: 'template-id',
-        weekNumber: 1,
-        requiresReview: false,
+        profile_id: 'template-id',
+        week_number: 1,
+        requires_review: false,
       });
 
       expect(result.status).toBe(MaterialRequestStatus.PROCESSING);
