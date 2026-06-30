@@ -41,7 +41,7 @@ import { Alternative } from '../question-bank/entities/alternative.entity';
         port: config.get<number>('DB_PORT', 5432),
         username: config.get<string>('DB_USER', 'postgres'),
         password: config.get<string>('DB_PASS', 'postgres'),
-        database: config.get<string>('DB_QUESTIONS_NAME', 'odiseo_pro'),
+        database: config.get<string>('DB_QUESTIONS_BASE', 'odiseo_pro'),
         entities: [Question, Alternative],
         synchronize: false,
         logging: ['error', 'warn'],
@@ -53,4 +53,4 @@ import { Alternative } from '../question-bank/entities/alternative.entity';
   providers: [TenantService],
   exports: [TenantService, TypeOrmModule],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }
