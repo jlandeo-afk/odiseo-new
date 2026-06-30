@@ -14,9 +14,9 @@ import { SyllabusUseCase } from './syllabus.use-case';
     SyllabusUseCase,
     {
       provide: I_SYLLABUS_REPOSITORY,
-      useClass: SyllabusRepositoryImpl
-    }
+      useClass: SyllabusRepositoryImpl,
+    },
   ],
-  exports: [I_SYLLABUS_REPOSITORY]
+  exports: [I_SYLLABUS_REPOSITORY],
 })
 export class SyllabusModule {}

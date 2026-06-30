@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Patch, Delete, Param, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Patch,
+  Delete,
+  Param,
+  Get,
+} from '@nestjs/common';
 import { CreateSyllabusDto } from './dto/create-syllabus.dto';
 import { CreateDistributionDto } from './dto/create-distribution.dto';
 import { UpdateDistributionDto } from './dto/update-distribution.dto';
@@ -6,7 +14,6 @@ import { SyllabusUseCase } from './syllabus.use-case';
 
 @Controller('v1/syllabus')
 export class SyllabusController {
-  
   constructor(private readonly useCase: SyllabusUseCase) {}
 
   @Post()
@@ -21,7 +28,10 @@ export class SyllabusController {
   }
 
   @Post(':id/distribution')
-  async createDistribution(@Param('id') syllabusId: string, @Body() dto: CreateDistributionDto) {
+  async createDistribution(
+    @Param('id') syllabusId: string,
+    @Body() dto: CreateDistributionDto,
+  ) {
     const dist = await this.useCase.addDistribution(syllabusId, dto);
     return { status: 'created', distribution: dist };
   }
@@ -30,7 +40,7 @@ export class SyllabusController {
   async updateDistribution(
     @Param('id') syllabusId: string,
     @Param('distId') distId: string,
-    @Body() dto: UpdateDistributionDto
+    @Body() dto: UpdateDistributionDto,
   ) {
     await this.useCase.updateDistributionWeight(distId, syllabusId, dto.weight);
     return { status: 'updated' };
@@ -39,7 +49,7 @@ export class SyllabusController {
   @Delete(':id/distribution/:distId')
   async deleteDistribution(
     @Param('id') syllabusId: string,
-    @Param('distId') distId: string
+    @Param('distId') distId: string,
   ) {
     await this.useCase.deleteDistribution(distId);
     return { status: 'deleted' };
@@ -52,13 +62,19 @@ export class SyllabusController {
   }
 
   @Post(':id/clone')
-  async cloneSyllabus(@Param('id') syllabusId: string, @Body('sourceId') sourceId: string) {
+  async cloneSyllabus(
+    @Param('id') syllabusId: string,
+    @Body('sourceId') sourceId: string,
+  ) {
     const summary = await this.useCase.cloneSyllabus(syllabusId, sourceId);
     return { status: 'cloned', summary };
   }
 
   @Patch(':id/archive')
-  async archiveSyllabus(@Param('id') id: string, @Body() body: { isActive: boolean }) {
+  async archiveSyllabus(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
     await this.useCase.archiveSyllabus(id, body.isActive);
     return { success: true };
   }

@@ -47,7 +47,7 @@ export class MaterialsCron {
             course_id: week.course_id,
             material_type: 'BALOTARIO',
             difficulty_level: 'INTERMEDIO',
-          } as any);
+          });
         } catch (error) {
           this.logger.error(
             `Error auto-generating material for week ${week.week_num}: ${error.message}`,

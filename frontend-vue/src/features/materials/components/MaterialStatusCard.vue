@@ -42,6 +42,7 @@ const statusColor = computed(() => {
     case 'REVIEW_REQUIRED':
     case 'IN_REVIEW': return 'bg-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.6)]';
     case 'COMPLETED': return 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]';
+    case 'COMPLETED_WITH_WARNINGS': return 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]';
     case 'FAILED': return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.6)]';
     default: return 'bg-slate-400';
   }

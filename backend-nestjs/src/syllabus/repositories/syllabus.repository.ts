@@ -21,10 +21,13 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
     });
   }
 
-  async findByCourseAndCycle(courseId: string, cycleId: string): Promise<Syllabus | null> {
+  async findByCourseAndCycle(
+    courseId: string,
+    cycleId: string,
+  ): Promise<Syllabus | null> {
     return this.tenantService.runInTenant(async (manager) => {
-      return await manager.findOne(Syllabus, { 
-        where: { courseId, cycleId, isActive: true } 
+      return await manager.findOne(Syllabus, {
+        where: { courseId, cycleId, isActive: true },
       });
     });
   }
@@ -41,7 +44,9 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
     });
   }
 
-  async createDistribution(distribution: Partial<SyllabusDistribution>): Promise<SyllabusDistribution> {
+  async createDistribution(
+    distribution: Partial<SyllabusDistribution>,
+  ): Promise<SyllabusDistribution> {
     return this.tenantService.runInTenant(async (manager) => {
       const newDist = manager.create(SyllabusDistribution, distribution);
       return await manager.save(newDist);
@@ -60,9 +65,13 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
     });
   }
 
-  async getSummaryBySyllabus(syllabusId: string): Promise<SyllabusDistribution[]> {
+  async getSummaryBySyllabus(
+    syllabusId: string,
+  ): Promise<SyllabusDistribution[]> {
     return this.tenantService.runInTenant(async (manager) => {
-      return await manager.find(SyllabusDistribution, { where: { syllabusId }});
+      return await manager.find(SyllabusDistribution, {
+        where: { syllabusId },
+      });
     });
   }
 }

@@ -29,7 +29,9 @@ export interface DesignTemplateConfig {
 export class PdfGeneratorService {
   private readonly logger = new Logger(PdfGeneratorService.name);
 
-  private async convertUrlToBase64(url: string | null | undefined): Promise<string> {
+  private async convertUrlToBase64(
+    url: string | null | undefined,
+  ): Promise<string> {
     if (!url) return '';
     try {
       this.logger.log(`Fetching image for base64 conversion: ${url}`);
@@ -42,7 +44,9 @@ export class PdfGeneratorService {
       const contentType = response.headers.get('content-type') || 'image/png';
       return `data:${contentType};base64,${buffer.toString('base64')}`;
     } catch (error: any) {
-      this.logger.error(`Error converting image URL to base64: ${error.message} (URL: ${url})`);
+      this.logger.error(
+        `Error converting image URL to base64: ${error.message} (URL: ${url})`,
+      );
       return url; // Fallback to original URL
     }
   }
@@ -55,17 +59,30 @@ export class PdfGeneratorService {
     weekNumber?: number,
     templateName?: string,
   ): Promise<Buffer> {
-    this.logger.log(`Generating PDF for course ${courseId} with ${questions.length} questions.`);
+    this.logger.log(
+      `Generating PDF for course ${courseId} with ${questions.length} questions.`,
+    );
 
     // 1. Resolve design image URLs to base64 data URIs
     const resolvedDesign: DesignTemplateConfig = {
       ...design,
-      bannerImageUrl: design?.bannerImageUrl ? await this.convertUrlToBase64(design.bannerImageUrl) : null,
-      watermarkImageUrl: design?.watermarkImageUrl ? await this.convertUrlToBase64(design.watermarkImageUrl) : null,
+      bannerImageUrl: design?.bannerImageUrl
+        ? await this.convertUrlToBase64(design.bannerImageUrl)
+        : null,
+      watermarkImageUrl: design?.watermarkImageUrl
+        ? await this.convertUrlToBase64(design.watermarkImageUrl)
+        : null,
     };
 
     // 2. Build the full HTML content
-    const html = this.buildHtml(tenant, courseId, questions, resolvedDesign, weekNumber, templateName);
+    const html = this.buildHtml(
+      tenant,
+      courseId,
+      questions,
+      resolvedDesign,
+      weekNumber,
+      templateName,
+    );
 
     // 3. Define footer template for Playwright
     const wNum = weekNumber || 1;
@@ -89,16 +106,14 @@ export class PdfGeneratorService {
         .replace(/\{semana_numero\}/g, String(wNum))
         .replace(/\{material_titulo\}/g, tplName)
         .replace(/\{template_name\}/g, tplName)
-        .replace(/\{fecha_generacion\}/g, new Date().toLocaleDateString('es-ES'))
+        .replace(
+          /\{fecha_generacion\}/g,
+          new Date().toLocaleDateString('es-ES'),
+        )
         .replace(/\{institucion_nombre\}/g, instName)
         .replace(/\{cycle_name\}/g, cycleName)
         .replace(/\{ciclo_nombre\}/g, cycleName);
     };
-
-    const marginInside = resolvedDesign.marginInside || '1cm';
-    const marginOutside = resolvedDesign.marginOutside || '1cm';
-    const headerPadding = `0 ${marginOutside} 0.2cm ${marginInside}`; 
-    const footerPadding = `0 ${marginOutside} 0 ${marginInside}`;
 
     const buildGridHtml = (config: any, isHeader: boolean) => {
       if (!config) return '<span></span>';
@@ -120,7 +135,7 @@ export class PdfGeneratorService {
     try {
       browser = await chromium.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'networkidle' });
@@ -135,14 +150,28 @@ export class PdfGeneratorService {
       const contentPdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft },
+        margin: {
+          top: marginTop,
+          right: marginRight,
+          bottom: marginBottom,
+          left: marginLeft,
+        },
         displayHeaderFooter: true,
         headerTemplate: playwrightHeader,
         footerTemplate: footerTemplate,
       });
 
-      const blocksConfig = resolvedDesign.blocksConfig || ['cover', 'banner', 'topics', 'content'];
-      if (blocksConfig.includes('cover') && resolvedDesign.showCover && resolvedDesign.coverImageUrl) {
+      const blocksConfig = resolvedDesign.blocksConfig || [
+        'cover',
+        'banner',
+        'topics',
+        'content',
+      ];
+      if (
+        blocksConfig.includes('cover') &&
+        resolvedDesign.showCover &&
+        resolvedDesign.coverImageUrl
+      ) {
         const coverHtml = `
         <!DOCTYPE html>
         <html>
@@ -154,7 +183,7 @@ export class PdfGeneratorService {
         </head>
         <body><div class="cover"></div></body>
         </html>`;
-        
+
         const coverPage = await browser.newPage();
         await coverPage.setContent(coverHtml, { waitUntil: 'networkidle' });
         const coverPdfBuffer = await coverPage.pdf({
@@ -167,19 +196,27 @@ export class PdfGeneratorService {
         const mergedPdf = await PDFDocument.create();
         const coverPdf = await PDFDocument.load(coverPdfBuffer);
         const contentPdf = await PDFDocument.load(contentPdfBuffer);
-        
-        const coverPages = await mergedPdf.copyPages(coverPdf, coverPdf.getPageIndices());
-        coverPages.forEach(p => mergedPdf.addPage(p));
-        
-        const contentPages = await mergedPdf.copyPages(contentPdf, contentPdf.getPageIndices());
-        contentPages.forEach(p => mergedPdf.addPage(p));
-        
+
+        const coverPages = await mergedPdf.copyPages(
+          coverPdf,
+          coverPdf.getPageIndices(),
+        );
+        coverPages.forEach((p) => mergedPdf.addPage(p));
+
+        const contentPages = await mergedPdf.copyPages(
+          contentPdf,
+          contentPdf.getPageIndices(),
+        );
+        contentPages.forEach((p) => mergedPdf.addPage(p));
+
         return Buffer.from(await mergedPdf.save());
       }
 
       return contentPdfBuffer;
     } catch (error: any) {
-      this.logger.error(`Failed to generate PDF with Playwright: ${error.message}`);
+      this.logger.error(
+        `Failed to generate PDF with Playwright: ${error.message}`,
+      );
       throw error;
     } finally {
       if (browser) {
@@ -198,19 +235,25 @@ export class PdfGeneratorService {
   ): string {
     const primaryTitleColor = design?.primaryTitleColor || '2, 113, 184';
     const secondaryTitleColor = design?.secondaryTitleColor || '2, 113, 184';
-    const backgroundHighlightColor = design?.backgroundHighlightColor || '214, 238, 253';
-    
+    const backgroundHighlightColor =
+      design?.backgroundHighlightColor || '214, 238, 253';
+
     const marginTop = design?.marginTop || '3cm';
     const marginBottom = design?.marginBottom || '1.5cm';
     const marginInside = design?.marginInside || '1cm';
     const marginOutside = design?.marginOutside || '1cm';
     const isBookMode = design?.isBookMode || false;
-    
+
     const fontFamily = design?.fontFamily || 'Arial';
     const fontFamilyEncoded = fontFamily.replace(/ /g, '+');
     const borderRadius = design?.borderRadius || '4px';
 
-    const blocksConfig = design?.blocksConfig || ['cover', 'banner', 'topics', 'content'];
+    const blocksConfig = design?.blocksConfig || [
+      'cover',
+      'banner',
+      'topics',
+      'content',
+    ];
 
     const wNum = weekNumber || 1;
     const tplName = templateName || 'Material';
@@ -246,24 +289,27 @@ export class PdfGeneratorService {
       ? `<img src="${design.watermarkImageUrl}" alt="Watermark">`
       : '';
 
-    const questionsHtml = questions.map((q, index) => {
-      const alternativesHtml = q.options.map((opt, i) => {
-        const match = opt.match(/^([A-E])[\)\s]\s*(.*)$/);
-        let letter = String.fromCharCode(65 + i);
-        let text = opt;
-        if (match) {
-          letter = match[1];
-          text = match[2];
-        }
-        return `
+    const questionsHtml = questions
+      .map((q, index) => {
+        const alternativesHtml = q.options
+          .map((opt, i) => {
+            const match = opt.match(/^([A-E])[\)\s]\s*(.*)$/);
+            let letter = String.fromCharCode(65 + i);
+            let text = opt;
+            if (match) {
+              letter = match[1];
+              text = match[2];
+            }
+            return `
           <div class="alternative__item">
               <div class="alternative__letter">${letter})</div>
               <div class="alternative__text"><span class="alternative__bg">${text}</span></div>
           </div>
         `;
-      }).join('');
+          })
+          .join('');
 
-      return `
+        return `
         <div class="question__block">
             <div class="question__container">
                 <div class="question__number">${index + 1}.</div>
@@ -278,7 +324,8 @@ export class PdfGeneratorService {
             </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -310,19 +357,23 @@ export class PdfGeneratorService {
             --ck-image-style-spacing: 1.5em;
         }
 
-        ${isBookMode ? `
+        ${
+          isBookMode
+            ? `
         @page :left {
             margin: ${marginTop} ${marginOutside} ${marginBottom} ${marginInside};
         }
         @page :right {
             margin: ${marginTop} ${marginInside} ${marginBottom} ${marginOutside};
         }
-        ` : `
+        `
+            : `
         @page {
             size: A4;
             margin: ${marginTop} ${marginOutside} ${marginBottom} ${marginInside};
         }
-        `}
+        `
+        }
 
         @page:first {
             margin-top: 0;
@@ -590,9 +641,10 @@ export class PdfGeneratorService {
     </style>
 </head>
 <body>
-    ${blocksConfig.map((block: string) => {
-      if (block === 'banner') {
-        return `
+    ${blocksConfig
+      .map((block: string) => {
+        if (block === 'banner') {
+          return `
         <div class="layout__banner-hero">
             <div class="header__logo-container">
                 ${logoHtml}
@@ -605,18 +657,19 @@ export class PdfGeneratorService {
                 </div>
             </div>
         </div>`;
-      }
-      if (block === 'content') {
-        return `
+        }
+        if (block === 'content') {
+          return `
         <div class="layout__watermark-fixed">
             ${watermarkHtml}
         </div>
         <div class="content__wrapper columns-2">
             ${questionsHtml}
         </div>`;
-      }
-      return '';
-    }).join('')}
+        }
+        return '';
+      })
+      .join('')}
 </body>
 </html>`;
   }

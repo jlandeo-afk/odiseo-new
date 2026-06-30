@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ClsService } from 'nestjs-cls';
 import { GenerateMaterialDto } from './dto/generate-material.dto';
 import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { ApproveReviewDto } from './dto/approve-review.dto';
@@ -23,6 +24,7 @@ export class MaterialsController {
   constructor(
     private readonly materialsService: MaterialsService,
     private readonly generateMaterialUseCase: GenerateMaterialUseCase,
+    private readonly cls: ClsService,
   ) {}
 
   @Post('generate')
@@ -36,10 +38,14 @@ export class MaterialsController {
   })
   @ApiResponse({ status: 400, description: 'Error de validación de negocio.' })
   async generateMaterial(@Body() request: GenerateMaterialDto) {
-    // Simulamos un userId y tenantId por ahora ya que no hay auth integrado
-    const tenantId = '7b89-11c2-d344';
+    const tenantId =
+      this.cls.get('companyId') || '619cbafa-b169-4c7e-a95c-b9923a408b7d';
     const userId = 'uuid_admin_user';
-    return await this.generateMaterialUseCase.execute(tenantId, userId, request);
+    return await this.generateMaterialUseCase.execute(
+      tenantId,
+      userId,
+      request,
+    );
   }
 
   @Post('webhook/status')
@@ -90,8 +96,14 @@ export class MaterialsController {
   @ApiOperation({
     summary: 'Descargar PDF de un curso directamente (streaming)',
   })
-  @ApiResponse({ status: 200, description: 'Archivo PDF devuelto como stream.' })
-  @ApiResponse({ status: 404, description: 'La solicitud o el curso no existen.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Archivo PDF devuelto como stream.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'La solicitud o el curso no existen.',
+  })
   async downloadCoursePdf(
     @Param('id') id: string,
     @Param('courseId') courseId: string,
@@ -117,12 +129,12 @@ export class MaterialsController {
   @ApiOperation({
     summary: 'Descargar PDF combinado directamente (streaming)',
   })
-  @ApiResponse({ status: 200, description: 'Archivo PDF combinado devuelto como stream.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Archivo PDF combinado devuelto como stream.',
+  })
   @ApiResponse({ status: 404, description: 'La solicitud no existe.' })
-  async downloadMergedPdf(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
+  async downloadMergedPdf(@Param('id') id: string, @Res() res: Response) {
     const result = await this.materialsService.getMergedDownloadUrl(id);
     try {
       const buffer = await this.materialsService.streamDownload(result.s3Key);
@@ -152,9 +164,34 @@ export class MaterialsController {
     @Query('weekNumbers') weekNumbers?: string,
     @Query('templateIds') templateIds?: string,
   ) {
-    const idsToFilter = cycleIds ? cycleIds.split(',') : (cycleId ? [cycleId] : undefined);
-    const parsedWeeks = weekNumbers ? weekNumbers.split(',').map(w => parseInt(w, 10)).filter(w => !isNaN(w)) : undefined;
+    const idsToFilter = cycleIds
+      ? cycleIds.split(',')
+      : cycleId
+        ? [cycleId]
+        : undefined;
+    const parsedWeeks = weekNumbers
+      ? weekNumbers
+          .split(',')
+          .map((w) => parseInt(w, 10))
+          .filter((w) => !isNaN(w))
+      : undefined;
     const parsedTemplates = templateIds ? templateIds.split(',') : undefined;
-    return await this.materialsService.getHistory(idsToFilter, parsedWeeks, parsedTemplates);
+    return await this.materialsService.getHistory(
+      idsToFilter,
+      parsedWeeks,
+      parsedTemplates,
+    );
+  }
+
+  @Get(':id/attempts')
+  @ApiOperation({
+    summary: 'Obtener el historial de intentos/versiones de un material lógico',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de intentos devuelta.',
+  })
+  async getAttempts(@Param('id') id: string) {
+    return await this.materialsService.getAttempts(id);
   }
 }

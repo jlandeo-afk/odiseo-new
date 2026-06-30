@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 
-async function inspect() {
+async function findTables() {
   const client = new Client({
     host: 'localhost',
     port: 5432,
@@ -8,21 +8,17 @@ async function inspect() {
     password: '123456',
     database: 'odiseo',
   });
-
+  await client.connect();
   try {
-    await client.connect();
-    console.log('🔌 Connected to odiseo for schema list...');
-
-    const schemas = await client.query(`
-      SELECT schema_name FROM information_schema.schemata;
+    const res = await client.query(`
+      SELECT table_schema, table_name
+      FROM information_schema.tables
+      WHERE table_name IN ('materials', 'material_requests', 'material_request_courses', 'material_review_questions', 'material_question_usage')
+      ORDER BY table_schema, table_name
     `);
-    console.log('Schemas:', schemas.rows.map(r => r.schema_name));
-
-  } catch (err) {
-    console.error('Inspection failed:', err);
+    console.log(res.rows);
   } finally {
     await client.end();
   }
 }
-
-inspect();
+findTables();

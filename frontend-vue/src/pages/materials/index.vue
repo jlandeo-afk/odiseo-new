@@ -37,12 +37,12 @@
           </button>
         </div>
 
-        <UButton color="gray" variant="soft" icon="i-heroicons-arrow-path-rounded-square" @click="fetchHistory"
+        <UButton color="neutral" variant="soft" icon="i-heroicons-arrow-path-rounded-square" @click="fetchHistory"
           class="text-slate-600 font-bold dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl">
           Actualizar
         </UButton>
 
-        <UButton color="indigo" icon="i-heroicons-plus" @click="openMatrixModal"
+        <UButton color="primary" icon="i-heroicons-plus" @click="openMatrixModal"
           class="shadow-md font-bold tracking-wide rounded-xl">
           Solicitar Material
         </UButton>
@@ -123,7 +123,49 @@
 
 
 
-    <div v-if="filteredMaterials && filteredMaterials.length === 0"
+    <!-- Skeleton Loading State -->
+    <div v-if="isInitialLoading" class="space-y-6 relative z-10">
+      <div v-if="currentViewMode === 'kanban'" class="flex gap-8 overflow-x-auto pb-10 pt-4 w-full">
+        <div v-for="col in 4" :key="col" class="flex-1 min-w-[280px] max-w-[320px] bg-white/40 dark:bg-white/[0.02] rounded-2xl border border-slate-200/50 dark:border-white/5 p-4 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+            <div class="flex items-center gap-2">
+              <USkeleton class="w-4 h-4 rounded" />
+              <USkeleton class="h-4 w-28 rounded" />
+            </div>
+            <USkeleton class="w-6 h-4 rounded-full" />
+          </div>
+          <div v-for="card in 2" :key="card" class="bg-white dark:bg-[#2b2b3f] rounded-xl border border-slate-200/50 dark:border-white/5 p-4 space-y-3 shadow-sm">
+            <div class="flex justify-between items-center">
+              <USkeleton class="h-3 w-16 rounded" />
+              <USkeleton class="h-3.5 w-12 rounded-full" />
+            </div>
+            <USkeleton class="h-5 w-full rounded" />
+            <div class="flex justify-between items-center pt-2">
+              <USkeleton class="h-3 w-20 rounded" />
+              <USkeleton class="h-4 w-12 rounded-lg" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="space-y-3">
+        <div v-for="row in 5" :key="row" class="bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4.5 shadow-sm flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <USkeleton class="w-8 h-8 rounded-lg" />
+            <div class="space-y-1.5">
+              <USkeleton class="h-3 w-24 rounded" />
+              <USkeleton class="h-2 w-16 rounded" />
+            </div>
+          </div>
+          <USkeleton class="h-4 w-28 rounded hidden sm:block" />
+          <USkeleton class="h-4 w-20 rounded hidden md:block" />
+          <USkeleton class="h-4 w-24 rounded-lg" />
+          <USkeleton class="h-6 w-16 rounded-lg" />
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="filteredMaterials && filteredMaterials.length === 0"
       class="flex flex-col items-center justify-center py-10">
       <div
         class="w-20 h-20 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center mb-5 shadow-sm">
@@ -135,30 +177,16 @@
         class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto text-center font-medium leading-relaxed mb-6">
         Aún no has generado materiales para este ciclo. Haz clic en "Solicitar Material" para comenzar la magia.
       </p>
-      <UButton color="indigo" icon="i-heroicons-plus" @click="openMatrixModal" class="rounded-xl shadow-sm font-bold">
+      <UButton color="primary" icon="i-heroicons-plus" @click="openMatrixModal" class="rounded-xl shadow-sm font-bold">
         Solicitar Material
       </UButton>
     </div>
 
     <template v-else>
 
-      <div v-if="currentViewMode === 'table'" class="flex items-center gap-4 mb-3">
-        <UCheckboxGroup v-model="selectedRows" class="flex-1">
-          <template #label>
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Seleccionar materiales</span>
-          </template>
-        </UCheckboxGroup>
-        <UButton color="indigo" @click="downloadSelected" :disabled="selectedRows.length === 0"
-          class="flex items-center gap-1">
-          <UIcon name="i-heroicons-arrow-down-tray" /> Descargar
-        </UButton>
-        <UButton color="rose" @click="retryFailed" :disabled="selectedRows.length === 0"
-          class="flex items-center gap-1">
-          <UIcon name="i-heroicons-arrow-path" /> Reintentar
-        </UButton>
-      </div>
 
-      <div v-else-if="currentViewMode === 'kanban'"
+
+      <div v-if="currentViewMode === 'kanban'"
         class="flex gap-8 overflow-x-auto pb-10 pt-4 w-full snap-x custom-scrollbar relative z-10">
         <MaterialBoardColumn title="EN COLA / PROCESANDO" icon="i-heroicons-bolt"
           iconClass="text-blue-500 dark:text-blue-400"
@@ -250,7 +278,7 @@
             <span class="text-xs text-slate-500 dark:text-slate-400 font-semibold mr-1 hidden lg:inline">
               {{ formatDate(req.createdAt) }}
             </span>
-            <UButton size="xs" color="indigo" variant="soft" icon="i-heroicons-eye" class="rounded-lg font-bold"
+            <UButton size="xs" color="primary" variant="soft" icon="i-heroicons-eye" class="rounded-lg font-bold"
               @click.stop="handleCardClick(req)">
               Detalle
             </UButton>
@@ -279,6 +307,7 @@ definePageMeta({
 });
 
 const materials = ref<any[]>([]);
+const isInitialLoading = ref(true);
 const authStore = useAuthStore();
 const timeStore = useAcademicTimeStore();
 const materialsStore = useMaterialsStore();
@@ -301,6 +330,7 @@ function statusLabel(status: string): string {
     REVIEW_REQUIRED: 'Por Revisar',
     IN_REVIEW: 'En Revisión',
     COMPLETED: 'Completado',
+    COMPLETED_WITH_WARNINGS: 'Parcial',
     FAILED: 'Fallido',
   };
   return labels[status] || status;
@@ -313,6 +343,7 @@ function statusColorClass(status: string) {
     case 'REVIEW_REQUIRED':
     case 'IN_REVIEW': return 'bg-fuchsia-500 shadow-[0_0_10px_rgba(217,70,239,0.6)]';
     case 'COMPLETED': return 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]';
+    case 'COMPLETED_WITH_WARNINGS': return 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]';
     case 'FAILED': return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.6)]';
     default: return 'bg-slate-400';
   }
@@ -325,6 +356,7 @@ function statusTextClass(status: string) {
     case 'REVIEW_REQUIRED':
     case 'IN_REVIEW': return 'text-fuchsia-500';
     case 'COMPLETED': return 'text-emerald-500';
+    case 'COMPLETED_WITH_WARNINGS': return 'text-amber-500';
     case 'FAILED': return 'text-rose-500';
     default: return 'text-slate-500';
   }
@@ -458,6 +490,8 @@ async function fetchHistory() {
     materials.value = history;
   } catch (error) {
     console.error('Error fetching materials history:', error);
+  } finally {
+    isInitialLoading.value = false;
   }
 }
 

@@ -1,8 +1,23 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique, Check } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+  Check,
+} from 'typeorm';
 import { Syllabus } from './syllabus.entity';
 
 @Entity('syllabus_distribution')
-@Unique('UQ_syllabus_week_topic_subtopic', ['syllabusId', 'weekNumber', 'topicId', 'subtopicId'])
+@Unique('UQ_syllabus_week_topic_subtopic', [
+  'syllabusId',
+  'weekNumber',
+  'topicId',
+  'subtopicId',
+])
 @Check(`"weight" > 0`)
 @Check(`"weight" <= 10`)
 export class SyllabusDistribution {
@@ -12,7 +27,9 @@ export class SyllabusDistribution {
   @Column({ name: 'syllabus_id', type: 'uuid' })
   syllabusId: string;
 
-  @ManyToOne(() => Syllabus, syllabus => syllabus.distributions, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Syllabus, (syllabus) => syllabus.distributions, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'syllabus_id' })
   syllabus: Syllabus;
 

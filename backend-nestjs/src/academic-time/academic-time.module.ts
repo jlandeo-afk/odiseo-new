@@ -10,7 +10,14 @@ import { CycleMaterialTemplate } from './entities/cycle-material-template.entity
 import { CycleMaterialTemplateCourse } from './entities/cycle-material-template-course.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cycle, CycleWeek, CycleMaterialTemplate, CycleMaterialTemplateCourse])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Cycle,
+      CycleWeek,
+      CycleMaterialTemplate,
+      CycleMaterialTemplateCourse,
+    ]),
+  ],
   controllers: [AcademicTimeController],
   providers: [
     AcademicTimeUseCase,

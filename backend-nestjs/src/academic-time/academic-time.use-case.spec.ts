@@ -77,9 +77,16 @@ describe('AcademicTimeUseCase', () => {
   describe('Templates CRUD', () => {
     it('should fetch templates for a cycle', async () => {
       const mockTemplates = [
-        { id: 'template-1', name: 'Práctica Semanal', scope: 'CURRENT_WEEK', courses: [] },
+        {
+          id: 'template-1',
+          name: 'Práctica Semanal',
+          scope: 'CURRENT_WEEK',
+          courses: [],
+        },
       ];
-      (repository.getTemplatesByCycle as jest.Mock).mockResolvedValue(mockTemplates);
+      (repository.getTemplatesByCycle as jest.Mock).mockResolvedValue(
+        mockTemplates,
+      );
 
       const result = await useCase.getTemplates('cycle-123');
 
@@ -88,16 +95,16 @@ describe('AcademicTimeUseCase', () => {
     });
 
     it('should create a template with courses', async () => {
-      (repository.getCycleWithSyllabus as jest.Mock).mockResolvedValue({ id: 'cycle-123' });
+      (repository.getCycleWithSyllabus as jest.Mock).mockResolvedValue({
+        id: 'cycle-123',
+      });
       (repository.createTemplate as jest.Mock).mockResolvedValue(undefined);
 
       const dto = {
         name: 'Examen Quincenal',
         scope: 'ACCUMULATIVE',
         accumulationWeeks: 2,
-        courses: [
-          { courseId: 'algebra-uuid', questionsQuantity: 10 },
-        ],
+        courses: [{ courseId: 'algebra-uuid', questionsQuantity: 10 }],
       };
 
       const result = await useCase.createTemplate('cycle-123', dto);
@@ -125,12 +132,14 @@ describe('AcademicTimeUseCase', () => {
       const dto = {
         name: 'Práctica Semanal Editada',
         scope: 'FULL_ACCUMULATIVE',
-        courses: [
-          { courseId: 'algebra-uuid', questionsQuantity: 12 },
-        ],
+        courses: [{ courseId: 'algebra-uuid', questionsQuantity: 12 }],
       };
 
-      const result = await useCase.updateTemplate('cycle-123', 'template-1', dto);
+      const result = await useCase.updateTemplate(
+        'cycle-123',
+        'template-1',
+        dto,
+      );
 
       expect(repository.updateTemplate).toHaveBeenCalledWith(
         'template-1',

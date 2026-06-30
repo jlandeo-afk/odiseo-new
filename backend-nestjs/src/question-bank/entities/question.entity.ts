@@ -29,9 +29,11 @@ export class Question {
 
   get options(): QuestionOption[] {
     if (!this.alternatives) return [];
-    
-    const sorted = [...this.alternatives].sort((a, b) => Number(a.id) - Number(b.id));
-    
+
+    const sorted = [...this.alternatives].sort(
+      (a, b) => Number(a.id) - Number(b.id),
+    );
+
     const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
     return sorted.map((alt, index) => ({
       label: labels[index] || String.fromCharCode(65 + index),

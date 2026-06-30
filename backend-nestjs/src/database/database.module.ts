@@ -15,7 +15,9 @@ import { Alternative } from '../question-bank/entities/alternative.entity';
       useFactory: (config: ConfigService) => {
         const dbName = config.get<string>('DB_NAME', 'odiseo');
         const dbUser = config.get<string>('DB_USER', 'postgres');
-        console.log(`📡 TypeORM Default Connection Details: host=${config.get('DB_HOST')}, port=${config.get('DB_PORT')}, database=${dbName}, username=${dbUser}`);
+        console.log(
+          `📡 TypeORM Default Connection Details: host=${config.get('DB_HOST')}, port=${config.get('DB_PORT')}, database=${dbName}, username=${dbUser}`,
+        );
         return {
           type: 'postgres',
           host: config.get<string>('DB_HOST', 'localhost'),

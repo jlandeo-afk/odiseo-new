@@ -15,8 +15,14 @@ const isConfirmOpen = ref(false)
 const designToDelete = ref<{ id: string; name: string; isDefault: boolean } | null>(null)
 const deleting = ref(false)
 
-onMounted(() => {
-  store.fetchDesigns()
+const isFirstLoad = ref(true)
+
+onMounted(async () => {
+  try {
+    await store.fetchDesigns()
+  } finally {
+    isFirstLoad.value = false
+  }
 })
 
 function showDeleteConfirm(design: { id: string; name: string; isDefault: boolean }) {
@@ -43,8 +49,16 @@ async function confirmDelete() {
 
 <template>
   <div class="w-full">
-    <div v-if="store.isLoading && store.designs.length === 0" class="space-y-3">
-      <USkeleton v-for="n in 3" :key="n" class="h-20 rounded-xl" />
+    <div v-if="store.isLoading || isFirstLoad" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+      <div v-for="n in 4" :key="n" class="flex flex-col bg-white dark:bg-[#252536] rounded-xl border border-slate-200 dark:border-slate-700/60 overflow-hidden h-[220px]">
+        <div class="bg-slate-50 dark:bg-[#1a1a24] p-4 flex items-center justify-center border-b border-slate-100 dark:border-slate-700/60 h-44">
+          <USkeleton class="w-[90px] h-[127px] rounded-[2px]" />
+        </div>
+        <div class="p-3.5 flex items-center justify-between gap-2">
+          <USkeleton class="h-4 w-2/3 rounded" />
+          <USkeleton class="h-[18px] w-[18px] rounded shrink-0" />
+        </div>
+      </div>
     </div>
 
     <div v-else-if="store.designs.length === 0"

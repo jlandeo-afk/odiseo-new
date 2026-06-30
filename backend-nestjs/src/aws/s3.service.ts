@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
@@ -17,21 +22,32 @@ export class S3Service {
     this.bucketName = process.env.AWS_S3_BUCKET || 'odiseo-materials';
   }
 
-  async getPresignedDownloadUrl(key: string, expiresInSeconds: number = 86400): Promise<string> {
+  async getPresignedDownloadUrl(
+    key: string,
+    expiresInSeconds: number = 86400,
+  ): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
       Key: key,
     });
 
     try {
-      const url = await getSignedUrl(this.s3Client, command, { expiresIn: expiresInSeconds });
+      const url = await getSignedUrl(this.s3Client, command, {
+        expiresIn: expiresInSeconds,
+      });
       return url;
     } catch (error: any) {
-      this.logger.error(`Failed to generate presigned URL for key ${key}: ${error.message}`);
+      this.logger.error(
+        `Failed to generate presigned URL for key ${key}: ${error.message}`,
+      );
       throw error;
     }
   }
-  async uploadBuffer(key: string, buffer: Buffer, contentType: string): Promise<string> {
+  async uploadBuffer(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: key,
@@ -62,7 +78,9 @@ export class S3Service {
       }
       return Buffer.from(await response.Body.transformToByteArray());
     } catch (error: any) {
-      this.logger.error(`Failed to get object from S3 with key ${key}: ${error.message}`);
+      this.logger.error(
+        `Failed to get object from S3 with key ${key}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -77,7 +95,9 @@ export class S3Service {
       await this.s3Client.send(command);
       this.logger.log(`Successfully deleted object from S3 with key ${key}`);
     } catch (error: any) {
-      this.logger.error(`Failed to delete object from S3 with key ${key}: ${error.message}`);
+      this.logger.error(
+        `Failed to delete object from S3 with key ${key}: ${error.message}`,
+      );
       throw error;
     }
   }

@@ -1,4 +1,11 @@
-import { IsInt, IsBoolean, IsArray, IsUUID, ValidateNested, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsBoolean,
+  IsArray,
+  IsUUID,
+  ValidateNested,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ReplacementItemDto {

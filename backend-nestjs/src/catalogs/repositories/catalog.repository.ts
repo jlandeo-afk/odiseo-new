@@ -84,7 +84,7 @@ export class CatalogRepositoryImpl implements ICatalogRepository {
         params.push(`%${search}%`);
       }
       query += ` GROUP BY c.id, c.name ORDER BY c.name;`;
-      
+
       return manager.query(query, params);
     });
   }
@@ -107,7 +107,7 @@ export class CatalogRepositoryImpl implements ICatalogRepository {
         params.push(`%${search}%`);
       }
       query += ` ORDER BY t.name, s.name;`;
-      
+
       const rows = await manager.query(query, params);
 
       const topicsMap = new Map();

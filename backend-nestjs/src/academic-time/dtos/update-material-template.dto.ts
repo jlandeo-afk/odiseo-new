@@ -8,7 +8,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TemplateScope, CreateTemplateCourseDto } from './create-material-template.dto';
+import {
+  TemplateScope,
+  CreateTemplateCourseDto,
+} from './create-material-template.dto';
 
 export class UpdateCycleMaterialTemplateDto {
   @IsString()

@@ -21,9 +21,11 @@ export class AcademicTimeUseCase {
     totalWeeks: number;
   }) {
     const { name, year, startDate, daysPerWeek, totalWeeks } = dto;
-    
+
     const startParts = startDate.split('-');
-    const start = new Date(Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]));
+    const start = new Date(
+      Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]),
+    );
 
     const cycleId = uuidv4();
     const cycle = {
@@ -42,7 +44,9 @@ export class AcademicTimeUseCase {
       currentWeekStart.setUTCDate(start.getUTCDate() + (i - 1) * 7);
 
       const currentWeekEnd = new Date(currentWeekStart);
-      currentWeekEnd.setUTCDate(currentWeekStart.getUTCDate() + (daysPerWeek - 1));
+      currentWeekEnd.setUTCDate(
+        currentWeekStart.getUTCDate() + (daysPerWeek - 1),
+      );
 
       cycle.weeks.push({
         id: uuidv4(),
@@ -73,7 +77,7 @@ export class AcademicTimeUseCase {
     },
   ) {
     const { name, year, startDate, daysPerWeek, totalWeeks } = dto;
-    
+
     // Check if cycle has active syllabus relations
     const existingCycle = await this.repository.getCycleWithSyllabus(id);
     if (!existingCycle) {
@@ -91,16 +95,22 @@ export class AcademicTimeUseCase {
       return String(d);
     };
 
-    const finalStartDate = startDate !== undefined ? normalizeDate(startDate) : normalizeDate(existingCycle.startDate);
+    const finalStartDate =
+      startDate !== undefined
+        ? normalizeDate(startDate)
+        : normalizeDate(existingCycle.startDate);
     const finalDaysPerWeek = daysPerWeek ?? existingCycle.daysPerWeek;
     const finalTotalWeeks = totalWeeks ?? existingCycle.totalWeeks;
 
     const existingStartDateNormalized = normalizeDate(existingCycle.startDate);
 
-    const needsRecalculation = 
-      (startDate !== undefined && existingStartDateNormalized !== finalStartDate) || 
-      (daysPerWeek !== undefined && existingCycle.daysPerWeek !== finalDaysPerWeek) || 
-      (totalWeeks !== undefined && existingCycle.totalWeeks !== finalTotalWeeks);
+    const needsRecalculation =
+      (startDate !== undefined &&
+        existingStartDateNormalized !== finalStartDate) ||
+      (daysPerWeek !== undefined &&
+        existingCycle.daysPerWeek !== finalDaysPerWeek) ||
+      (totalWeeks !== undefined &&
+        existingCycle.totalWeeks !== finalTotalWeeks);
 
     if (needsRecalculation && existingCycle.hasSyllabus) {
       throw new ConflictException(
@@ -117,15 +127,19 @@ export class AcademicTimeUseCase {
 
     if (needsRecalculation) {
       const startParts = finalStartDate.split('-');
-      const start = new Date(Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]));
-      
+      const start = new Date(
+        Date.UTC(+startParts[0], +startParts[1] - 1, +startParts[2]),
+      );
+
       cycleUpdate.weeks = [];
       for (let i = 1; i <= finalTotalWeeks; i++) {
         const currentWeekStart = new Date(start);
         currentWeekStart.setUTCDate(start.getUTCDate() + (i - 1) * 7);
 
         const currentWeekEnd = new Date(currentWeekStart);
-        currentWeekEnd.setUTCDate(currentWeekStart.getUTCDate() + (finalDaysPerWeek - 1));
+        currentWeekEnd.setUTCDate(
+          currentWeekStart.getUTCDate() + (finalDaysPerWeek - 1),
+        );
 
         cycleUpdate.weeks.push({
           id: uuidv4(),
@@ -138,7 +152,8 @@ export class AcademicTimeUseCase {
       }
 
       if (cycleUpdate.weeks.length > 0) {
-        cycleUpdate.endDate = cycleUpdate.weeks[cycleUpdate.weeks.length - 1].endDate;
+        cycleUpdate.endDate =
+          cycleUpdate.weeks[cycleUpdate.weeks.length - 1].endDate;
       }
     }
 
@@ -184,11 +199,12 @@ export class AcademicTimeUseCase {
       name: dto.name,
       scope: dto.scope,
       accumulationWeeks: dto.accumulationWeeks ?? null,
-      courses: dto.courses?.map((c: any) => ({
-        id: uuidv4(),
-        courseId: c.courseId,
-        questionsQuantity: c.questionsQuantity,
-      })) || [],
+      courses:
+        dto.courses?.map((c: any) => ({
+          id: uuidv4(),
+          courseId: c.courseId,
+          questionsQuantity: c.questionsQuantity,
+        })) || [],
     };
 
     await this.repository.createTemplate(templateData);
@@ -200,7 +216,8 @@ export class AcademicTimeUseCase {
     const templateData: any = {};
     if (dto.name !== undefined) templateData.name = dto.name;
     if (dto.scope !== undefined) templateData.scope = dto.scope;
-    if (dto.accumulationWeeks !== undefined) templateData.accumulationWeeks = dto.accumulationWeeks;
+    if (dto.accumulationWeeks !== undefined)
+      templateData.accumulationWeeks = dto.accumulationWeeks;
 
     if (dto.courses) {
       templateData.courses = dto.courses.map((c: any) => ({

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PdfDesignTemplate } from '../entities/pdf-design-template.entity';
@@ -32,25 +37,40 @@ export class PdfDesignService {
     return design;
   }
 
-  async create(tenantId: string, dto: CreatePdfDesignDto): Promise<PdfDesignTemplate> {
+  async create(
+    tenantId: string,
+    dto: CreatePdfDesignDto,
+  ): Promise<PdfDesignTemplate> {
     const existingCount = await this.designRepo.count({ where: { tenantId } });
     const shouldBeDefault = dto.isDefault ?? existingCount === 0;
     if (shouldBeDefault) {
       await this.unsetCurrentDefault(tenantId);
     }
-    const design = this.designRepo.create({ ...dto, tenantId, isDefault: shouldBeDefault });
+    const design = this.designRepo.create({
+      ...dto,
+      tenantId,
+      isDefault: shouldBeDefault,
+    });
     return this.designRepo.save(design);
   }
 
-  async update(id: string, tenantId: string, dto: Partial<CreatePdfDesignDto>): Promise<PdfDesignTemplate> {
+  async update(
+    id: string,
+    tenantId: string,
+    dto: Partial<CreatePdfDesignDto>,
+  ): Promise<PdfDesignTemplate> {
     const design = await this.findById(id, tenantId);
     if (dto.isDefault && !design.isDefault) {
       await this.unsetCurrentDefault(tenantId);
     }
     if (dto.isDefault === false && design.isDefault) {
-      const defaultCount = await this.designRepo.count({ where: { tenantId, isDefault: true } });
+      const defaultCount = await this.designRepo.count({
+        where: { tenantId, isDefault: true },
+      });
       if (defaultCount <= 1) {
-        throw new ConflictException('Cannot unset the only default design template. Set another as default first.');
+        throw new ConflictException(
+          'Cannot unset the only default design template. Set another as default first.',
+        );
       }
     }
     Object.assign(design, dto);
@@ -59,13 +79,15 @@ export class PdfDesignService {
 
   async delete(id: string, tenantId: string): Promise<void> {
     const design = await this.findById(id, tenantId);
-    const materialCount = await this.materialRequestRepo.count({ where: { designTemplateId: id } });
+    const materialCount = await this.materialRequestRepo.count({
+      where: { designTemplateId: id },
+    });
     if (materialCount > 0) {
       throw new ConflictException(
-        `Cannot delete design template "${design.name}" because it is used by ${materialCount} material request(s).`
+        `Cannot delete design template "${design.name}" because it is used by ${materialCount} material request(s).`,
       );
     }
-    
+
     // Clean up S3 assets if present
     const assets: ('banner' | 'watermark')[] = ['banner', 'watermark'];
     for (const type of assets) {
@@ -91,7 +113,9 @@ export class PdfDesignService {
     let mimeType = file.mimetype;
 
     if (type === 'grid_image') {
-      console.log(`uploadAsset: file.size=${file.size}, buffer.length=${file.buffer?.length}, mimetype=${file.mimetype}`);
+      console.log(
+        `uploadAsset: file.size=${file.size}, buffer.length=${file.buffer?.length}, mimetype=${file.mimetype}`,
+      );
       bufferToUpload = await sharp(file.buffer)
         .resize({ width: 200, withoutEnlargement: true })
         .png()
@@ -101,7 +125,11 @@ export class PdfDesignService {
 
     const keySuffix = type === 'grid_image' ? `grid-${Date.now()}` : type;
     const key = `designs/${tenantId}/${designId}-${keySuffix}.png`;
-    const url = await this.s3Service.uploadBuffer(key, bufferToUpload, mimeType);
+    const url = await this.s3Service.uploadBuffer(
+      key,
+      bufferToUpload,
+      mimeType,
+    );
 
     if (type === 'banner') {
       design.bannerImageUrl = url;
@@ -115,14 +143,18 @@ export class PdfDesignService {
     return url;
   }
 
-  async deleteAsset(designId: string, tenantId: string, type: 'banner' | 'watermark'): Promise<void> {
+  async deleteAsset(
+    designId: string,
+    tenantId: string,
+    type: 'banner' | 'watermark',
+  ): Promise<void> {
     const design = await this.findById(designId, tenantId);
     if (type === 'banner') {
       design.bannerImageUrl = null;
     } else if (type === 'watermark') {
       design.watermarkImageUrl = null;
     }
-    
+
     try {
       const key = `designs/${tenantId}/${designId}-${type}.png`;
       await this.s3Service.deleteObject(key);
@@ -138,16 +170,22 @@ export class PdfDesignService {
     designId: string,
     overrides?: any,
   ): Promise<{ html: string }> {
-    let design: Partial<PdfDesignTemplate>;
+    let design: Partial<PdfDesignTemplate> = {};
+    if (designId && designId !== 'new') {
+      try {
+        design = await this.findById(designId, tenantId);
+      } catch (err) {
+        // Ignore if template not found
+      }
+    }
     if (overrides && Object.keys(overrides).length > 0) {
-      design = { ...overrides } as any;
-    } else {
-      design = await this.findById(designId, tenantId);
+      design = { ...design, ...overrides };
     }
 
     const primaryTitleColor = design.primaryTitleColor || '2, 113, 184';
     const secondaryTitleColor = design.secondaryTitleColor || '2, 113, 184';
-    const backgroundHighlightColor = design.backgroundHighlightColor || '214, 238, 253';
+    const backgroundHighlightColor =
+      design.backgroundHighlightColor || '214, 238, 253';
 
     const marginTop = design.marginTop || '3cm';
     const marginBottom = design.marginBottom || '1.5cm';
@@ -156,9 +194,14 @@ export class PdfDesignService {
     const isBookMode = design.isBookMode || false;
 
     const wNum = overrides?.weekNumber || overrides?.week_number || 1;
-    const tplName = overrides?.templateName || overrides?.template_name || 'Material de Estudio';
-    const courseName = overrides?.courseName || overrides?.course_name || 'Aritmética';
-    const cycleName = overrides?.cycleName || overrides?.cycle_name || 'Ciclo Especial 2026';
+    const tplName =
+      overrides?.templateName ||
+      overrides?.template_name ||
+      'Material de Estudio';
+    const courseName =
+      overrides?.courseName || overrides?.course_name || 'Aritmética';
+    const cycleName =
+      overrides?.cycleName || overrides?.cycle_name || 'Ciclo Especial 2026';
 
     const headerConfig = design.headerConfig || {};
     const footerConfig = design.footerConfig || {};
@@ -178,7 +221,10 @@ export class PdfDesignService {
         .replace(/\{semana_numero\}/g, String(wNum))
         .replace(/\{material_titulo\}/g, tplName)
         .replace(/\{template_name\}/g, tplName)
-        .replace(/\{fecha_generacion\}/g, new Date().toLocaleDateString('es-ES'))
+        .replace(
+          /\{fecha_generacion\}/g,
+          new Date().toLocaleDateString('es-ES'),
+        )
         .replace(/\{institucion_nombre\}/g, cycleName)
         .replace(/\{cycle_name\}/g, cycleName)
         .replace(/\{ciclo_nombre\}/g, cycleName);
@@ -259,16 +305,21 @@ export class PdfDesignService {
     `;
 
     const getPadding = (isEven: boolean) => {
-      if (!isBookMode) return `${marginTop} ${marginOutside} ${marginBottom} ${marginInside}`;
-      return isEven 
+      if (!isBookMode)
+        return `${marginTop} ${marginOutside} ${marginBottom} ${marginInside}`;
+      return isEven
         ? `${marginTop} ${marginInside} ${marginBottom} ${marginOutside}` // Left page
         : `${marginTop} ${marginOutside} ${marginBottom} ${marginInside}`; // Right page
     };
 
-    const getPageHtml = (contentHtml: string, isEven: boolean, pageNum: number) => {
+    const getPageHtml = (
+      contentHtml: string,
+      isEven: boolean,
+      pageNum: number,
+    ) => {
       const headerContentHtml = buildGridHtml(headerConfig, true, pageNum);
       const footerContentHtml = buildGridHtml(footerConfig, false, pageNum);
-      
+
       return `
       <div class="preview-page" style="padding: ${getPadding(isEven)};">
           <div class="layout__header-fixed ${focusedSection === 'header' ? 'focused-section' : ''}">

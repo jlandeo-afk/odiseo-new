@@ -21,7 +21,7 @@ export class CatalogUseCase {
   async getCourses(search?: string): Promise<any[]> {
     const tenantId = this.cls.get('tenantSchema') || 'public';
     const cacheKey = `catalogs:courses:${tenantId}:${search || 'all'}`;
-    
+
     const cached = await this.cacheManager.get<any[]>(cacheKey);
     if (cached) return cached;
 
@@ -44,8 +44,11 @@ export class CatalogUseCase {
     const cached = await this.cacheManager.get<any[]>(cacheKey);
     if (cached) return cached;
 
-    const topics = await this.catalogRepository.getCourseTopics(courseId, search);
-    
+    const topics = await this.catalogRepository.getCourseTopics(
+      courseId,
+      search,
+    );
+
     await this.cacheManager.set(cacheKey, topics);
     return topics;
   }
@@ -58,10 +61,10 @@ export class CatalogUseCase {
     isActive: boolean,
   ): Promise<void> {
     await this.catalogRepository.updateTopicLocalVisibility(topicId, isActive);
-    
+
     // Invalidar caché del tenant
     const tenantId = this.cls.get('tenantSchema') || 'public';
-    
+
     // In a real Redis setup with wildcard deletion, we would use a pattern.
     // Since we are using basic cache-manager, we might just clear everything
     // or specifically clear the topics cache for this tenant if we know the courseId.

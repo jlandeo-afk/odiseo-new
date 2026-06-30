@@ -1,13 +1,28 @@
-import { Injectable, Logger, BadRequestException, Inject, NotFoundException, ConflictException } from '@nestjs/common';
-import { Between, DataSource, EntityManager } from 'typeorm';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  Inject,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { Between, DataSource, EntityManager, In } from 'typeorm';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { GenerateMaterialDto } from './dto/generate-material.dto';
 import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
 import { GenerateMaterialJobDto } from './dto/generate-material-job.dto';
 import { ApproveReviewDto } from './dto/approve-review.dto';
-import { MaterialRequest, MaterialRequestStatus } from './entities/material-request.entity';
-import { MaterialRequestCourse, CourseMaterialStatus } from './entities/material-request-course.entity';
-import { MaterialReviewQuestion, ReviewQuestionStatus } from './entities/material-review-question.entity';
+import { MaterialRequest } from './entities/material-request.entity';
+import { MaterialRequestStatus } from './entities/material-status.enum';
+import {
+  MaterialRequestCourse,
+  CourseMaterialStatus,
+} from './entities/material-request-course.entity';
+import {
+  MaterialReviewQuestion,
+  ReviewQuestionStatus,
+} from './entities/material-review-question.entity';
+import { Material } from './entities/material.entity';
 import { CycleMaterialTemplate } from '../academic-time/entities/cycle-material-template.entity';
 import { Syllabus } from '../syllabus/entities/syllabus.entity';
 import { SyllabusDistribution } from '../syllabus/entities/syllabus-distribution.entity';
@@ -37,8 +52,9 @@ export class MaterialsService {
     @Inject(I_MATERIALS_REPOSITORY)
     private readonly materialsRepo: IMaterialsRepository,
     private readonly s3Service: S3Service,
-    @InjectEntityManager('questionsConnection') private readonly questionsEntityManager: EntityManager,
-  ) { }
+    @InjectEntityManager('questionsConnection')
+    private readonly questionsEntityManager: EntityManager,
+  ) {}
 
   async generate(dto: GenerateMaterialDto): Promise<any> {
     const tenantId = this.cls.get('companyId') || '7b89-11c2-d344';
@@ -68,7 +84,9 @@ export class MaterialsService {
       }
 
       // 2. Fetch company info for branding
-      const company = await manager.findOne(Company, { where: { id: tenantId } });
+      const company = await manager.findOne(Company, {
+        where: { id: tenantId },
+      });
 
       const courseRequests: Partial<MaterialRequestCourse>[] = [];
       const sqsJobs: GenerateMaterialJobDto[] = [];
@@ -77,7 +95,11 @@ export class MaterialsService {
       // 3. For each course, fetch its syllabus and distributions
       for (const templateCourse of template.courses) {
         const syllabus = await manager.findOne(Syllabus, {
-          where: { courseId: templateCourse.courseId, cycleId: template.cycleId, isActive: true },
+          where: {
+            courseId: templateCourse.courseId,
+            cycleId: template.cycleId,
+            isActive: true,
+          },
         });
         if (!syllabus) {
           continue;
@@ -117,18 +139,27 @@ export class MaterialsService {
           status: 'PENDING',
         });
 
-        const syllabusPayload = distributions.map((dist) => ({
-          topic_id: dist.topicId,
-          subtopic_id: dist.subtopicId,
-          weight: dist.weight,
-        }));
+        const targetQuantity = templateCourse.questionsQuantity || 35;
+        const syllabusPayload = distributions.map((dist, idx) => {
+          const baseQty = Math.floor(targetQuantity / distributions.length);
+          const remainder = targetQuantity % distributions.length;
+          const quantity = idx < remainder ? baseQty + 1 : baseQty;
+
+          return {
+            topic_id: dist.topicId,
+            subtopic_id: dist.subtopicId,
+            quantity,
+          };
+        }).filter((t) => t.quantity > 0);
 
         sqsJobs.push({
           job_id: courseRequestId,
           tenant: {
             tenant_id: tenantId,
             commercial_name: company?.commercialName || 'Colegio Odiseo Innova',
-            logo_url: company?.logoUrl || 'https://s3.aws.com/tenant-assets/odiseo-innova.png',
+            logo_url:
+              company?.logoUrl ||
+              'https://s3.aws.com/tenant-assets/odiseo-innova.png',
           },
           material_type: 'BALOTARIO',
           course_id: templateCourse.courseId,
@@ -176,7 +207,11 @@ export class MaterialsService {
       let position = 1;
       for (const cr of courseRequests) {
         const syllabus = await manager.findOne(Syllabus, {
-          where: { courseId: cr.courseId, cycleId: template.cycleId, isActive: true },
+          where: {
+            courseId: cr.courseId,
+            cycleId: template.cycleId,
+            isActive: true,
+          },
         });
         if (!syllabus) continue;
 
@@ -198,19 +233,36 @@ export class MaterialsService {
           });
         }
 
-        for (const dist of distributions) {
+        const templateCourse = template.courses.find(
+          (tc) => tc.courseId === cr.courseId,
+        );
+        const targetQuantity = templateCourse?.questionsQuantity || 35;
+
+        for (let idx = 0; idx < distributions.length; idx++) {
+          const dist = distributions[idx];
+          const baseQty = Math.floor(targetQuantity / distributions.length);
+          const remainder = targetQuantity % distributions.length;
+          const quantity = idx < remainder ? baseQty + 1 : baseQty;
+
+          if (quantity <= 0) continue;
+
           // Fetch actual questions from database for this subtopic
-          const allQuestions = await this.questionsEntityManager.find(Question, {
-            where: { subtopicId: String(convertUuidToIntegerId(dist.subtopicId)) },
-            relations: ['alternatives'],
-          });
-          // Shuffle in memory and take 2
+          const allQuestions = await this.questionsEntityManager.find(
+            Question,
+            {
+              where: {
+                subtopicId: String(convertUuidToIntegerId(dist.subtopicId)),
+              },
+              relations: ['alternatives'],
+            },
+          );
+          // Shuffle in memory and take quantity
           const dbQuestions = allQuestions
             .sort(() => 0.5 - Math.random())
-            .slice(0, 2);
+            .slice(0, quantity);
 
-          // Generate 2 review questions per subtopic slot
-          for (let i = 0; i < 2; i++) {
+          // Generate review questions per subtopic slot
+          for (let i = 0; i < quantity; i++) {
             const dbQ = dbQuestions[i];
             const isVacant = !dbQ;
             const reviewQ = manager.create(MaterialReviewQuestion, {
@@ -220,7 +272,9 @@ export class MaterialsService {
               topicId: dist.topicId,
               subtopicId: dist.subtopicId,
               position: position++,
-              status: isVacant ? ReviewQuestionStatus.EMPTY : ReviewQuestionStatus.FOUND,
+              status: isVacant
+                ? ReviewQuestionStatus.EMPTY
+                : ReviewQuestionStatus.FOUND,
             });
             await manager.save(reviewQ);
           }
@@ -228,7 +282,9 @@ export class MaterialsService {
       }
 
       if (dto.requires_review) {
-        this.logger.log(`MaterialRequest ${requestId} paused for curation. Review questions generated.`);
+        this.logger.log(
+          `MaterialRequest ${requestId} paused for curation. Review questions generated.`,
+        );
       } else {
         // Dispatch BullMQ jobs immediately
         for (const job of sqsJobs) {
@@ -238,12 +294,16 @@ export class MaterialsService {
           });
           await this.materialsQueue.add('generate', job);
         }
-        this.logger.log(`MaterialRequest ${requestId} dispatched to BullMQ immediately.`);
+        this.logger.log(
+          `MaterialRequest ${requestId} dispatched to BullMQ immediately.`,
+        );
       }
 
       return {
         jobId: requestId,
-        status: dto.requires_review ? MaterialRequestStatus.REVIEW_REQUIRED : MaterialRequestStatus.PROCESSING,
+        status: dto.requires_review
+          ? MaterialRequestStatus.REVIEW_REQUIRED
+          : MaterialRequestStatus.PROCESSING,
         message: dto.requires_review
           ? 'La solicitud requiere revisión intermedia antes de compilar.'
           : 'Solicitud de material encolada exitosamente',
@@ -257,11 +317,15 @@ export class MaterialsService {
     material_type: string;
     difficulty_level: string;
   }): Promise<any> {
-    this.logger.log(`Automatic generation requested for course ${dto.course_id}`);
+    this.logger.log(
+      `Automatic generation requested for course ${dto.course_id}`,
+    );
     return 'auto-job-001';
   }
 
-  async updateMaterialStatus(statusData: WebhookStatusRequestDto): Promise<void> {
+  async updateMaterialStatus(
+    statusData: WebhookStatusRequestDto,
+  ): Promise<void> {
     if (!statusData.job_id || !statusData.status) {
       throw new BadRequestException('job_id and status are required');
     }
@@ -275,7 +339,9 @@ export class MaterialsService {
         where: { id: statusData.job_id },
       });
       if (!courseReq) {
-        this.logger.warn(`No MaterialRequestCourse found for job_id: ${statusData.job_id}`);
+        this.logger.warn(
+          `No MaterialRequestCourse found for job_id: ${statusData.job_id}`,
+        );
         return;
       }
 
@@ -294,10 +360,14 @@ export class MaterialsService {
       await manager.update(MaterialRequestCourse, courseReq.id, {
         status: courseStatus,
         downloadUrl: statusData.download_url || undefined,
-        warnings: (statusData.error_message ? { error: statusData.error_message } : null) as any,
+        warnings: (statusData.error_message
+          ? { error: statusData.error_message }
+          : null) as any,
       });
 
-      this.logger.log(`MaterialRequestCourse ${courseReq.id} updated to ${courseStatus}`);
+      this.logger.log(
+        `MaterialRequestCourse ${courseReq.id} updated to ${courseStatus}`,
+      );
 
       // Check if all courses in the parent MaterialRequest are complete
       const siblingCourses = await manager.find(MaterialRequestCourse, {
@@ -312,8 +382,12 @@ export class MaterialsService {
       );
 
       if (allFinished) {
-        const hasFailed = siblingCourses.some((c) => c.status === CourseMaterialStatus.FAILED);
-        const hasWarnings = siblingCourses.some((c) => c.status === CourseMaterialStatus.COMPLETED_WITH_WARNINGS);
+        const hasFailed = siblingCourses.some(
+          (c) => c.status === CourseMaterialStatus.FAILED,
+        );
+        const hasWarnings = siblingCourses.some(
+          (c) => c.status === CourseMaterialStatus.COMPLETED_WITH_WARNINGS,
+        );
 
         let finalStatus = MaterialRequestStatus.COMPLETED;
         if (hasFailed) {
@@ -325,7 +399,22 @@ export class MaterialsService {
         await manager.update(MaterialRequest, courseReq.materialRequestId, {
           status: finalStatus,
         });
-        this.logger.log(`Parent MaterialRequest ${courseReq.materialRequestId} final status: ${finalStatus}`);
+        this.logger.log(
+          `Parent MaterialRequest ${courseReq.materialRequestId} final status: ${finalStatus}`,
+        );
+
+        // Update logical Material parent status
+        const request = await manager.findOne(MaterialRequest, {
+          where: { id: courseReq.materialRequestId },
+        });
+        if (request && request.materialId) {
+          await manager.update(Material, request.materialId, {
+            status: finalStatus,
+          });
+          this.logger.log(
+            `Parent Material ${request.materialId} status updated to ${finalStatus}`,
+          );
+        }
 
         // Dispatch merge job if all courses completed
         if (!hasFailed && siblingCourses.length >= 2) {
@@ -338,7 +427,9 @@ export class MaterialsService {
               material_request_id: courseReq.materialRequestId,
               tenant_id: tenantId,
             });
-            this.logger.log(`Merge job dispatched for MaterialRequest ${courseReq.materialRequestId}`);
+            this.logger.log(
+              `Merge job dispatched for MaterialRequest ${courseReq.materialRequestId}`,
+            );
           }
         }
       }
@@ -359,7 +450,9 @@ export class MaterialsService {
       if (request.status === MaterialRequestStatus.REVIEW_REQUIRED) {
         request.status = MaterialRequestStatus.IN_REVIEW;
         await manager.save(request);
-        this.logger.log(`MaterialRequest ${id} status auto-transitioned to IN_REVIEW`);
+        this.logger.log(
+          `MaterialRequest ${id} status auto-transitioned to IN_REVIEW`,
+        );
       }
 
       const questions = await manager.find(MaterialReviewQuestion, {
@@ -374,9 +467,27 @@ export class MaterialsService {
       const topicMap = new Map(topics.map((t) => [t.id, t]));
       const subtopicMap = new Map(subtopics.map((s) => [s.id, s]));
 
+      // Fetch questions from external question database
+      const questionIds = questions
+        .map((q) => q.questionId)
+        .filter((qid): qid is string => !!qid);
+
+      let dbQuestions: Question[] = [];
+      if (questionIds.length > 0) {
+        dbQuestions = await this.questionsEntityManager.find(Question, {
+          where: { id: In(questionIds) },
+          relations: ['alternatives'],
+        });
+      }
+      const dbQuestionsMap = new Map(dbQuestions.map((q) => [String(q.id), q]));
+
       const questionsResponse = questions.map((q) => {
         const topic = topicMap.get(q.topicId);
         const subtopic = subtopicMap.get(q.subtopicId);
+        const dbQ = q.questionId
+          ? dbQuestionsMap.get(String(q.questionId))
+          : null;
+
         return {
           id: q.id,
           questionId: q.questionId,
@@ -385,13 +496,25 @@ export class MaterialsService {
           subtopicName: subtopic?.name || 'Desconocido',
           position: q.position,
           status: q.status,
+          htmlContent: dbQ?.htmlContent || null,
+          options: dbQ?.options || [],
         };
+      });
+
+      const cycle = await manager.findOne(Cycle, {
+        where: { id: request.cycleId },
+      });
+      const template = await manager.findOne(CycleMaterialTemplate, {
+        where: { id: request.profileId },
       });
 
       return {
         materialId: request.id,
         status: request.status,
         version: request.version,
+        weekNumber: request.weekNumber,
+        cycleName: cycle?.name || 'Desconocido',
+        templateName: template?.name || 'Desconocido',
         questions: questionsResponse,
       };
     });
@@ -443,7 +566,9 @@ export class MaterialsService {
       const updatedQuestions = await manager.find(MaterialReviewQuestion, {
         where: { materialRequestId: id },
       });
-      const hasEmpty = updatedQuestions.some((q) => q.status === ReviewQuestionStatus.EMPTY);
+      const hasEmpty = updatedQuestions.some(
+        (q) => q.status === ReviewQuestionStatus.EMPTY,
+      );
 
       if (hasEmpty && !dto.continueWithWarnings) {
         throw new BadRequestException('Existen slots vacíos no resueltos');
@@ -454,8 +579,19 @@ export class MaterialsService {
       request.version += 1;
       await manager.save(request);
 
+      if (request.materialId) {
+        await manager.update(Material, request.materialId, {
+          status: MaterialRequestStatus.PROCESSING,
+        });
+        this.logger.log(
+          `Parent Material ${request.materialId} status updated to PROCESSING`,
+        );
+      }
+
       // Fetch company branding again to build SQS jobs
-      const company = await manager.findOne(Company, { where: { id: tenantId } });
+      const company = await manager.findOne(Company, {
+        where: { id: tenantId },
+      });
 
       // 4. Dispatch tasks to SQS for the worker
       for (const courseReq of request.courses) {
@@ -465,7 +601,11 @@ export class MaterialsService {
         });
 
         const syllabus = await manager.findOne(Syllabus, {
-          where: { courseId: courseReq.courseId, cycleId: request.profileId, isActive: true },
+          where: {
+            courseId: courseReq.courseId,
+            cycleId: request.profileId,
+            isActive: true,
+          },
         });
 
         // Load distributions for this course in the requested week
@@ -476,7 +616,10 @@ export class MaterialsService {
         if (template && syllabus) {
           if (template.scope === 'CURRENT_WEEK') {
             distributions = await manager.find(SyllabusDistribution, {
-              where: { syllabusId: syllabus.id, weekNumber: request.weekNumber },
+              where: {
+                syllabusId: syllabus.id,
+                weekNumber: request.weekNumber,
+              },
             });
           } else if (template.scope === 'ACCUMULATIVE') {
             const startWeek = template.accumulationWeeks
@@ -508,7 +651,9 @@ export class MaterialsService {
           tenant: {
             tenant_id: tenantId,
             commercial_name: company?.commercialName || 'Colegio Odiseo Innova',
-            logo_url: company?.logoUrl || 'https://s3.aws.com/tenant-assets/odiseo-innova.png',
+            logo_url:
+              company?.logoUrl ||
+              'https://s3.aws.com/tenant-assets/odiseo-innova.png',
           },
           material_type: 'BALOTARIO',
           course_id: courseReq.courseId,
@@ -522,7 +667,9 @@ export class MaterialsService {
         await this.materialsQueue.add('generate', job);
       }
 
-      this.logger.log(`Curation approved for MaterialRequest ${id}. Dispatched jobs to BullMQ.`);
+      this.logger.log(
+        `Curation approved for MaterialRequest ${id}. Dispatched jobs to BullMQ.`,
+      );
 
       return {
         status: MaterialRequestStatus.PROCESSING,
@@ -538,7 +685,9 @@ export class MaterialsService {
       });
 
       if (!courseReq) {
-        throw new NotFoundException('El curso solicitado no forma parte de esta solicitud de material');
+        throw new NotFoundException(
+          'El curso solicitado no forma parte de esta solicitud de material',
+        );
       }
 
       if (
@@ -546,7 +695,9 @@ export class MaterialsService {
           courseReq.status !== CourseMaterialStatus.COMPLETED_WITH_WARNINGS) ||
         !courseReq.downloadUrl
       ) {
-        throw new BadRequestException('El material aún no está listo o falló su generación');
+        throw new BadRequestException(
+          'El material aún no está listo o falló su generación',
+        );
       }
 
       let key = courseReq.downloadUrl;
@@ -574,12 +725,17 @@ export class MaterialsService {
     });
   }
 
-  async updateMergedDownloadUrl(materialRequestId: string, mergedUrl: string): Promise<void> {
+  async updateMergedDownloadUrl(
+    materialRequestId: string,
+    mergedUrl: string,
+  ): Promise<void> {
     return this.tenantService.runInTenant(async (manager) => {
       await manager.update(MaterialRequest, materialRequestId, {
         mergedDownloadUrl: mergedUrl,
       });
-      this.logger.log(`Merged download URL updated for MaterialRequest ${materialRequestId}`);
+      this.logger.log(
+        `Merged download URL updated for MaterialRequest ${materialRequestId}`,
+      );
     });
   }
 
@@ -602,7 +758,9 @@ export class MaterialsService {
       }
 
       if (!request.mergedDownloadUrl) {
-        throw new BadRequestException('El PDF combinado aún no está disponible');
+        throw new BadRequestException(
+          'El PDF combinado aún no está disponible',
+        );
       }
 
       let key = request.mergedDownloadUrl;
@@ -632,27 +790,77 @@ export class MaterialsService {
     return this.s3Service.getObject(s3Key);
   }
 
-  async getHistory(cycleIds?: string[], weekNumbers?: number[], templateIds?: string[]): Promise<any[]> {
+  async getHistory(
+    cycleIds?: string[],
+    weekNumbers?: number[],
+    templateIds?: string[],
+  ): Promise<any[]> {
     return this.tenantService.runInTenant(async (manager) => {
-      const query = manager.createQueryBuilder(MaterialRequest, 'request')
-        .leftJoinAndSelect('request.courses', 'courses')
-        .innerJoin(CycleMaterialTemplate, 'template', 'template.id = request.profile_id')
-        .innerJoinAndMapOne('request.cycle', Cycle, 'cycle', 'cycle.id = template.cycle_id')
-        .orderBy('request.created_at', 'DESC');
+      const query = manager
+        .createQueryBuilder(Material, 'material')
+        .leftJoinAndMapOne(
+          'material.latestRequest',
+          MaterialRequest,
+          'latestRequest',
+          'latestRequest.id = material.latest_request_id',
+        )
+        .leftJoinAndSelect('latestRequest.courses', 'courses')
+        .innerJoin(
+          CycleMaterialTemplate,
+          'template',
+          'template.id = material.profile_id',
+        )
+        .innerJoinAndMapOne(
+          'material.cycle',
+          Cycle,
+          'cycle',
+          'cycle.id = material.cycle_id',
+        )
+        .orderBy('material.updated_at', 'DESC');
 
       if (cycleIds && cycleIds.length > 0) {
-        query.andWhere('template.cycle_id IN (:...cycleIds)', { cycleIds });
+        query.andWhere('material.cycle_id IN (:...cycleIds)', { cycleIds });
       }
 
       if (weekNumbers && weekNumbers.length > 0) {
-        query.andWhere('request.week_number IN (:...weekNumbers)', { weekNumbers });
+        query.andWhere('material.week_number IN (:...weekNumbers)', {
+          weekNumbers,
+        });
       }
 
       if (templateIds && templateIds.length > 0) {
-        query.andWhere('template.id IN (:...templateIds)', { templateIds });
+        query.andWhere('material.profile_id IN (:...templateIds)', {
+          templateIds,
+        });
       }
 
-      return await query.getMany();
+      const materials = await query.getMany();
+      return materials.map((m) => ({
+        id: m.latestRequestId || m.id, // Compatibility fallback: use latestRequestId as ID for download endpoints
+        materialId: m.id, // Real logical Material ID
+        tenantId: m.tenantId,
+        profileId: m.profileId,
+        cycleId: m.cycleId,
+        weekNumber: m.weekNumber,
+        status: m.status,
+        latestRequestId: m.latestRequestId,
+        createdAt: m.latestRequest?.createdAt || m.createdAt,
+        updatedAt: m.updatedAt,
+        cycle: m.cycle,
+        courses: m.latestRequest?.courses || [],
+        mergedDownloadUrl: m.latestRequest?.mergedDownloadUrl || null,
+        requiresReview: m.latestRequest?.requiresReview || false,
+      }));
+    });
+  }
+
+  async getAttempts(materialId: string): Promise<any[]> {
+    return this.tenantService.runInTenant(async (manager) => {
+      return manager.find(MaterialRequest, {
+        where: { materialId },
+        relations: ['courses'],
+        order: { createdAt: 'DESC' },
+      });
     });
   }
 }

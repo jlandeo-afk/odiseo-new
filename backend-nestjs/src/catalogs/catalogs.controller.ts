@@ -1,4 +1,12 @@
-import { Controller, Get, Patch, Param, Body, HttpCode, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Body,
+  HttpCode,
+  Query,
+} from '@nestjs/common';
 import { CatalogUseCase } from './catalog.use-case';
 
 @Controller('v1/catalogs')

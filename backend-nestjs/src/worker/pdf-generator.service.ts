@@ -6,13 +6,16 @@ import { GenerateMaterialJobDto } from '../materials/dto/generate-material-job.d
 export class PdfGeneratorService {
   private readonly logger = new Logger(PdfGeneratorService.name);
 
-  async generatePdf(job: GenerateMaterialJobDto, questions: any[]): Promise<Buffer> {
+  async generatePdf(
+    job: GenerateMaterialJobDto,
+    questions: any[],
+  ): Promise<Buffer> {
     this.logger.log(`Starting PDF generation for job ${job.job_id}...`);
-    
+
     // Launch headless browser
     const browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     try {
@@ -21,7 +24,7 @@ export class PdfGeneratorService {
 
       // Build HTML string
       const htmlContent = this.buildHtmlTemplate(job, questions);
-      
+
       // Set the content
       await page.setContent(htmlContent, { waitUntil: 'load' });
 
@@ -43,7 +46,7 @@ export class PdfGeneratorService {
              <span class="pageNumber"></span> / <span class="totalPages"></span>
           </div>
         `,
-        margin: { top: '60px', right: '40px', bottom: '60px', left: '40px' }
+        margin: { top: '60px', right: '40px', bottom: '60px', left: '40px' },
       });
 
       this.logger.log(`PDF successfully generated for job ${job.job_id}`);
@@ -53,8 +56,13 @@ export class PdfGeneratorService {
     }
   }
 
-  private buildHtmlTemplate(job: GenerateMaterialJobDto, questions: any[]): string {
-    let questionsHtml = questions.map((q, idx) => `
+  private buildHtmlTemplate(
+    job: GenerateMaterialJobDto,
+    questions: any[],
+  ): string {
+    const questionsHtml = questions
+      .map(
+        (q, idx) => `
       <div class="question">
         <p class="question-title"><strong>${idx + 1}.</strong></p>
         <div class="question-body">
@@ -64,7 +72,9 @@ export class PdfGeneratorService {
           ${q.options.map((opt: any) => `<div class="option"><strong>${opt.label})</strong> ${opt.text}</div>`).join('')}
         </div>
       </div>
-    `).join('');
+    `,
+      )
+      .join('');
 
     return `
       <!DOCTYPE html>

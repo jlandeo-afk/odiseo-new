@@ -20,7 +20,9 @@ export class MaterialsRepository implements IMaterialsRepository {
     private usageRepo: Repository<MaterialQuestionUsage>,
   ) {}
 
-  async createRequest(request: Partial<MaterialRequest>): Promise<MaterialRequest> {
+  async createRequest(
+    request: Partial<MaterialRequest>,
+  ): Promise<MaterialRequest> {
     const entity = this.requestRepo.create(request);
     return this.requestRepo.save(entity);
   }
@@ -36,37 +38,51 @@ export class MaterialsRepository implements IMaterialsRepository {
     await this.requestRepo.update(id, { status });
   }
 
-  async createCourses(courses: Partial<MaterialRequestCourse>[]): Promise<MaterialRequestCourse[]> {
+  async createCourses(
+    courses: Partial<MaterialRequestCourse>[],
+  ): Promise<MaterialRequestCourse[]> {
     const entities = this.courseRepo.create(courses);
     return this.courseRepo.save(entities);
   }
 
-  async updateCourse(courseId: string, data: Partial<MaterialRequestCourse>): Promise<void> {
+  async updateCourse(
+    courseId: string,
+    data: Partial<MaterialRequestCourse>,
+  ): Promise<void> {
     await this.courseRepo.update(courseId, data);
   }
 
-  async saveReviewQuestions(questions: Partial<MaterialReviewQuestion>[]): Promise<void> {
+  async saveReviewQuestions(
+    questions: Partial<MaterialReviewQuestion>[],
+  ): Promise<void> {
     const entities = this.reviewRepo.create(questions);
     await this.reviewRepo.save(entities);
   }
 
-  async getReviewQuestions(requestId: string): Promise<MaterialReviewQuestion[]> {
+  async getReviewQuestions(
+    requestId: string,
+  ): Promise<MaterialReviewQuestion[]> {
     return this.reviewRepo.find({
       where: { materialRequestId: requestId },
       order: { position: 'ASC' },
     });
   }
 
-  async saveQuestionUsage(usages: Partial<MaterialQuestionUsage>[]): Promise<void> {
+  async saveQuestionUsage(
+    usages: Partial<MaterialQuestionUsage>[],
+  ): Promise<void> {
     const entities = this.usageRepo.create(usages);
     await this.usageRepo.save(entities);
   }
 
-  async getUsedQuestionsInCycle(cycleId: string, courseId: string): Promise<string[]> {
+  async getUsedQuestionsInCycle(
+    cycleId: string,
+    courseId: string,
+  ): Promise<string[]> {
     const usages = await this.usageRepo.find({
       where: { cycleId, courseId },
       select: ['questionId'],
     });
-    return usages.map(u => u.questionId);
+    return usages.map((u) => u.questionId);
   }
 }

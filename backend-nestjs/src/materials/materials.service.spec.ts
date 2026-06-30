@@ -6,8 +6,12 @@ import { TenantService } from '../database/tenant.service';
 import { getEntityManagerToken } from '@nestjs/typeorm';
 import { I_MATERIALS_REPOSITORY } from './repositories/i-materials.repository';
 import { S3Service } from '../aws/s3.service';
-import { BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { MaterialRequestStatus } from './entities/material-request.entity';
+import {
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { MaterialRequestStatus } from './entities/material-status.enum';
 import { ReviewQuestionStatus } from './entities/material-review-question.entity';
 import { CourseMaterialStatus } from './entities/material-request-course.entity';
 
@@ -44,7 +48,9 @@ describe('MaterialsService', () => {
       updateRequestStatus: jest.fn(),
     };
     s3Service = {
-      getPresignedDownloadUrl: jest.fn().mockResolvedValue('https://s3.amazonaws.com/mock-signed-url'),
+      getPresignedDownloadUrl: jest
+        .fn()
+        .mockResolvedValue('https://s3.amazonaws.com/mock-signed-url'),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,7 +61,10 @@ describe('MaterialsService', () => {
         { provide: TenantService, useValue: tenantService },
         { provide: I_MATERIALS_REPOSITORY, useValue: materialsRepo },
         { provide: S3Service, useValue: s3Service },
-        { provide: getEntityManagerToken('questionsConnection'), useValue: mockEntityManager },
+        {
+          provide: getEntityManagerToken('questionsConnection'),
+          useValue: mockEntityManager,
+        },
       ],
     }).compile();
 
@@ -85,8 +94,10 @@ describe('MaterialsService', () => {
       const mockSyllabus = { id: 'syllabus-id' };
 
       mockEntityManager.findOne.mockImplementation((entityClass, options) => {
-        if (options.where && options.where.id === 'template-id') return Promise.resolve(mockTemplate);
-        if (options.where && options.where.courseId === 'course-1') return Promise.resolve(mockSyllabus);
+        if (options.where && options.where.id === 'template-id')
+          return Promise.resolve(mockTemplate);
+        if (options.where && options.where.courseId === 'course-1')
+          return Promise.resolve(mockSyllabus);
         return Promise.resolve(null);
       });
       mockEntityManager.find.mockResolvedValue([]);
@@ -109,12 +120,19 @@ describe('MaterialsService', () => {
       };
       const mockSyllabus = { id: 'syllabus-id', courseId: 'course-1' };
       const mockDistributions = [
-        { id: 'dist-1', topicId: 'topic-1', subtopicId: 'subtopic-1', weight: 3 },
+        {
+          id: 'dist-1',
+          topicId: 'topic-1',
+          subtopicId: 'subtopic-1',
+          weight: 3,
+        },
       ];
 
       mockEntityManager.findOne.mockImplementation((entityClass, options) => {
-        if (options.where && options.where.id === 'template-id') return Promise.resolve(mockTemplate);
-        if (options.where && options.where.courseId === 'course-1') return Promise.resolve(mockSyllabus);
+        if (options.where && options.where.id === 'template-id')
+          return Promise.resolve(mockTemplate);
+        if (options.where && options.where.courseId === 'course-1')
+          return Promise.resolve(mockSyllabus);
         return Promise.resolve(null);
       });
       mockEntityManager.find.mockResolvedValue(mockDistributions);
@@ -134,7 +152,9 @@ describe('MaterialsService', () => {
     it('should throw NotFoundException if request not found', async () => {
       mockEntityManager.findOne.mockResolvedValue(null);
 
-      await expect(service.getReviewData('non-existent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.getReviewData('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should transition status to IN_REVIEW and return review questions', async () => {
@@ -144,17 +164,27 @@ describe('MaterialsService', () => {
         version: 1,
       };
       const mockQuestions = [
-        { id: 'q-1', topicId: 'topic-1', subtopicId: 'sub-1', position: 1, status: ReviewQuestionStatus.FOUND },
+        {
+          id: 'q-1',
+          topicId: 'topic-1',
+          subtopicId: 'sub-1',
+          position: 1,
+          status: ReviewQuestionStatus.FOUND,
+        },
       ];
-      const mockTopics = [{ id: 'topic-1', courseId: 'course-1', name: 'Topic 1' }];
+      const mockTopics = [
+        { id: 'topic-1', courseId: 'course-1', name: 'Topic 1' },
+      ];
       const mockSubtopics = [{ id: 'sub-1', name: 'Subtopic 1' }];
 
       mockEntityManager.findOne.mockResolvedValue(mockRequest);
       mockEntityManager.find.mockImplementation((entityClass, options) => {
         // Match the entity name or class
-        if (entityClass.name === 'MaterialReviewQuestion') return Promise.resolve(mockQuestions);
+        if (entityClass.name === 'MaterialReviewQuestion')
+          return Promise.resolve(mockQuestions);
         if (entityClass.name === 'Topic') return Promise.resolve(mockTopics);
-        if (entityClass.name === 'Subtopic') return Promise.resolve(mockSubtopics);
+        if (entityClass.name === 'Subtopic')
+          return Promise.resolve(mockSubtopics);
         return Promise.resolve([]);
       });
 
@@ -209,17 +239,23 @@ describe('MaterialsService', () => {
       };
       const mockQuestions = [{ id: 'q-1', status: ReviewQuestionStatus.FOUND }];
       const mockSyllabus = { id: 'syllabus-id' };
-      const mockDistributions = [{ topicId: 't-1', subtopicId: 's-1', weight: 1 }];
+      const mockDistributions = [
+        { topicId: 't-1', subtopicId: 's-1', weight: 1 },
+      ];
 
       mockEntityManager.findOne.mockImplementation((entityClass, options) => {
-        if (options.where && options.where.id === 'req-id') return Promise.resolve(mockRequest);
-        if (options.where && options.where.courseId === 'course-1') return Promise.resolve(mockSyllabus);
+        if (options.where && options.where.id === 'req-id')
+          return Promise.resolve(mockRequest);
+        if (options.where && options.where.courseId === 'course-1')
+          return Promise.resolve(mockSyllabus);
         return Promise.resolve(null);
       });
 
       mockEntityManager.find.mockImplementation((entityClass, options) => {
-        if (entityClass.name === 'MaterialReviewQuestion') return Promise.resolve(mockQuestions);
-        if (entityClass.name === 'SyllabusDistribution') return Promise.resolve(mockDistributions);
+        if (entityClass.name === 'MaterialReviewQuestion')
+          return Promise.resolve(mockQuestions);
+        if (entityClass.name === 'SyllabusDistribution')
+          return Promise.resolve(mockDistributions);
         return Promise.resolve([]);
       });
 
@@ -240,7 +276,9 @@ describe('MaterialsService', () => {
     it('should throw NotFoundException if course request does not exist', async () => {
       mockEntityManager.findOne.mockResolvedValue(null);
 
-      await expect(service.getDownloadUrl('req-id', 'course-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getDownloadUrl('req-id', 'course-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if course generation is not completed', async () => {
@@ -251,21 +289,29 @@ describe('MaterialsService', () => {
       };
       mockEntityManager.findOne.mockResolvedValue(mockCourseReq);
 
-      await expect(service.getDownloadUrl('req-id', 'course-1')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.getDownloadUrl('req-id', 'course-1'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should resolve the presigned URL successfully from raw or http keys', async () => {
       const mockCourseReq = {
         id: 'c-req-id',
         status: CourseMaterialStatus.COMPLETED,
-        downloadUrl: 'http://localhost:4566/odiseo-materials/materiales/job-123/doc.pdf',
+        downloadUrl:
+          'http://localhost:4566/odiseo-materials/materiales/job-123/doc.pdf',
       };
       mockEntityManager.findOne.mockResolvedValue(mockCourseReq);
 
       const result = await service.getDownloadUrl('req-id', 'course-1');
 
-      expect(result.downloadUrl).toBe('https://s3.amazonaws.com/mock-signed-url');
-      expect(s3Service.getPresignedDownloadUrl).toHaveBeenCalledWith('materiales/job-123/doc.pdf', 3600);
+      expect(result.downloadUrl).toBe(
+        'https://s3.amazonaws.com/mock-signed-url',
+      );
+      expect(s3Service.getPresignedDownloadUrl).toHaveBeenCalledWith(
+        'materiales/job-123/doc.pdf',
+        3600,
+      );
     });
   });
 });

@@ -17,7 +17,7 @@ describe('SyllabusUseCase', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SyllabusUseCase,
-        { provide: I_SYLLABUS_REPOSITORY, useValue: mockRepo }
+        { provide: I_SYLLABUS_REPOSITORY, useValue: mockRepo },
       ],
     }).compile();
 
@@ -25,18 +25,23 @@ describe('SyllabusUseCase', () => {
   });
 
   it('should create distribution successfully with weight', async () => {
-    mockRepo.createDistribution.mockResolvedValue({ id: 'new-dist', weight: 5 });
+    mockRepo.createDistribution.mockResolvedValue({
+      id: 'new-dist',
+      weight: 5,
+    });
 
     const result = await useCase.addDistribution('syl-1', {
       weekNumber: 1,
       topicId: 't-1',
       subtopicId: 'st-1',
-      weight: 5
+      weight: 5,
     });
 
     expect(result.id).toBe('new-dist');
-    expect(mockRepo.createDistribution).toHaveBeenCalledWith(expect.objectContaining({
-      weight: 5
-    }));
+    expect(mockRepo.createDistribution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weight: 5,
+      }),
+    );
   });
 });

@@ -21,11 +21,17 @@
           <UFormGroup label="Cursos" name="courses">
             <USelectMenu
               v-model="form.selectedCourseId"
-              :options="courseOptions"
+              :items="courseOptions"
               value-key="id"
               label-key="name"
               placeholder="Seleccione un curso"
-            />
+              :ui="{ content: 'z-[9999]' }"
+              class="w-full"
+            >
+              <template #default>
+                {{ courseOptions.find(o => o.id === form.selectedCourseId)?.name || 'Seleccione un curso' }}
+              </template>
+            </USelectMenu>
           </UFormGroup>
 
           <!-- Design Template Selection -->

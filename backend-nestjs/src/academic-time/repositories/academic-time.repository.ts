@@ -11,10 +11,14 @@ import { TenantService } from '../../database/tenant.service';
 export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
   constructor(private readonly tenantService: TenantService) {}
 
-  async getCycles(limit: number = 20, offset: number = 0, search: string = ''): Promise<{ data: Cycle[], total: number }> {
+  async getCycles(
+    limit: number = 20,
+    offset: number = 0,
+    search: string = '',
+  ): Promise<{ data: Cycle[]; total: number }> {
     return this.tenantService.runInTenant(async (manager) => {
       const where: any = { deletedAt: IsNull() };
-      
+
       if (search && search.trim() !== '') {
         where.name = ILike(`%${search.trim()}%`);
       }
@@ -44,7 +48,7 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
   async updateCycle(id: string, data: any): Promise<void> {
     return this.tenantService.runInTenant(async (manager) => {
       const { weeks, ...cycleData } = data;
-      
+
       // Update the cycle core properties
       await manager.update(Cycle, id, cycleData);
 
@@ -66,7 +70,10 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
       if (!isActive) {
         // If a cycle is archived, all its associated syllabuses should also be archived
         // to prevent active syllabuses from belonging to inactive cycles.
-        await manager.query(`UPDATE "syllabus" SET is_active = false WHERE cycle_id = $1`, [id]);
+        await manager.query(
+          `UPDATE "syllabus" SET is_active = false WHERE cycle_id = $1`,
+          [id],
+        );
       }
     });
   }
@@ -87,7 +94,7 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
       try {
         const result = await manager.query(
           `SELECT COUNT(1) as count FROM "syllabus" WHERE "cycle_id" = $1 AND "is_active" = true`,
-          [id]
+          [id],
         );
         hasSyllabus = parseInt(result[0]?.count || '0', 10) > 0;
       } catch (e) {
@@ -123,7 +130,10 @@ export class AcademicTimeRepositoryImpl implements IAcademicTimeRepository {
 
       if (courses && courses.length > 0) {
         const templateCourses = courses.map((c: any) =>
-          manager.create(CycleMaterialTemplateCourse, { ...c, templateId: template.id }),
+          manager.create(CycleMaterialTemplateCourse, {
+            ...c,
+            templateId: template.id,
+          }),
         );
         await manager.save(templateCourses);
       }

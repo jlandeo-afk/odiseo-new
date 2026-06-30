@@ -16,15 +16,18 @@ import { MaterialRequestCourse } from './entities/material-request-course.entity
 import { MaterialReviewQuestion } from './entities/material-review-question.entity';
 import { MaterialQuestionUsage } from './entities/material-question-usage.entity';
 import { PdfDesignTemplate } from './entities/pdf-design-template.entity';
+import { Material } from './entities/material.entity';
 import { I_MATERIALS_REPOSITORY } from './repositories/i-materials.repository';
 import { MaterialsRepository } from './repositories/materials.repository';
 import { BullModule } from '@nestjs/bullmq';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { QuestionBankModule } from '../question-bank/question-bank.module';
 
 @Module({
   imports: [
     AwsModule,
+    QuestionBankModule,
     MulterModule.register({ dest: './uploads' }),
     BullModule.registerQueue({
       name: 'materials-queue',
@@ -34,6 +37,7 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
       adapter: BullMQAdapter,
     }),
     TypeOrmModule.forFeature([
+      Material,
       MaterialRequest,
       MaterialRequestCourse,
       MaterialReviewQuestion,

@@ -27,7 +27,9 @@ export class CreateMaterialTemplates1718640000002 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS cycle_material_template_courses;`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS cycle_material_template_courses;`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS cycle_material_templates;`);
   }
 }

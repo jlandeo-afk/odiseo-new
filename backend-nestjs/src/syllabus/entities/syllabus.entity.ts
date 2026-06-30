@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { SyllabusDistribution } from './syllabus-distribution.entity';
 
 @Entity('syllabus')
@@ -24,6 +31,9 @@ export class Syllabus {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @OneToMany(() => SyllabusDistribution, distribution => distribution.syllabus)
+  @OneToMany(
+    () => SyllabusDistribution,
+    (distribution) => distribution.syllabus,
+  )
   distributions: SyllabusDistribution[];
 }

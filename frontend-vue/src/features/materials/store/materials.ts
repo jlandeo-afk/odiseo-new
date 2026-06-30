@@ -7,6 +7,12 @@ export interface CourseStatus {
   status: string;
 }
 
+export interface ReviewQuestionOption {
+  label: string;
+  text: string;
+  is_correct: boolean;
+}
+
 export interface ReviewQuestion {
   id: string;
   questionId: string | null;
@@ -15,12 +21,17 @@ export interface ReviewQuestion {
   subtopicName: string;
   position: number;
   status: 'FOUND' | 'EMPTY' | 'REPLACED' | 'REMOVED';
+  htmlContent?: string | null;
+  options?: ReviewQuestionOption[];
 }
 
 export interface ReviewData {
   materialId: string;
   status: string;
   version: number;
+  weekNumber: number;
+  cycleName: string;
+  templateName: string;
   questions: ReviewQuestion[];
 }
 
@@ -181,6 +192,26 @@ export const useMaterialsStore = defineStore('materials', () => {
     }
   }
 
+  async function fetchAttempts(materialId: string) {
+    isLoading.value = true
+    error.value = null
+    try {
+      const authStore = useAuthStore()
+      const subdomain = authStore.getSubdomain()
+      // @ts-ignore
+      const res = await $fetch(`/api/v1/materials/${materialId}/attempts`, {
+        method: 'GET',
+        headers: { 'x-subdomain': subdomain },
+      })
+      return res as any[]
+    } catch (e: any) {
+      error.value = e.data?.message || e.message || 'Error al cargar el historial de intentos'
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     isLoading,
     error,
@@ -190,6 +221,7 @@ export const useMaterialsStore = defineStore('materials', () => {
     approveCuration,
     fetchDownloadUrl,
     fetchMergedDownloadUrl,
-    fetchHistory
+    fetchHistory,
+    fetchAttempts
   }
 })

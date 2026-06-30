@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { MaterialRequest } from './material-request.entity';
 
 export enum ReviewQuestionStatus {
@@ -28,10 +34,16 @@ export class MaterialReviewQuestion {
   @Column()
   position: number;
 
-  @Column({ type: 'enum', enum: ReviewQuestionStatus, default: ReviewQuestionStatus.FOUND })
+  @Column({
+    type: 'enum',
+    enum: ReviewQuestionStatus,
+    default: ReviewQuestionStatus.FOUND,
+  })
   status: ReviewQuestionStatus;
 
-  @ManyToOne(() => MaterialRequest, (request) => request.reviewQuestions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MaterialRequest, (request) => request.reviewQuestions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'material_request_id' })
   materialRequest: MaterialRequest;
 }

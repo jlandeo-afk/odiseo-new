@@ -18,7 +18,6 @@ import { QuestionBankModule } from './question-bank/question-bank.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

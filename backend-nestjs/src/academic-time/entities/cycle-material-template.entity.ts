@@ -38,10 +38,8 @@ export class CycleMaterialTemplate {
   @JoinColumn({ name: 'cycle_id' })
   cycle: Cycle;
 
-  @OneToMany(
-    () => CycleMaterialTemplateCourse,
-    (course) => course.template,
-    { cascade: true }
-  )
+  @OneToMany(() => CycleMaterialTemplateCourse, (course) => course.template, {
+    cascade: true,
+  })
   courses: CycleMaterialTemplateCourse[];
 }

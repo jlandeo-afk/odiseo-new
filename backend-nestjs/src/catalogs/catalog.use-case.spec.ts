@@ -86,16 +86,18 @@ describe('CatalogUseCase', () => {
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('Topic 1');
     expect(result[0].isActive).toBe(true);
-    expect(mockCatalogRepository.getCourseTopics).toHaveBeenCalledWith('course-1', undefined);
+    expect(mockCatalogRepository.getCourseTopics).toHaveBeenCalledWith(
+      'course-1',
+      undefined,
+    );
   });
 
   it('debería aislar la actualización local en el repositorio e invalidar caché', async () => {
     await useCase.updateTopicVisibility('topic-1', false);
 
-    expect(mockCatalogRepository.updateTopicLocalVisibility).toHaveBeenCalledWith(
-      'topic-1',
-      false,
-    );
+    expect(
+      mockCatalogRepository.updateTopicLocalVisibility,
+    ).toHaveBeenCalledWith('topic-1', false);
     expect(mockCacheManager.clear).toHaveBeenCalled();
   });
 });

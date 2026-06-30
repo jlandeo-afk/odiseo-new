@@ -27,7 +27,11 @@ export class AcademicTimeController {
   ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const parsedOffset = offset ? parseInt(offset, 10) : 0;
-    return this.academicTimeUseCase.getCycles(parsedLimit, parsedOffset, search);
+    return this.academicTimeUseCase.getCycles(
+      parsedLimit,
+      parsedOffset,
+      search,
+    );
   }
 
   @Post('cycles')

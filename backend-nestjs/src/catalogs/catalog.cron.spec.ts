@@ -56,7 +56,10 @@ describe('CatalogCronService', () => {
 
     await service.syncCatalogs();
 
-    expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.any(Object));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+    );
     expect(repository.upsertCatalogs).toHaveBeenCalledWith(expect.any(Object));
   });
 

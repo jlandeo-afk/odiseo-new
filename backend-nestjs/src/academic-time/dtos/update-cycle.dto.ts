@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsNumber, Min, IsDateString, Max, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  IsDateString,
+  Max,
+  IsOptional,
+} from 'class-validator';
 
 export class UpdateCycleDto {
   @IsString()

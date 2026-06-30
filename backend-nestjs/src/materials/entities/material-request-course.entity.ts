@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { MaterialRequest } from './material-request.entity';
 
 export enum CourseMaterialStatus {
@@ -20,7 +27,11 @@ export class MaterialRequestCourse {
   @Column({ name: 'course_id' })
   courseId: string;
 
-  @Column({ type: 'enum', enum: CourseMaterialStatus, default: CourseMaterialStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: CourseMaterialStatus,
+    default: CourseMaterialStatus.PENDING,
+  })
   status: CourseMaterialStatus;
 
   @Column({ name: 'download_url', nullable: true })
@@ -32,7 +43,9 @@ export class MaterialRequestCourse {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @ManyToOne(() => MaterialRequest, (request) => request.courses, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MaterialRequest, (request) => request.courses, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'material_request_id' })
   materialRequest: MaterialRequest;
 }

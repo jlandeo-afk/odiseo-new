@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Question } from './entities/question.entity';
 import { MaterialReviewQuestion } from '../materials/entities/material-review-question.entity';
 import { convertUuidToIntegerId } from '../database/uuid-converter';
@@ -24,60 +24,80 @@ export class QuestionBankService {
     subtopicId: string,
     limit: number,
     tenantId: string,
-    cycleId?: string // En un entorno real se usaría para cruzar con el material_request y filtrar por ciclo
+    cycleId?: string, // En un entorno real se usaría para cruzar con el material_request y filtrar por ciclo
   ): Promise<Question[]> {
-    this.logger.debug(`Buscando ${limit} preguntas para el subtema ${subtopicId}`);
+    this.logger.debug(
+      `Buscando ${limit} preguntas para el subtema ${subtopicId}`,
+    );
 
     const numericSubtopicId = convertUuidToIntegerId(subtopicId);
 
-    // Query Base: Seleccionar preguntas del subtema
-    const qb = this.questionRepository.createQueryBuilder('q')
-      .leftJoinAndSelect('q.alternatives', 'a')
-      .where('q.subtopic_id = :subtopicId', { subtopicId: numericSubtopicId });
-
-    // TODO: La subquery debería idealmente enlazar "material_review_questions" -> "material_requests" -> "cycles"
-    // Para simplificar esta implementación base, filtraremos excluyendo simplemente las preguntas ya presentes
-    // en material_review_questions para este tenantId en peticiones activas.
-    // Como material_review_questions no tiene tenant_id directamente, lo asumo a través de subconsultas si es necesario,
-    // o para propósitos demostrativos excluimos todos los IDs globalmente.
-    
-    // Aquí usamos una exclusión simple simulando el Filtro de Historial
-    const usedQuestionIds = await this.reviewRepository.createQueryBuilder('mrq')
+    // Get list of already used question IDs
+    const usedQuestionIds = await this.reviewRepository
+      .createQueryBuilder('mrq')
       .select('mrq.question_id')
       .where('mrq.question_id IS NOT NULL')
       .getRawMany();
 
-    const usedIdsList = usedQuestionIds.map(row => row.question_id);
+    const usedIdsList = usedQuestionIds.map((row) => row.question_id);
 
-    // Prioridad 1: Preguntas NO usadas
+    // Priority 1: Get random IDs of unused questions
+    const unusedIdsQb = this.questionRepository
+      .createQueryBuilder('q')
+      .select('q.id', 'id')
+      .where(
+        'q.id IN (SELECT question_id FROM odiseo.question_subtopic WHERE subtopic_id = :subtopicId AND fl_status = true)',
+        { subtopicId: numericSubtopicId },
+      )
+      .andWhere('q.fl_status = true');
+
     if (usedIdsList.length > 0) {
-      qb.andWhere('q.id NOT IN (:...usedIdsList)', { usedIdsList });
+      unusedIdsQb.andWhere('q.id NOT IN (:...usedIdsList)', { usedIdsList });
     }
 
-    qb.orderBy('RANDOM()').take(limit);
+    const unusedIdRows = await unusedIdsQb
+      .orderBy('RANDOM()')
+      .limit(limit)
+      .getRawMany();
+    let selectedIds = unusedIdRows.map((row) => row.id);
 
-    let questions = await qb.getMany();
+    // Priority 2 (Fallback): Agotamiento del Banco
+    if (selectedIds.length < limit) {
+      const missingCount = limit - selectedIds.length;
+      this.logger.warn(
+        `Banco agotado para subtema ${subtopicId}. Faltan ${missingCount} preguntas. Relajando regla de no-repetición.`,
+      );
 
-    // Prioridad 2 (Fallback): Agotamiento del Banco
-    if (questions.length < limit) {
-      this.logger.warn(`Banco agotado para subtema ${subtopicId}. Faltan ${limit - questions.length} preguntas. Relajando regla de no-repetición.`);
-      
-      const missingCount = limit - questions.length;
-      const fallbackQb = this.questionRepository.createQueryBuilder('q')
-        .leftJoinAndSelect('q.alternatives', 'a')
-        .where('q.subtopic_id = :subtopicId', { subtopicId: numericSubtopicId });
-      
-      if (questions.length > 0) {
-        const foundIds = questions.map(q => q.id);
-        fallbackQb.andWhere('q.id NOT IN (:...foundIds)', { foundIds });
+      const fallbackIdsQb = this.questionRepository
+        .createQueryBuilder('q')
+        .select('q.id', 'id')
+        .where(
+          'q.id IN (SELECT question_id FROM odiseo.question_subtopic WHERE subtopic_id = :subtopicId AND fl_status = true)',
+          { subtopicId: numericSubtopicId },
+        )
+        .andWhere('q.fl_status = true');
+
+      if (selectedIds.length > 0) {
+        fallbackIdsQb.andWhere('q.id NOT IN (:...selectedIds)', {
+          selectedIds,
+        });
       }
 
-      fallbackQb.orderBy('RANDOM()').take(missingCount);
-      const fallbackQuestions = await fallbackQb.getMany();
-      
-      questions = [...questions, ...fallbackQuestions];
+      const fallbackIdRows = await fallbackIdsQb
+        .orderBy('RANDOM()')
+        .limit(missingCount)
+        .getRawMany();
+      selectedIds = [...selectedIds, ...fallbackIdRows.map((row) => row.id)];
     }
 
-    return questions;
+    if (selectedIds.length === 0) {
+      return [];
+    }
+
+    // Retrieve full question entities with alternatives for selected IDs
+    return this.questionRepository.find({
+      where: { id: In(selectedIds) },
+      relations: ['alternatives'],
+    });
   }
 }

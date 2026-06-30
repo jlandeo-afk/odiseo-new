@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsBoolean, MaxLength, Matches, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  MaxLength,
+  Matches,
+  IsObject,
+} from 'class-validator';
 
 export class CreatePdfDesignDto {
   @IsString()
@@ -24,21 +31,24 @@ export class CreatePdfDesignDto {
   @IsOptional()
   @IsString()
   @Matches(/^\d{1,3},\s?\d{1,3},\s?\d{1,3}$/, {
-    message: 'primaryTitleColor must be a valid RGB triplet (e.g. "2, 113, 184")',
+    message:
+      'primaryTitleColor must be a valid RGB triplet (e.g. "2, 113, 184")',
   })
   primaryTitleColor?: string;
 
   @IsOptional()
   @IsString()
   @Matches(/^\d{1,3},\s?\d{1,3},\s?\d{1,3}$/, {
-    message: 'secondaryTitleColor must be a valid RGB triplet (e.g. "2, 113, 184")',
+    message:
+      'secondaryTitleColor must be a valid RGB triplet (e.g. "2, 113, 184")',
   })
   secondaryTitleColor?: string;
 
   @IsOptional()
   @IsString()
   @Matches(/^\d{1,3},\s?\d{1,3},\s?\d{1,3}$/, {
-    message: 'backgroundHighlightColor must be a valid RGB triplet (e.g. "214, 238, 253")',
+    message:
+      'backgroundHighlightColor must be a valid RGB triplet (e.g. "214, 238, 253")',
   })
   backgroundHighlightColor?: string;
 
