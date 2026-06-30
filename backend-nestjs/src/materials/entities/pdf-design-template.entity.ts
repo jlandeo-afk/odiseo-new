@@ -7,7 +7,7 @@ import {
   Index,
 } from 'typeorm';
 
-@Entity('pdf_design_templates', { schema: 'public' })
+@Entity('pdf_design_templates')
 @Index('idx_tenant_default', ['tenantId'], {
   unique: true,
   where: '"is_default" = true',
@@ -16,8 +16,8 @@ export class PdfDesignTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'tenant_id' })
-  tenantId: string;
+  @Column({ name: 'tenant_id', nullable: true })
+  tenantId: string | null;
 
   @Column({ length: 255 })
   name: string;

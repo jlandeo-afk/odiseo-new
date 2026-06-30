@@ -99,6 +99,34 @@ export class TenantsService {
         permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
         PRIMARY KEY (role_id, permission_id)
       );
+
+      CREATE TABLE IF NOT EXISTS pdf_design_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id VARCHAR(255),
+        name VARCHAR(255) NOT NULL,
+        banner_image_url TEXT,
+        watermark_image_url TEXT,
+        cover_image_url TEXT,
+        show_cover BOOLEAN NOT NULL DEFAULT false,
+        primary_title_color VARCHAR(20) NOT NULL DEFAULT '2, 113, 184',
+        secondary_title_color VARCHAR(20) NOT NULL DEFAULT '2, 113, 184',
+        background_highlight_color VARCHAR(20) NOT NULL DEFAULT '214, 238, 253',
+        margin_top VARCHAR(20) NOT NULL DEFAULT '3cm',
+        margin_bottom VARCHAR(20) NOT NULL DEFAULT '1.5cm',
+        margin_inside VARCHAR(20) NOT NULL DEFAULT '1cm',
+        margin_outside VARCHAR(20) NOT NULL DEFAULT '1cm',
+        is_book_mode BOOLEAN NOT NULL DEFAULT false,
+        font_family VARCHAR(50) NOT NULL DEFAULT 'Arial',
+        border_radius VARCHAR(20) NOT NULL DEFAULT '4px',
+        content_font_size VARCHAR(20) NOT NULL DEFAULT '11pt',
+        content_text_color VARCHAR(20) NOT NULL DEFAULT '#000000',
+        blocks_config JSONB,
+        header_config JSONB,
+        footer_config JSONB,
+        is_default BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+      );
     `);
 
     // Seed V1 admin role with all permissions

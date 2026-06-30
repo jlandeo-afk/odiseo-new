@@ -66,7 +66,15 @@ export class PdfGenerationProcessor extends WorkerHost {
           });
         },
       );
-      if (!design) return null;
+      if (!design) {
+        this.logger.warn(
+          `Design template ${designTemplateId} not found for tenant ${tenantId}`,
+        );
+        return null;
+      }
+      this.logger.log(
+        `Loaded design template "${design.name}" (${designTemplateId}) for tenant ${tenantId}`,
+      );
       return {
         bannerImageUrl: design.bannerImageUrl,
         watermarkImageUrl: design.watermarkImageUrl,
