@@ -1,55 +1,9 @@
 <template>
   <div class="w-full space-y-6">
-    <!-- 1. Panel de Resumen de Estadísticas (Stats Dashboard) -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-      <!-- Total Cursos -->
-      <div class="bg-white/80 dark:bg-[#2b2b3f]/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 shadow-sm hover:shadow-md transition-all group duration-300">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cursos Registrados</span>
-            <p class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-              {{ totalCourses }}
-            </p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/50 dark:border-indigo-900/50 flex items-center justify-center text-indigo-500 shadow-sm transition-transform group-hover:scale-110">
-            <UIcon name="i-heroicons-academic-cap" class="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-      
-      <!-- Temas Visibles -->
-      <div class="bg-white/80 dark:bg-[#2b2b3f]/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 shadow-sm hover:shadow-md transition-all group duration-300">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Temas Visibles</span>
-            <p class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              {{ activeTopicsCount }}
-            </p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/50 dark:border-emerald-900/50 flex items-center justify-center text-emerald-500 shadow-sm transition-transform group-hover:scale-110">
-            <UIcon name="i-heroicons-eye" class="w-6 h-6" />
-          </div>
-        </div>
-      </div>
 
-      <!-- Temas Ocultos -->
-      <div class="bg-white/80 dark:bg-[#2b2b3f]/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 shadow-sm hover:shadow-md transition-all group duration-300">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Temas Ocultos</span>
-            <p class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-              {{ inactiveTopicsCount }}
-            </p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/50 flex items-center justify-center text-amber-500 shadow-sm transition-transform group-hover:scale-110">
-            <UIcon name="i-heroicons-eye-slash" class="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- 2. Barra de Control y Búsqueda Premium -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl shadow-sm">
+    <!-- 2. Barra de Control y Búsqueda Premium (Sticky Floating Card) -->
+    <div class="sticky top-[8.5rem] z-20 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl shadow-md transition-all">
       <!-- Buscador -->
       <div class="flex-1 max-w-md relative">
         <UInput
@@ -92,8 +46,8 @@
         <UButton
           size="sm"
           color="gray"
-          variant="soft"
-          class="font-semibold rounded-xl"
+          variant="ghost"
+          class="btn-premium-secondary"
           icon="i-heroicons-arrows-pointing-out"
           @click="toggleAllCourses"
         >
@@ -102,9 +56,9 @@
 
         <UButton
           size="sm"
-          :color="isAllSubtopicsExpanded ? 'indigo' : 'gray'"
-          variant="soft"
-          class="font-semibold rounded-xl"
+          color="gray"
+          variant="ghost"
+          class="btn-premium-secondary"
           :icon="isAllSubtopicsExpanded ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
           @click="toggleAllSubtopics"
         >
@@ -207,10 +161,13 @@
                   <!-- Botón Ojo Visible pero Sutil -->
                   <UButton
                     size="xs"
-                    :color="topic.isActive ? 'emerald' : 'gray'"
-                    variant="soft"
+                    color="gray"
+                    variant="ghost"
                     :icon="topic.isActive ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-                    class="rounded-lg shadow-sm border border-slate-200/20 transition-all hover:scale-105"
+                    class="btn-premium-secondary transition-all hover:scale-105"
+                    :class="topic.isActive 
+                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100/30 dark:border-emerald-500/20' 
+                      : 'text-slate-400 dark:text-slate-500'"
                     :title="topic.isActive ? 'Ocultar tema en el catálogo' : 'Mostrar tema en el catálogo'"
                     @click="onToggleActive(topic)"
                   >
@@ -269,7 +226,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useCatalogsStore } from '../store'
-import type { CatalogCourse, CatalogTopic } from '../store/index'
+import type { CatalogCourse, CatalogTopic } from '../types'
 import { watchDebounced } from '@vueuse/core'
 
 const store = useCatalogsStore()
@@ -293,21 +250,27 @@ const statusOptions = [
   { label: 'Ocultos', value: 'inactive' },
 ]
 
-// Estadísticas computadas basadas en cursos cargados
-const totalCourses = computed(() => store.courses.length)
-const totalTopics = computed(() => store.courses.reduce((acc, c) => acc + (c.topicsCount || 0), 0))
-const activeTopicsCount = computed(() => store.courses.reduce((acc, c) => acc + (c.activeTopicsCount || 0), 0))
-const inactiveTopicsCount = computed(() => Math.max(0, totalTopics.value - activeTopicsCount.value))
 
 const filteredCourses = computed(() => {
-  return store.courses.map(course => ({
-    ...course,
-    topics: (course.topics || []).filter(t => {
-      const matchStatus = filterStatus.value === 'all' ||
-        (filterStatus.value === 'active' ? t.isActive : !t.isActive)
-      return matchStatus
+  return store.courses
+    .map(course => ({
+      ...course,
+      topics: (course.topics || []).filter(t => {
+        const matchStatus = filterStatus.value === 'all' ||
+          (filterStatus.value === 'active' ? t.isActive : !t.isActive)
+        return matchStatus
+      })
+    }))
+    .filter(course => {
+      if (filterStatus.value === 'all') return true
+      if (course.topics.length > 0) return course.topics.length > 0
+      // Para cursos no expandidos, usar los counts del backend como heurística
+      const count =
+        filterStatus.value === 'active'
+          ? course.activeTopicsCount || 0
+          : (course.topicsCount || 0) - (course.activeTopicsCount || 0)
+      return count > 0
     })
-  }))
 })
 
 function filteredTopics(course: CatalogCourse) {

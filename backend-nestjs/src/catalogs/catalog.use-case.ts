@@ -18,20 +18,24 @@ export class CatalogUseCase {
    * Retorna los catálogos listos para ser mostrados en la UI.
    * Internamente hace el JOIN con la tabla de visibilidad.
    */
-  async getCourses(search?: string): Promise<any[]> {
+  async getCourses(search?: string): Promise<any> {
     const tenantId = this.cls.get('tenantSchema') || 'public';
     const cacheKey = `catalogs:courses:${tenantId}:${search || 'all'}`;
 
-    const cached = await this.cacheManager.get<any[]>(cacheKey);
+    const cached = await this.cacheManager.get<any>(cacheKey);
     if (cached) return cached;
 
     const courses = await this.catalogRepository.getCourses(search);
-    const result = courses.map((course: any) => ({
-      id: course.id,
-      name: course.name,
-      topicsCount: parseInt(course.topics_count, 10) || 0,
-      activeTopicsCount: parseInt(course.active_topics_count, 10) || 0,
-    }));
+    const lastSyncedAt = await this.cacheManager.get<string>('catalogs:last-synced-at');
+    const result = {
+      courses: courses.map((course: any) => ({
+        id: course.id,
+        name: course.name,
+        topicsCount: parseInt(course.topics_count, 10) || 0,
+        activeTopicsCount: parseInt(course.active_topics_count, 10) || 0,
+      })),
+      lastSyncedAt: lastSyncedAt || null,
+    };
 
     await this.cacheManager.set(cacheKey, result);
     return result;
@@ -62,14 +66,20 @@ export class CatalogUseCase {
   ): Promise<void> {
     await this.catalogRepository.updateTopicLocalVisibility(topicId, isActive);
 
-    // Invalidar caché del tenant
+    // Invalidar caché específica del tenant y curso
     const tenantId = this.cls.get('tenantSchema') || 'public';
+    const courseId = await this.catalogRepository.findCourseIdByTopicId(topicId);
+    const cacheKeysToDelete = [
+      `catalogs:courses:${tenantId}:all`,
+    ];
+    if (courseId) {
+      cacheKeysToDelete.push(
+        `catalogs:topics:${tenantId}:${courseId}:all`,
+      );
+    }
 
-    // In a real Redis setup with wildcard deletion, we would use a pattern.
-    // Since we are using basic cache-manager, we might just clear everything
-    // or specifically clear the topics cache for this tenant if we know the courseId.
-    // We'll reset the entire cache store as a simple multi-tenant invalidation
-    // for this demo, but ideally we'd delete `catalogs:topics:${tenantId}:*`
-    await this.cacheManager.clear();
+    await Promise.all(
+      cacheKeysToDelete.map((key) => this.cacheManager.del(key)),
+    );
   }
 }

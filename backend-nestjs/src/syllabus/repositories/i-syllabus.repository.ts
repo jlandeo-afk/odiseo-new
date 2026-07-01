@@ -16,8 +16,9 @@ export interface ISyllabusRepository {
   createDistribution(
     distribution: Partial<SyllabusDistribution>,
   ): Promise<SyllabusDistribution>;
-  updateDistribution(id: string, weight: number): Promise<void>;
+  updateDistributionQuantity(id: string, questionCount: number): Promise<void>;
   deleteDistribution(id: string): Promise<void>;
 
   getSummaryBySyllabus(syllabusId: string): Promise<SyllabusDistribution[]>;
+  findGeneratedWeeks(syllabusId: string): Promise<number[]>;
 }

@@ -104,7 +104,7 @@ describe('AcademicTimeUseCase', () => {
         name: 'Examen Quincenal',
         scope: 'ACCUMULATIVE',
         accumulationWeeks: 2,
-        courses: [{ courseId: 'algebra-uuid', questionsQuantity: 10 }],
+        courses: [{ courseId: 'algebra-uuid', questionsQuantity: 10, easyCount: 3, mediumCount: 5, hardCount: 2 }],
       };
 
       const result = await useCase.createTemplate('cycle-123', dto);
@@ -119,6 +119,9 @@ describe('AcademicTimeUseCase', () => {
             expect.objectContaining({
               courseId: 'algebra-uuid',
               questionsQuantity: 10,
+              easyCount: 3,
+              mediumCount: 5,
+              hardCount: 2,
             }),
           ]),
         }),
@@ -132,7 +135,7 @@ describe('AcademicTimeUseCase', () => {
       const dto = {
         name: 'Práctica Semanal Editada',
         scope: 'FULL_ACCUMULATIVE',
-        courses: [{ courseId: 'algebra-uuid', questionsQuantity: 12 }],
+        courses: [{ courseId: 'algebra-uuid', questionsQuantity: 12, easyCount: 4, mediumCount: 6, hardCount: 2 }],
       };
 
       const result = await useCase.updateTemplate(
@@ -150,6 +153,9 @@ describe('AcademicTimeUseCase', () => {
             expect.objectContaining({
               courseId: 'algebra-uuid',
               questionsQuantity: 12,
+              easyCount: 4,
+              mediumCount: 6,
+              hardCount: 2,
             }),
           ]),
         }),

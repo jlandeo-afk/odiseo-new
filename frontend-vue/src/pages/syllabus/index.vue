@@ -5,7 +5,10 @@ import { useAcademicTimeStore } from '../../features/academic-time/store';
 import { useCatalogsStore } from '../../features/catalogs/store';
 import SyllabusSlideOver from '../../features/syllabus/components/SyllabusSlideOver.vue';
 import SyllabusDistributionMatrix from '../../features/syllabus/components/SyllabusDistributionMatrix.vue';
+import SyllabusCloneModal from '../../features/syllabus/components/SyllabusCloneModal.vue';
+import CycleCloneModal from '../../features/syllabus/components/CycleCloneModal.vue';
 import { useToast } from '#imports';
+import type { Syllabus } from '../../features/syllabus/types';
 
 definePageMeta({
   layout: 'b2b',
@@ -18,6 +21,8 @@ const catalogsStore = useCatalogsStore();
 const toast = useToast();
 
 const slideOverRef = ref<any>();
+const cloneModalRef = ref<any>();
+const cycleCloneModalRef = ref<any>();
 const selectedCycleId = ref<string>('');
 const searchQuery = ref('');
 
@@ -92,6 +97,11 @@ const coveragePercent = computed(() => {
   return Math.round((activeSyllabiCount.value / totalCatalogCoursesCount.value) * 100);
 });
 
+const isPageLoading = computed(() => {
+  return !timeStore.hasFetched || !catalogsStore.hasFetched || !store.hasFetched || 
+         timeStore.isLoading || catalogsStore.isLoading || store.loading;
+});
+
 function openCreate(courseId?: string) {
   if (slideOverRef.value) {
     if (courseId) slideOverRef.value.form.courseId = courseId;
@@ -100,8 +110,22 @@ function openCreate(courseId?: string) {
   }
 }
 
-// Open distribution editor matrix
-function openSyllabus(syllabus: any) {
+function openCycleCloneModal() {
+  if (cycleCloneModalRef.value) {
+    cycleCloneModalRef.value.targetCycleId = selectedCycleId.value;
+    cycleCloneModalRef.value.isOpen = true;
+  }
+}
+
+function openCloneModal(courseId: string, syllabus: Syllabus) {
+  if (cloneModalRef.value && syllabus) {
+    store.syllabus = syllabus;
+    cloneModalRef.value.courseId = courseId;
+    cloneModalRef.value.isOpen = true;
+  }
+}
+
+function openSyllabus(syllabus: Syllabus) {
   store.syllabus = syllabus;
 }
 
@@ -132,7 +156,7 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
   <div class="p-8 max-w-7xl mx-auto space-y-6">
 
     <!-- 1. Encabezado de la Página -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30 pb-5">
+    <div class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-8 -mx-8 px-8 pt-8 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30">
       <div>
         <h1 class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">Gestión de Sílabos</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -154,10 +178,22 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
         />
         <UButton 
           v-if="!store.syllabus" 
-          color="indigo" 
+          color="gray" 
+          variant="ghost"
+          icon="i-heroicons-document-duplicate"
+          size="md"
+          class="btn-premium-secondary"
+          @click="openCycleCloneModal()"
+        >
+          Clonar Ciclo
+        </UButton>
+        <UButton 
+          v-if="!store.syllabus" 
+          color="neutral" 
+          variant="ghost"
           icon="i-heroicons-plus"
           size="md"
-          class="font-semibold shadow-sm hover:shadow rounded-xl transition-all duration-200"
+          class="btn-premium-primary"
           @click="openCreate()"
         >
           Crear Sílabo
@@ -172,7 +208,7 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
           icon="i-heroicons-arrow-left" 
           color="neutral" 
           variant="ghost" 
-          class="font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+          class="btn-premium-ghost"
           @click="backToList"
         >
           Volver al listado
@@ -236,43 +272,43 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
         </div>
       </div>
 
-      <!-- 3. Barra de Búsqueda y Filtro Premium -->
-      <div class="bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center gap-4">
-        <div class="flex-1 w-full max-w-md relative">
-          <UInput
-            v-model="searchQuery"
-            placeholder="Buscar por curso..."
-            icon="i-heroicons-magnifying-glass"
-            size="md"
-            color="gray"
-            variant="outline"
-            class="w-full"
-            id="syllabus-search-input"
-            :ui="{ icon: { trailing: { pointer: '' } } }"
-          >
-            <template #trailing>
-              <div class="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-[10px] text-slate-400 font-mono select-none">
-                /
-              </div>
-            </template>
-          </UInput>
-        </div>
-        <span class="text-xs text-slate-450 dark:text-slate-500 select-none hidden sm:inline-block font-medium">
-          Mostrando {{ filteredSyllabusesList.length }} sílabos
-        </span>
-      </div>
+       <!-- 3. Barra de Búsqueda y Filtro Premium (Sticky Floating Card) -->
+       <div class="sticky top-[9rem] z-20 bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl shadow-md flex flex-col sm:flex-row items-center gap-4 transition-all">
+         <div class="flex-1 w-full max-w-md relative">
+           <UInput
+             v-model="searchQuery"
+             placeholder="Buscar por curso..."
+             icon="i-heroicons-magnifying-glass"
+             size="md"
+             color="gray"
+             variant="outline"
+             class="w-full"
+             id="syllabus-search-input"
+             :ui="{ icon: { trailing: { pointer: '' } } }"
+           >
+             <template #trailing>
+               <div class="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-[10px] text-slate-400 font-mono select-none">
+                 /
+               </div>
+             </template>
+           </UInput>
+         </div>
+         <span class="text-xs text-slate-455 dark:text-slate-500 select-none hidden sm:inline-block font-medium">
+           Mostrando {{ filteredSyllabusesList.length }} sílabos
+         </span>
+       </div>
 
       <!-- 4. Contenedor del Listado Estilo Tarjetas Horizontales -->
       <div class="space-y-3.5">
         <!-- Encabezados de Columna (Alineados con el grid de las Cards) -->
-        <div v-if="filteredSyllabusesList.length > 0 && !(timeStore.isLoading || catalogsStore.isLoading || store.loading)" class="hidden md:grid grid-cols-12 px-6 py-1.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest select-none">
-          <div class="col-span-6">Curso</div>
+        <div v-if="filteredSyllabusesList.length > 0 && !isPageLoading" class="hidden md:grid grid-cols-12 px-6 py-1.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest select-none">
+          <div class="col-span-5">Curso</div>
           <div class="col-span-3">Estado Sílabo</div>
-          <div class="col-span-3 text-right">Acciones</div>
+          <div class="col-span-4 text-right">Acciones</div>
         </div>
 
         <!-- Skeletons de Carga -->
-        <div v-if="timeStore.isLoading || catalogsStore.isLoading || store.loading" class="space-y-3">
+        <div v-if="isPageLoading" class="space-y-3">
           <div v-for="i in 3" :key="i" class="h-20 bg-white dark:bg-[#2b2b3f] rounded-2xl border border-slate-200 dark:border-slate-750/30 animate-pulse" />
         </div>
 
@@ -284,7 +320,7 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
             class="bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 grid grid-cols-1 md:grid-cols-12 items-center gap-4 group"
           >
             <!-- Columna: Curso con Avatar Premium -->
-            <div class="col-span-12 md:col-span-6 flex items-center gap-3.5">
+            <div class="col-span-12 md:col-span-5 flex items-center gap-3.5">
               <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/30 dark:border-indigo-900/30 text-indigo-500 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105">
                 <UIcon name="i-heroicons-book-open" class="w-5.5 h-5.5" />
               </div>
@@ -310,12 +346,12 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
             </div>
 
             <!-- Columna: Acciones Agrupadas -->
-            <div class="col-span-6 md:col-span-3 flex justify-end items-center gap-2">
+            <div class="col-span-6 md:col-span-4 flex justify-end items-center gap-2">
               <UButton
                 size="sm"
                 :color="item.isActive ? 'error' : 'success'"
                 variant="soft"
-                class="font-bold rounded-xl"
+                class="font-bold rounded-xl active:scale-[0.95] transition-all"
                 :icon="item.isActive ? 'i-heroicons-archive-box-arrow-down' : 'i-heroicons-arrow-path'"
                 @click="onToggleSyllabus(item.id, !item.isActive)"
               >
@@ -324,9 +360,20 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
 
               <UButton 
                 size="sm" 
-                color="indigo" 
-                variant="soft" 
-                class="font-bold rounded-xl shadow-inner border border-indigo-200/20"
+                color="neutral" 
+                variant="ghost" 
+                class="btn-premium-ghost"
+                icon="i-heroicons-document-duplicate" 
+                @click="openCloneModal(item.courseId, item)"
+              >
+                Clonar
+              </UButton>
+
+              <UButton 
+                size="sm" 
+                color="neutral" 
+                variant="ghost" 
+                class="btn-premium-soft"
                 icon="i-heroicons-pencil-square" 
                 @click="openSyllabus(item)"
               >
@@ -370,5 +417,7 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
     </div>
 
     <SyllabusSlideOver ref="slideOverRef" />
+    <CycleCloneModal ref="cycleCloneModalRef" />
+    <SyllabusCloneModal ref="cloneModalRef" />
   </div>
 </template>

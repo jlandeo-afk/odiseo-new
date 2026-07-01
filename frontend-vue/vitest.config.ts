@@ -9,9 +9,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '#app': fileURLToPath(new URL('./tests/mocks/app.ts', import.meta.url)),
       '#imports': fileURLToPath(new URL('./tests/mocks/app.ts', import.meta.url)),
+      '@vueuse/core': fileURLToPath(new URL('./tests/mocks/vueuse-core.ts', import.meta.url)),
     }
   },
   test: {
     environment: 'jsdom',
+    setupFiles: ['./tests/mocks/setup.ts'],
   }
 })

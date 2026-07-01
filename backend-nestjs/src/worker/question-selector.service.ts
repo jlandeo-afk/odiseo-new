@@ -97,13 +97,62 @@ export class QuestionSelectorService {
       let selectedQuestions: any[] = [];
 
       for (const dist of job.syllabus_distribution) {
-        const dbQuestions = await this.questionBankService.getRandomQuestions(
-          dist.subtopic_id,
-          dist.quantity,
-          job.tenant.tenant_id,
-        );
+        const subQuestions: any[] = [];
 
-        const formatted = dbQuestions.map((q) => ({
+        if (dist.easyCount !== undefined || dist.mediumCount !== undefined || dist.hardCount !== undefined) {
+          const easyTarget = dist.easyCount || 0;
+          const mediumTarget = dist.mediumCount || 0;
+          const hardTarget = dist.hardCount || 0;
+
+          if (easyTarget > 0) {
+            const easyQs = await this.questionBankService.getRandomQuestions(
+              dist.subtopic_id,
+              easyTarget,
+              job.tenant.tenant_id,
+              'EASY',
+            );
+            subQuestions.push(...easyQs);
+          }
+          if (mediumTarget > 0) {
+            const mediumQs = await this.questionBankService.getRandomQuestions(
+              dist.subtopic_id,
+              mediumTarget,
+              job.tenant.tenant_id,
+              'MEDIUM',
+            );
+            subQuestions.push(...mediumQs);
+          }
+          if (hardTarget > 0) {
+            const hardQs = await this.questionBankService.getRandomQuestions(
+              dist.subtopic_id,
+              hardTarget,
+              job.tenant.tenant_id,
+              'HARD',
+            );
+            subQuestions.push(...hardQs);
+          }
+
+          // Fallback if we couldn't meet the target quantity
+          if (subQuestions.length < dist.quantity) {
+            const missing = dist.quantity - subQuestions.length;
+            const fallbackQs = await this.questionBankService.getRandomQuestions(
+              dist.subtopic_id,
+              missing,
+              job.tenant.tenant_id,
+            );
+            subQuestions.push(...fallbackQs);
+          }
+        } else {
+          const normalQs = await this.questionBankService.getRandomQuestions(
+            dist.subtopic_id,
+            dist.quantity,
+            job.tenant.tenant_id,
+            job.difficulty_level,
+          );
+          subQuestions.push(...normalQs);
+        }
+
+        const formatted = subQuestions.map((q) => ({
           topic_id: q.topicId,
           subtopic_id: q.subtopicId,
           question_text: q.htmlContent,

@@ -145,6 +145,9 @@ async function seed() {
         template_id UUID NOT NULL REFERENCES "${schemaName}".cycle_material_templates(id) ON DELETE CASCADE,
         course_id UUID NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,
         questions_quantity INTEGER NOT NULL,
+        easy_count INTEGER NOT NULL DEFAULT 0,
+        medium_count INTEGER NOT NULL DEFAULT 0,
+        hard_count INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
       );

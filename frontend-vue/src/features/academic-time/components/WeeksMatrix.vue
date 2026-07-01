@@ -21,17 +21,30 @@
               <span class="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-100/30 dark:border-indigo-500/20">
                 {{ getCycleDaysText(cycle.daysPerWeek) }}
               </span>
-              <!-- Toggle de Estado Activo/Archivado -->
-              <UButton
-                size="xs"
-                :color="cycle.isActive ? 'emerald' : 'gray'"
-                variant="soft"
-                class="rounded-lg font-bold"
-                :icon="cycle.isActive ? 'i-heroicons-check-circle' : 'i-heroicons-minus-circle'"
-                @click="onToggleCycleVisibility(cycle)"
+              <!-- Estado Estático -->
+              <span
+                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold border"
+                :class="cycle.isActive 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100/50 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
+                  : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/60'"
               >
+                <span class="w-1.2 h-1.2 rounded-full" :class="cycle.isActive ? 'bg-emerald-500' : 'bg-slate-400'"></span>
                 {{ cycle.isActive ? 'Activo' : 'Archivado' }}
-              </UButton>
+              </span>
+
+              <!-- Interruptor de Estado (Switch) -->
+              <button
+                type="button"
+                class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                :class="cycle.isActive ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'"
+                @click="onToggleCycleVisibility(cycle)"
+                title="Cambiar estado del ciclo"
+              >
+                <span
+                  class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                  :class="cycle.isActive ? 'translate-x-4' : 'translate-x-0'"
+                />
+              </button>
             </div>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
               <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5" />
@@ -67,9 +80,9 @@
             <!-- Alternar semanas -->
             <UButton
               size="sm"
-              :color="expandedCycles.has(cycle.id) ? 'indigo' : 'gray'"
-              variant="soft"
-              class="font-semibold rounded-xl"
+              color="gray"
+              variant="ghost"
+              class="btn-premium-secondary"
               :icon="expandedCycles.has(cycle.id) ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
               @click="toggleCycleExpand(cycle.id)"
             >
@@ -80,8 +93,8 @@
             <UButton
               size="sm"
               color="gray"
-              variant="soft"
-              class="font-semibold rounded-xl"
+              variant="ghost"
+              class="btn-premium-secondary"
               icon="i-heroicons-document-duplicate"
               :to="`/academic-time/cycles/${cycle.id}/materials`"
             >
@@ -92,19 +105,19 @@
             <div class="flex items-center bg-slate-100/80 dark:bg-[#36364e]/50 rounded-xl border border-slate-200/40 dark:border-slate-700/40 p-0.5">
               <UButton 
                 size="xs"
-                color="gray"
+                color="neutral"
                 variant="ghost"
                 icon="i-heroicons-pencil-square"
-                class="rounded-lg hover:bg-white dark:hover:bg-[#2b2b3f] transition-all"
+                class="btn-premium-icon-neutral"
                 @click="onEditCycle(cycle)"
                 title="Editar Ciclo"
               />
               <UButton 
                 size="xs"
-                color="red"
+                color="neutral"
                 variant="ghost"
                 icon="i-heroicons-trash"
-                class="rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-all text-red-500"
+                class="btn-premium-icon-danger"
                 @click="onDeleteCycle(cycle.id)"
                 title="Eliminar Ciclo"
               />

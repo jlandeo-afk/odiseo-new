@@ -24,7 +24,7 @@ erDiagram
         integer week_number
         uuid topic_id FK
         uuid subtopic_id FK
-        integer requested_quantity "CHECK > 0"
+        integer question_count "CHECK > 0"
         timestamp created_at
         timestamp updated_at
     }
@@ -33,6 +33,6 @@ erDiagram
 ## Constraints
 
 - UNIQUE: (`syllabus_id`, `week_number`, `topic_id`, `subtopic_id`)
-- CHECK: `requested_quantity > 0`
-- CHECK: Sum of `requested_quantity` per `week_number` <= 100
+- CHECK: `question_count > 0`
+- CHECK: Sum of `question_count` per `week_number` <= 100
 - No CASCADE DELETE on distributions when syllabus is deactivated

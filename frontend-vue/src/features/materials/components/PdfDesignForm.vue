@@ -269,6 +269,7 @@ async function removeWatermark() {
 }
 
 async function removeCover() {
+  if (props.designId) await store.deleteAsset(props.designId, 'cover')
   coverPreview.value = null
   coverFile.value = null
 }
@@ -307,6 +308,7 @@ async function handleSubmit() {
       await store.updateDesign(props.designId, form.value)
       if (bannerFile.value) await store.uploadAsset(props.designId, bannerFile.value, 'banner')
       if (watermarkFile.value) await store.uploadAsset(props.designId, watermarkFile.value, 'watermark')
+      if (coverFile.value) await store.uploadAsset(props.designId, coverFile.value, 'cover')
     } else {
       const created = await store.createDesign(form.value)
       if (created) {
@@ -320,6 +322,7 @@ async function handleSubmit() {
         }
         if (bannerFile.value) await store.uploadAsset(created.id, bannerFile.value, 'banner')
         if (watermarkFile.value) await store.uploadAsset(created.id, watermarkFile.value, 'watermark')
+        if (coverFile.value) await store.uploadAsset(created.id, coverFile.value, 'cover')
       }
     }
     emit('saved')

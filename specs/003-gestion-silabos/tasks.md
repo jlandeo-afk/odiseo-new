@@ -99,10 +99,10 @@
 
 - [x] T027 [P] Implement EC-005: Visual Warning if modifying a week that already has generated materials in frontend-vue/src/features/syllabus/components/SyllabusDistributionMatrix.vue
 - [x] T028 Run quickstart.md validation scenarios to ensure 100 limit and Creation work.
-- [ ] T029 Implement `PATCH /syllabus/:id/archive` endpoint and UseCase to support syllabus deactivation (`is_active = false`) (FR-006)
-- [ ] T030 Add task to check `cycle_weeks.is_active` and disable the "Añadir Tema" button for inactive weeks in frontend (FR-003)
-- [ ] T031 Add a Domain Event listener or DB trigger task to deactivate related syllabi when a cycle is deactivated (EC-002)
-- [ ] T032 Render an "Inactivo" badge in the UI if an assigned topic's `is_active` flag is false in `SyllabusDistributionMatrix.vue` (EC-001)
+- [x] T029 Implement `PATCH /syllabus/:id/archive` endpoint and UseCase to support syllabus deactivation (`is_active = false`) (FR-006)
+- [x] T030 Add task to check `cycle_weeks.is_active` and disable the "Añadir Tema" button for inactive weeks in frontend (FR-003)
+- [x] T031 Add a Domain Event listener or DB trigger task to deactivate related syllabi when a cycle is deactivated (EC-002)
+- [x] T032 Render an "Inactivo" badge in the UI if an assigned topic's `is_active` flag is false in `SyllabusDistributionMatrix.vue` (EC-001)
 
 ---
 

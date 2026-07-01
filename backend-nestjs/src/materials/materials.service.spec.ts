@@ -124,7 +124,7 @@ describe('MaterialsService', () => {
           id: 'dist-1',
           topicId: 'topic-1',
           subtopicId: 'subtopic-1',
-          weight: 3,
+          questionCount: 3,
         },
       ];
 
@@ -240,7 +240,7 @@ describe('MaterialsService', () => {
       const mockQuestions = [{ id: 'q-1', status: ReviewQuestionStatus.FOUND }];
       const mockSyllabus = { id: 'syllabus-id' };
       const mockDistributions = [
-        { topicId: 't-1', subtopicId: 's-1', weight: 1 },
+        { topicId: 't-1', subtopicId: 's-1', questionCount: 1 },
       ];
 
       mockEntityManager.findOne.mockImplementation((entityClass, options) => {

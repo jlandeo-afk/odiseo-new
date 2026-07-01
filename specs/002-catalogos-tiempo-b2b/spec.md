@@ -14,6 +14,7 @@
 - Q: ¿Cómo afectan las semanas inactivas (feriados/vacaciones) al cálculo de acumulación? → A: El cálculo de la ventana acumulativa salta automáticamente las semanas inactivas (`is_active = false`), considerando únicamente las semanas lectivas/activas del ciclo para la pre-selección inicial.
 - Q: ¿Cómo se distribuyen las preguntas si las semanas acumuladas tienen pesos diferentes en el sílabo? → A: Distribución Equitativa (Round-Robin). El motor distribuye la cuota de preguntas del perfil de la manera más balanceada posible entre todos los temas/subtemas programados en las semanas seleccionadas, priorizando la equidad sobre los pesos individuales del sílabo.
 - Q: ¿Las cantidades de preguntas del sílabo determinan el tamaño total del examen? → A: No. El sílabo solo define la distribución temática (los temas a evaluar). La cantidad total de preguntas del material se define exclusivamente en el Perfil de Material por Ciclo (ej. Examen = 10 preguntas), garantizando independencia total.
+- Q: ¿Dónde se define la dificultad (Fácil, Intermedio, Difícil) de las preguntas a generar? → A: En el Perfil de Material por Ciclo (Plantilla). Al asignar una cantidad de preguntas a un curso (ej. 20), el coordinador distribuye esa cantidad en niveles de dificultad (ej. 5 fáciles, 10 intermedias, 5 difíciles). El motor de generación utilizará esta cuota global y la distribuirá equitativamente entre los subtemas solicitados por el sílabo.
 
 ### Session 2026-06-17
 
@@ -82,6 +83,7 @@ Como coordinador académico, quiero definir "Perfiles de Tipos de Material" (ej.
 
 1. **Given** la configuración de un ciclo, **When** el admin crea un Perfil de Material, **Then** puede especificar un `scope` (ej. CURRENT_WEEK, ACCUMULATIVE, FULL_ACCUMULATIVE) y cuántas semanas acumula.
 2. **Given** un Perfil de Material creado, **When** el admin añade cursos, **Then** asigna una cantidad exacta de preguntas a extraer para ese curso en particular (`questions_quantity`).
+3. **Given** la asignación de cantidad a un curso, **When** el admin configura la dificultad, **Then** el sistema permite desglosar la cantidad total en cuotas específicas (`easy_count`, `medium_count`, `hard_count`) asegurando que la sumatoria coincida exactamente con `questions_quantity`.
 
 ## Requirements *(mandatory)*
 
@@ -113,7 +115,7 @@ Como coordinador académico, quiero definir "Perfiles de Tipos de Material" (ej.
 - **cycle**: Ciclo académico. Campos: `id` (uuid), `name` (string), `year` (number), `start_date` (date), `end_date` (date, auto-calculada), `days_per_week` (number), `total_weeks` (number), `is_active` (boolean).
 - **cycle_weeks**: Semanas del ciclo. Campos: `id` (uuid), `cycle_id` (FK), `week_number` (number), `start_date` (date), `end_date` (date), `is_active` (boolean).
 - **cycle_material_profiles**: Perfiles de evaluación del ciclo. Campos: `id` (uuid), `cycle_id` (FK), `name` (string), `scope` (enum: CURRENT_WEEK, ACCUMULATIVE, FULL_ACCUMULATIVE), `accumulation_weeks` (number, nullable).
-- **cycle_material_profile_courses**: Cursos evaluados en el perfil. Campos: `id` (uuid), `profile_id` (FK), `course_id` (FK), `questions_quantity` (integer).
+- **cycle_material_profile_courses**: Cursos evaluados en el perfil. Campos: `id` (uuid), `profile_id` (FK), `course_id` (FK), `questions_quantity` (integer), `easy_count` (integer, default 0), `medium_count` (integer, default 0), `hard_count` (integer, default 0). Constraint: `easy_count + medium_count + hard_count = questions_quantity`.
 
 ## Success Criteria *(mandatory)*
 

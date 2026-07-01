@@ -13,6 +13,9 @@ export interface SyllabusDistribution {
   topic_id: string;
   subtopic_id: string;
   quantity: number;
+  easyCount?: number;
+  mediumCount?: number;
+  hardCount?: number;
 }
 
 export interface NotificationInfo {

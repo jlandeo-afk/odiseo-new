@@ -26,6 +26,21 @@ export class CreateTemplateCourseDto {
   @Min(1)
   @IsNotEmpty()
   questionsQuantity: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  easyCount?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  mediumCount?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  hardCount?: number;
 }
 
 export class CreateCycleMaterialTemplateDto {

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CatalogCronService } from './catalog.cron';
 import { ICatalogRepository } from './repositories/i-catalog.repository';
 
@@ -16,6 +17,10 @@ describe('CatalogCronService', () => {
       get: jest.fn().mockReturnValue('http://localhost:3000/api/catalogs'),
     };
 
+    const mockCacheManager = {
+      set: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CatalogCronService,
@@ -26,6 +31,10 @@ describe('CatalogCronService', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: mockCacheManager,
         },
       ],
     }).compile();

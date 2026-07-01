@@ -34,12 +34,13 @@ describe('CatalogUseCase', () => {
         },
       ]),
       updateTopicLocalVisibility: jest.fn().mockResolvedValue(undefined),
+      findCourseIdByTopicId: jest.fn().mockResolvedValue('course-1'),
     };
 
     mockCacheManager = {
       get: jest.fn().mockResolvedValue(null),
       set: jest.fn().mockResolvedValue(undefined),
-      clear: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
     };
 
     mockClsService = {
@@ -74,9 +75,9 @@ describe('CatalogUseCase', () => {
   it('debería retornar los cursos correctamente', async () => {
     const result = await useCase.getCourses();
 
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('Course 1');
-    expect(result[0].topicsCount).toBe(2);
+    expect(result.courses).toHaveLength(1);
+    expect(result.courses[0].name).toBe('Course 1');
+    expect(result.courses[0].topicsCount).toBe(2);
     expect(mockCatalogRepository.getCourses).toHaveBeenCalled();
   });
 
@@ -98,6 +99,9 @@ describe('CatalogUseCase', () => {
     expect(
       mockCatalogRepository.updateTopicLocalVisibility,
     ).toHaveBeenCalledWith('topic-1', false);
-    expect(mockCacheManager.clear).toHaveBeenCalled();
+    expect(mockCatalogRepository.findCourseIdByTopicId).toHaveBeenCalledWith('topic-1');
+    expect(mockCacheManager.del).toHaveBeenCalledWith(
+      expect.stringContaining('catalogs:courses:tenant_test:all'),
+    );
   });
 });

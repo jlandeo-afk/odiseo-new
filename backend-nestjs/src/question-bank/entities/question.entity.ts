@@ -21,6 +21,9 @@ export class Question {
   @Column({ name: 'answer_id', type: 'bigint', nullable: true })
   answerId: string;
 
+  @Column({ name: 'level_id', type: 'smallint', nullable: true })
+  levelId: number;
+
   @Column({ name: 'description', type: 'text' })
   htmlContent: string;
 

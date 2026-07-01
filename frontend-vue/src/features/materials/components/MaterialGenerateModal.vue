@@ -13,12 +13,12 @@
 
         <div class="space-y-4">
           <!-- Week Selection -->
-          <UFormGroup label="Semana Objetivo" name="weekNumber">
-            <UInput type="number" v-model.number="form.weekNumber" min="1" placeholder="Ej: 5" />
-          </UFormGroup>
+          <UFormField label="Semana Objetivo" name="weekNumber">
+            <USelect v-model="form.weekNumber" :options="availableWeeksOptions" value-attribute="value" option-attribute="label" placeholder="Selecciona la semana..." />
+          </UFormField>
 
           <!-- Course Selection -->
-          <UFormGroup label="Cursos" name="courses">
+          <UFormField label="Cursos" name="courses">
             <USelectMenu
               v-model="form.selectedCourseId"
               :items="courseOptions"
@@ -32,7 +32,7 @@
                 {{ courseOptions.find(o => o.id === form.selectedCourseId)?.name || 'Seleccione un curso' }}
               </template>
             </USelectMenu>
-          </UFormGroup>
+          </UFormField>
 
           <!-- Design Template Selection -->
           <div class="border-t border-slate-100 dark:border-white/5 pt-4">
@@ -46,9 +46,10 @@
           </div>
 
           <!-- Requires Review -->
-          <UFormGroup label="Opciones" name="requiresReview">
-            <UCheckbox v-model="form.requiresReview" label="Requiere revisión manual antes de PDF" />
-          </UFormGroup>
+          <UFormField label="Opciones" name="requiresReview">
+            <UCheckbox v-model="form.requiresReview" label="Marcar para revisión antes de publicar" />
+            <p class="text-xs text-slate-500 mt-1 ml-6">Si se activa, el PDF generado se guardará en estado borrador.</p>
+          </UFormField>
         </div>
 
         <template #footer>

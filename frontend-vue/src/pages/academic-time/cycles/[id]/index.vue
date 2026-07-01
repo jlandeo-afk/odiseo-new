@@ -89,6 +89,11 @@
 
               <!-- Course list filtered by template courses -->
               <div v-else class="bg-white dark:bg-[#1e1e2d] border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-sm overflow-hidden ring-1 ring-black/[0.02]">
+                <!-- Header Actions -->
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 flex justify-between items-center bg-slate-50/50 dark:bg-[#1a1a28]/50">
+                  <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Gestión de Sílabos</h3>
+                  <UButton color="white" variant="solid" icon="i-heroicons-document-duplicate" size="sm" @click="openCycleCloneModal" class="shadow-sm">Clonar desde otro ciclo</UButton>
+                </div>
                 <!-- Empty state: no templates configured -->
                 <div v-if="templateCourseIds.size === 0" class="flex flex-col items-center justify-center py-16 px-6 text-center">
                   <div class="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mb-4">
@@ -111,10 +116,10 @@
                   <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700/50 text-sm">
                     <thead class="bg-slate-50 dark:bg-[#1e1e2d]/70 sticky top-0">
                       <tr>
-                        <th class="px-6 py-4 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Curso</th>
-                        <th class="px-6 py-4 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Plantillas</th>
-                        <th class="px-6 py-4 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Estado Sílabo</th>
-                        <th class="px-6 py-4 text-right font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">Acciones</th>
+                        <th class="px-6 py-4 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px] w-5/12">Curso</th>
+                        <th class="px-6 py-4 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px] w-2/12">Plantillas</th>
+                        <th class="px-6 py-4 text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px] w-2/12">Estado Sílabo</th>
+                        <th class="px-6 py-4 text-right font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px] w-3/12">Acciones</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -170,7 +175,7 @@
                                 @click="syllabusStore.toggleSyllabusVisibility(item.syllabus.id, !item.syllabus.isActive)">
                                 {{ item.syllabus.isActive ? 'Archivar' : 'Activar' }}
                               </UButton>
-                              <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-document-duplicate" @click="openCloneModal(item.id)">Clonar</UButton>
+                              <UButton size="sm" color="neutral" variant="ghost" icon="i-heroicons-document-duplicate" @click="openCloneModal(item.id, item.syllabus)">Clonar</UButton>
                               <UButton size="sm" color="primary" variant="soft" icon="i-heroicons-pencil-square" @click="openSyllabus(item.syllabus)">Editar</UButton>
                             </div>
                             <div v-else class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -194,6 +199,7 @@
     <!-- Modals -->
     <SyllabusSlideOver ref="slideOverRef" />
     <SyllabusCloneModal ref="cloneModalRef" />
+    <CycleCloneModal ref="cycleCloneModalRef" />
   </div>
 </template>
 
@@ -207,6 +213,7 @@ import CycleMaterialTemplates from '@/features/academic-time/components/CycleMat
 import SyllabusDistributionMatrix from '@/features/syllabus/components/SyllabusDistributionMatrix.vue'
 import SyllabusSlideOver from '@/features/syllabus/components/SyllabusSlideOver.vue'
 import SyllabusCloneModal from '@/features/syllabus/components/SyllabusCloneModal.vue'
+import CycleCloneModal from '@/features/syllabus/components/CycleCloneModal.vue'
 
 definePageMeta({
   layout: 'b2b',
@@ -221,6 +228,7 @@ const catalogsStore = useCatalogsStore()
 
 const slideOverRef = ref<any>()
 const cloneModalRef = ref<any>()
+const cycleCloneModalRef = ref<any>()
 
 const cycleId = computed(() => route.params.id as string)
 const cycle = computed(() => store.cycles.find(c => c.id === cycleId.value))
@@ -313,9 +321,20 @@ function openCreate(courseId: string) {
   }
 }
 
-function openCloneModal(_courseId: string) {
-  if (cloneModalRef.value) {
+function openCloneModal(courseId: string, syllabus?: any) {
+  if (cloneModalRef.value && syllabus) {
+    syllabusStore.syllabus = syllabus
+    cloneModalRef.value.courseId = courseId
     cloneModalRef.value.isOpen = true
+  } else {
+    useToast().add({ title: 'Error', description: 'Debe crear el sílabo primero.', color: 'error' })
+  }
+}
+
+function openCycleCloneModal() {
+  if (cycleCloneModalRef.value) {
+    cycleCloneModalRef.value.targetCycleId = cycleId.value;
+    cycleCloneModalRef.value.isOpen = true;
   }
 }
 

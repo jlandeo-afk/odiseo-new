@@ -73,7 +73,7 @@ export class PdfDesignController {
   @ApiConsumes('multipart/form-data')
   async uploadAsset(
     @Param('id') id: string,
-    @Query('type') type: 'banner' | 'watermark' | 'grid_image',
+    @Query('type') type: 'banner' | 'watermark' | 'grid_image' | 'cover',
     @UploadedFile() file: Express.Multer.File,
   ) {
     const url = await this.pdfDesignService.uploadAsset(
@@ -103,7 +103,7 @@ export class PdfDesignController {
   @ApiOperation({ summary: 'Delete asset from design template' })
   async deleteAsset(
     @Param('id') id: string,
-    @Query('type') type: 'banner' | 'watermark',
+    @Query('type') type: 'banner' | 'watermark' | 'cover',
   ) {
     await this.pdfDesignService.deleteAsset(
       id,

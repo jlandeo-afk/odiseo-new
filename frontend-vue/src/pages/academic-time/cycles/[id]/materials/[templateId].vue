@@ -159,6 +159,44 @@
                       <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                         {{ c.courseName }}
                       </h4>
+                      <!-- Difficulty breakdown -->
+                      <div class="flex flex-wrap items-center gap-3 mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                        <div class="flex items-center gap-1">
+                          <span class="font-semibold text-emerald-650 dark:text-emerald-450">Fácil:</span>
+                          <input type="number" 
+                                 v-model.number="c.easyCount" 
+                                 min="0" 
+                                 max="100" 
+                                 class="w-9 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center font-bold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500 py-0.5" />
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <span class="font-semibold text-amber-650 dark:text-amber-450">Medio:</span>
+                          <input type="number" 
+                                 v-model.number="c.mediumCount" 
+                                 min="0" 
+                                 max="100" 
+                                 class="w-9 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center font-bold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-amber-500 py-0.5" />
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <span class="font-semibold text-rose-650 dark:text-rose-455">Difícil:</span>
+                          <input type="number" 
+                                 v-model.number="c.hardCount" 
+                                 min="0" 
+                                 max="100" 
+                                 class="w-9 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center font-bold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-rose-500 py-0.5" />
+                        </div>
+                        <!-- Validation Indicator -->
+                        <div v-if="((Number(c.easyCount) || 0) + (Number(c.mediumCount) || 0) + (Number(c.hardCount) || 0)) !== Number(c.questionsQuantity)" 
+                             class="text-[9px] text-rose-500 dark:text-rose-400 font-extrabold flex items-center gap-0.5 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded border border-rose-100 dark:border-rose-950">
+                          <UIcon name="i-heroicons-exclamation-triangle" class="w-3.5 h-3.5" />
+                          <span>Suma: {{ (Number(c.easyCount) || 0) + (Number(c.mediumCount) || 0) + (Number(c.hardCount) || 0) }} / {{ c.questionsQuantity }}</span>
+                        </div>
+                        <div v-else 
+                             class="text-[9px] text-emerald-650 dark:text-emerald-405 font-extrabold flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-950">
+                          <UIcon name="i-heroicons-check-circle" class="w-3.5 h-3.5" />
+                          <span>OK</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -172,6 +210,7 @@
                       </button>
                       <input type="number" 
                              v-model.number="c.questionsQuantity" 
+                             @input="autoDistributeDifficulties(c)"
                              min="1" 
                              max="100" 
                              class="w-12 bg-transparent text-center text-xs font-extrabold text-slate-800 dark:text-slate-200 border-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
@@ -280,7 +319,15 @@ const form = ref({
   name: '',
   scope: 'CURRENT_WEEK' as 'CURRENT_WEEK' | 'ACCUMULATIVE' | 'FULL_ACCUMULATIVE',
   accumulationWeeks: null as number | null,
-  courses: [] as { courseId: string, courseName: string, questionsQuantity: number, isActive: boolean }[]
+  courses: [] as { 
+    courseId: string, 
+    courseName: string, 
+    questionsQuantity: number, 
+    easyCount: number, 
+    mediumCount: number, 
+    hardCount: number, 
+    isActive: boolean 
+  }[]
 })
 
 const searchQuery = ref('')
@@ -303,24 +350,46 @@ const totalQuestionsAllocated = computed(() => {
   return activeCourses.value.reduce((sum, c) => sum + (Number(c.questionsQuantity) || 0), 0)
 })
 
+function autoDistributeDifficulties(course: any) {
+  const total = Number(course.questionsQuantity) || 0
+  if (total <= 0) {
+    course.easyCount = 0
+    course.mediumCount = 0
+    course.hardCount = 0
+    return
+  }
+  const easy = Math.floor(total * 0.3)
+  const hard = Math.floor(total * 0.2)
+  const medium = total - easy - hard
+  course.easyCount = easy
+  course.mediumCount = medium
+  course.hardCount = hard
+}
+
 function addCourse(course: any) {
   course.questionsQuantity = 5 // Default: 5 questions
+  autoDistributeDifficulties(course)
   course.isActive = true
 }
 
 function removeCourse(course: any) {
   course.questionsQuantity = 0
+  course.easyCount = 0
+  course.mediumCount = 0
+  course.hardCount = 0
   course.isActive = false
 }
 
 function incrementCourse(course: any) {
   course.questionsQuantity = (Number(course.questionsQuantity) || 0) + 1
+  autoDistributeDifficulties(course)
 }
 
 function decrementCourse(course: any) {
   const current = Number(course.questionsQuantity) || 0
   if (current > 1) {
     course.questionsQuantity = current - 1
+    autoDistributeDifficulties(course)
   } else {
     removeCourse(course)
   }
@@ -389,6 +458,9 @@ onMounted(async () => {
           courseId: catCourse.id,
           courseName: catCourse.name,
           questionsQuantity: tc.questionsQuantity,
+          easyCount: tc.easyCount ?? 0,
+          mediumCount: tc.mediumCount ?? 0,
+          hardCount: tc.hardCount ?? 0,
           isActive: true
         })
       }
@@ -401,6 +473,9 @@ onMounted(async () => {
           courseId: catCourse.id,
           courseName: catCourse.name,
           questionsQuantity: 0,
+          easyCount: 0,
+          mediumCount: 0,
+          hardCount: 0,
           isActive: false
         })
       }
@@ -429,10 +504,13 @@ const isFormValid = computed(() => {
   const hasAtLeastOneActive = activeCourses.value.length > 0
   if (!hasAtLeastOneActive) return false
   
-  // All active courses must have a valid number > 0
+  // All active courses must have a valid number > 0 and sum of difficulties must equal total
   return activeCourses.value.every(c => {
     const qty = Number(c.questionsQuantity)
-    return !isNaN(qty) && qty > 0
+    const easy = Number(c.easyCount) || 0
+    const medium = Number(c.mediumCount) || 0
+    const hard = Number(c.hardCount) || 0
+    return !isNaN(qty) && qty > 0 && (easy + medium + hard === qty)
   })
 })
 
@@ -442,7 +520,10 @@ async function saveTemplate() {
   try {
     const validCourses = activeCourses.value.map(c => ({
       courseId: c.courseId,
-      questionsQuantity: Number(c.questionsQuantity)
+      questionsQuantity: Number(c.questionsQuantity),
+      easyCount: Number(c.easyCount) || 0,
+      mediumCount: Number(c.mediumCount) || 0,
+      hardCount: Number(c.hardCount) || 0
     }))
 
     const payload = {

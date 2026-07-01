@@ -95,7 +95,7 @@ defineExpose({ isOpen, form });
 
         <div class="bg-indigo-50/50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
           <p class="text-xs text-indigo-800 dark:text-indigo-300 leading-relaxed">
-            <strong>Nota:</strong> Una vez creado, podrás configurar la matriz de distribución de pesos por semana para este sílabo.
+            <strong>Nota:</strong> Una vez creado, podrás configurar la matriz de distribución de preguntas por semana para este sílabo.
           </p>
         </div>
 

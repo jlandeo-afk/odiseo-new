@@ -24,23 +24,23 @@ describe('SyllabusUseCase', () => {
     useCase = module.get<SyllabusUseCase>(SyllabusUseCase);
   });
 
-  it('should create distribution successfully with weight', async () => {
+  it('should create distribution successfully with question count', async () => {
     mockRepo.createDistribution.mockResolvedValue({
       id: 'new-dist',
-      weight: 5,
+      questionCount: 5,
     });
 
     const result = await useCase.addDistribution('syl-1', {
       weekNumber: 1,
       topicId: 't-1',
       subtopicId: 'st-1',
-      weight: 5,
+      questionCount: 5,
     });
 
     expect(result.id).toBe('new-dist');
     expect(mockRepo.createDistribution).toHaveBeenCalledWith(
       expect.objectContaining({
-        weight: 5,
+        questionCount: 5,
       }),
     );
   });

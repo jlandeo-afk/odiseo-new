@@ -1,33 +1,23 @@
-// =====================================================
-// Feature: Catalogs - Types
-// =====================================================
+export interface CatalogSubtopic {
+  id: string
+  name: string
+}
 
 export interface CatalogTopic {
   id: string
-  coreName: string
-  localAlias: string | null
+  name: string
   isActive: boolean
-  courseId: string
-  subtopics?: CatalogSubtopic[]
-}
-
-export interface CatalogSubtopic {
-  id: string
-  coreName: string
-  localAlias: string | null
-  isActive: boolean
-  topicId: string
+  subtopics: CatalogSubtopic[]
 }
 
 export interface CatalogCourse {
   id: string
-  coreName: string
-  localAlias: string | null
-  isActive: boolean
-  topics?: CatalogTopic[]
+  name: string
+  topicsCount?: number
+  activeTopicsCount?: number
+  topics: CatalogTopic[]
 }
 
-export interface TopicPatch {
-  localAlias?: string | null
-  isActive?: boolean
+export interface TopicVisibilityPayload {
+  isActive: boolean
 }

@@ -1,30 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
+import type { CatalogCourse, CatalogTopic, CatalogSubtopic } from '../types'
 
-export interface CatalogSubtopic {
-  id: string;
-  name: string;
-}
-
-export interface CatalogTopic {
-  id: string;
-  name: string;
-  isActive: boolean;
-  subtopics: CatalogSubtopic[];
-}
-
-export interface CatalogCourse {
-  id: string;
-  name: string;
-  topicsCount?: number;
-  activeTopicsCount?: number;
-  topics: CatalogTopic[];
-}
+export type { CatalogCourse, CatalogTopic, CatalogSubtopic }
 
 export const useCatalogsStore = defineStore('catalogs', () => {
   const courses = ref<CatalogCourse[]>([])
+  const lastSyncedAt = ref<string | null>(null)
   const isLoading = ref(false)
+  const hasFetched = ref(false)
   const error = ref<string | null>(null)
 
   // Flattened list for Command Palette search
@@ -47,10 +32,20 @@ export const useCatalogsStore = defineStore('catalogs', () => {
       const response = await $fetch(url, {
         headers: { 'x-subdomain': subdomain }
       });
-      courses.value = (response as CatalogCourse[]).map(c => ({
-        ...c,
-        topics: [] // Initialize empty
-      }));
+      if (Array.isArray(response)) {
+        courses.value = (response as CatalogCourse[]).map(c => ({
+          ...c,
+          topics: []
+        }));
+      } else {
+        const data = response as { courses: CatalogCourse[]; lastSyncedAt: string | null };
+        courses.value = (data.courses || []).map(c => ({
+          ...c,
+          topics: []
+        }));
+        lastSyncedAt.value = data.lastSyncedAt;
+      }
+      hasFetched.value = true;
     } catch (e: any) {
       error.value = e.message || 'Error fetching catalogs'
     } finally {
@@ -124,7 +119,7 @@ export const useCatalogsStore = defineStore('catalogs', () => {
     }
   }
 
-  return { courses, allTopics, isLoading, error, fetchCourses, fetchCourseTopics, toggleVisibility }
+  return { courses, allTopics, lastSyncedAt, isLoading, hasFetched, error, fetchCourses, fetchCourseTopics, toggleVisibility }
 })
 
 // --- Mock data for development ---

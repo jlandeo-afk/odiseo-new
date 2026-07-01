@@ -45,16 +45,16 @@ export class SyllabusUseCase {
       weekNumber: dto.weekNumber,
       topicId: dto.topicId,
       subtopicId: dto.subtopicId,
-      weight: dto.weight,
+      questionCount: dto.questionCount,
     });
   }
 
-  async updateDistributionWeight(
+  async updateDistributionQuantity(
     distId: string,
     syllabusId: string,
-    weight: number,
+    questionCount: number,
   ) {
-    await this.syllabusRepo.updateDistribution(distId, weight);
+    await this.syllabusRepo.updateDistributionQuantity(distId, questionCount);
   }
 
   async deleteDistribution(distId: string) {
@@ -64,20 +64,23 @@ export class SyllabusUseCase {
   async getSummary(syllabusId: string) {
     const distributions =
       await this.syllabusRepo.getSummaryBySyllabus(syllabusId);
+    const generatedWeeks =
+      await this.syllabusRepo.findGeneratedWeeks(syllabusId);
 
     const summary = {
-      totalWeight: 0,
-      weeklyWeights: {} as Record<number, number>,
-      topicWeights: {} as Record<string, number>,
+      totalQuestions: 0,
+      weeklyQuestions: {} as Record<number, number>,
+      topicQuestions: {} as Record<string, number>,
       distributions,
+      generatedWeeks,
     };
 
     for (const dist of distributions) {
-      summary.totalWeight += dist.weight;
-      summary.weeklyWeights[dist.weekNumber] =
-        (summary.weeklyWeights[dist.weekNumber] || 0) + dist.weight;
-      summary.topicWeights[dist.topicId] =
-        (summary.topicWeights[dist.topicId] || 0) + dist.weight;
+      summary.totalQuestions += dist.questionCount;
+      summary.weeklyQuestions[dist.weekNumber] =
+        (summary.weeklyQuestions[dist.weekNumber] || 0) + dist.questionCount;
+      summary.topicQuestions[dist.topicId] =
+        (summary.topicQuestions[dist.topicId] || 0) + dist.questionCount;
     }
 
     return summary;
@@ -101,11 +104,45 @@ export class SyllabusUseCase {
         weekNumber: dist.weekNumber,
         topicId: dist.topicId,
         subtopicId: dist.subtopicId,
-        weight: dist.weight,
+        questionCount: dist.questionCount,
       });
     }
 
     return await this.getSummary(syllabusId);
+  }
+
+  async cloneCycleSyllabuses(targetCycleId: string, sourceCycleId: string) {
+    const sourceSyllabuses = await this.syllabusRepo.findByCycle(sourceCycleId);
+
+    if (sourceSyllabuses.length === 0) {
+      throw new BadRequestException('El ciclo origen no tiene sílabos para clonar.');
+    }
+
+    let clonedCount = 0;
+    for (const sourceSyllabus of sourceSyllabuses) {
+      const existingTarget = await this.syllabusRepo.findByCourseAndCycle(
+        sourceSyllabus.courseId,
+        targetCycleId,
+      );
+
+      let targetSyllabusId;
+      if (existingTarget) {
+        targetSyllabusId = existingTarget.id;
+      } else {
+        const newSyllabus = await this.syllabusRepo.createSyllabus({
+          cycleId: targetCycleId,
+          courseId: sourceSyllabus.courseId,
+          name: sourceSyllabus.name,
+          isActive: true,
+        });
+        targetSyllabusId = newSyllabus.id;
+      }
+
+      await this.cloneSyllabus(targetSyllabusId, sourceSyllabus.id);
+      clonedCount++;
+    }
+
+    return { clonedCount };
   }
 
   async archiveSyllabus(id: string, isActive: boolean) {

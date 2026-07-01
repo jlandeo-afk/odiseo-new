@@ -6,7 +6,7 @@
 
 ## Summary
 
-CRUD de sílabos vinculados a ciclos y cursos. Cada sílabo define la distribución de temas/subtemas por semana con pesos relativos (1 a 10). Es el insumo principal para que las plantillas distribuyan la cantidad de preguntas en la generación de materiales PDF.
+CRUD de sílabos vinculados a ciclos y cursos. Cada sílabo define la distribución de temas/subtemas por semana estableciendo la cantidad de preguntas exacta. Es el insumo principal alineado a la cantidad de preguntas configurada en las plantillas de materiales PDF.
 
 ## Technical Context
 

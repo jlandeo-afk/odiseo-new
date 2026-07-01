@@ -23,6 +23,15 @@ export class CycleMaterialTemplateCourse {
   @Column({ name: 'questions_quantity', type: 'integer' })
   questionsQuantity: number;
 
+  @Column({ name: 'easy_count', type: 'integer', default: 0 })
+  easyCount: number;
+
+  @Column({ name: 'medium_count', type: 'integer', default: 0 })
+  mediumCount: number;
+
+  @Column({ name: 'hard_count', type: 'integer', default: 0 })
+  hardCount: number;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 

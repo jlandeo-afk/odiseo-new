@@ -139,16 +139,38 @@ export class MaterialsService {
           status: 'PENDING',
         });
 
-        const targetQuantity = templateCourse.questionsQuantity || 35;
+        let easyCount = templateCourse.easyCount || 0;
+        let mediumCount = templateCourse.mediumCount || 0;
+        let hardCount = templateCourse.hardCount || 0;
+
+        // Fallback for old templates without difficulty distribution
+        if (easyCount === 0 && mediumCount === 0 && hardCount === 0) {
+          const totalQty = templateCourse.questionsQuantity || 35;
+          easyCount = Math.floor(totalQty * 0.3);
+          hardCount = Math.floor(totalQty * 0.2);
+          mediumCount = totalQty - easyCount - hardCount;
+        }
+
         const syllabusPayload = distributions.map((dist, idx) => {
-          const baseQty = Math.floor(targetQuantity / distributions.length);
-          const remainder = targetQuantity % distributions.length;
-          const quantity = idx < remainder ? baseQty + 1 : baseQty;
+          const baseEasy = Math.floor(easyCount / distributions.length);
+          const remEasy = easyCount % distributions.length;
+          const easyQty = idx < remEasy ? baseEasy + 1 : baseEasy;
+
+          const baseMedium = Math.floor(mediumCount / distributions.length);
+          const remMedium = mediumCount % distributions.length;
+          const mediumQty = idx < remMedium ? baseMedium + 1 : baseMedium;
+
+          const baseHard = Math.floor(hardCount / distributions.length);
+          const remHard = hardCount % distributions.length;
+          const hardQty = idx < remHard ? baseHard + 1 : baseHard;
 
           return {
             topic_id: dist.topicId,
             subtopic_id: dist.subtopicId,
-            quantity,
+            quantity: easyQty + mediumQty + hardQty,
+            easyCount: easyQty,
+            mediumCount: mediumQty,
+            hardCount: hardQty,
           };
         }).filter((t) => t.quantity > 0);
 
@@ -637,7 +659,7 @@ export class MaterialsService {
         const syllabusPayload = distributions.map((dist) => ({
           topic_id: dist.topicId,
           subtopic_id: dist.subtopicId,
-          weight: dist.weight,
+          quantity: dist.questionCount,
         }));
 
         const job = {

@@ -16,7 +16,7 @@ export class CreateDistributionDto {
 
   @IsNumber()
   @Min(1)
-  @Max(10)
+  @Max(100)
   @IsNotEmpty()
-  weight: number;
+  questionCount: number;
 }

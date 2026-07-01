@@ -1,4 +1,4 @@
-import { Injectable, Inject, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, ConflictException, BadRequestException } from '@nestjs/common';
 import { IAcademicTimeRepository } from './repositories/i-academic-time.repository';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -200,11 +200,24 @@ export class AcademicTimeUseCase {
       scope: dto.scope,
       accumulationWeeks: dto.accumulationWeeks ?? null,
       courses:
-        dto.courses?.map((c: any) => ({
-          id: uuidv4(),
-          courseId: c.courseId,
-          questionsQuantity: c.questionsQuantity,
-        })) || [],
+        dto.courses?.map((c: any) => {
+          const easy = c.easyCount ?? 0;
+          const medium = c.mediumCount ?? 0;
+          const hard = c.hardCount ?? 0;
+          if (easy + medium + hard !== c.questionsQuantity) {
+            throw new BadRequestException(
+              `La suma de preguntas fáciles (${easy}), intermedias (${medium}) y difíciles (${hard}) debe ser igual a la cantidad total (${c.questionsQuantity}) para el curso ${c.courseId}`,
+            );
+          }
+          return {
+            id: uuidv4(),
+            courseId: c.courseId,
+            questionsQuantity: c.questionsQuantity,
+            easyCount: easy,
+            mediumCount: medium,
+            hardCount: hard,
+          };
+        }) || [],
     };
 
     await this.repository.createTemplate(templateData);
@@ -220,11 +233,24 @@ export class AcademicTimeUseCase {
       templateData.accumulationWeeks = dto.accumulationWeeks;
 
     if (dto.courses) {
-      templateData.courses = dto.courses.map((c: any) => ({
-        id: uuidv4(),
-        courseId: c.courseId,
-        questionsQuantity: c.questionsQuantity,
-      }));
+      templateData.courses = dto.courses.map((c: any) => {
+        const easy = c.easyCount ?? 0;
+        const medium = c.mediumCount ?? 0;
+        const hard = c.hardCount ?? 0;
+        if (easy + medium + hard !== c.questionsQuantity) {
+          throw new BadRequestException(
+            `La suma de preguntas fáciles (${easy}), intermedias (${medium}) y difíciles (${hard}) debe ser igual a la cantidad total (${c.questionsQuantity}) para el curso ${c.courseId}`,
+          );
+        }
+        return {
+          id: uuidv4(),
+          courseId: c.courseId,
+          questionsQuantity: c.questionsQuantity,
+          easyCount: easy,
+          mediumCount: medium,
+          hardCount: hard,
+        };
+      });
     }
 
     await this.repository.updateTemplate(templateId, templateData);

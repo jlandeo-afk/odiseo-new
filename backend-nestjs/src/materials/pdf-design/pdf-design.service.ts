@@ -89,13 +89,15 @@ export class PdfDesignService {
     }
 
     // Clean up S3 assets if present
-    const assets: ('banner' | 'watermark')[] = ['banner', 'watermark'];
+    const assets: ('banner' | 'watermark' | 'cover')[] = ['banner', 'watermark', 'cover'];
     for (const type of assets) {
-      try {
-        const key = `designs/${tenantId}/${id}-${type}.png`;
-        await this.s3Service.deleteObject(key);
-      } catch (error) {
-        // S3 object might not exist, ignore and proceed
+      for (const ext of ['png', 'jpg']) {
+        try {
+          const key = `designs/${tenantId}/${id}-${type}.${ext}`;
+          await this.s3Service.deleteObject(key);
+        } catch (error) {
+          // S3 object might not exist, ignore and proceed
+        }
       }
     }
 
@@ -106,25 +108,55 @@ export class PdfDesignService {
     designId: string,
     tenantId: string,
     file: Express.Multer.File,
-    type: 'banner' | 'watermark' | 'grid_image',
+    type: 'banner' | 'watermark' | 'grid_image' | 'cover',
   ): Promise<string> {
     const design = await this.findById(designId, tenantId);
     let bufferToUpload = file.buffer;
     let mimeType = file.mimetype;
 
     if (type === 'grid_image') {
-      console.log(
-        `uploadAsset: file.size=${file.size}, buffer.length=${file.buffer?.length}, mimetype=${file.mimetype}`,
-      );
       bufferToUpload = await sharp(file.buffer)
         .resize({ width: 200, withoutEnlargement: true })
-        .png()
+        .png({ quality: 80, compressionLevel: 9, palette: true })
         .toBuffer();
       mimeType = 'image/png';
+    } else if (type === 'watermark') {
+      bufferToUpload = await sharp(file.buffer)
+        .resize({ width: 1000, withoutEnlargement: true })
+        .png({ quality: 75, compressionLevel: 9, palette: true })
+        .toBuffer();
+      mimeType = 'image/png';
+    } else if (type === 'banner') {
+      if (file.mimetype.includes('png')) {
+        bufferToUpload = await sharp(file.buffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .png({ quality: 80, compressionLevel: 9, palette: true })
+          .toBuffer();
+      } else {
+        bufferToUpload = await sharp(file.buffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .jpeg({ quality: 80, mozjpeg: true })
+          .toBuffer();
+        mimeType = 'image/jpeg';
+      }
+    } else if (type === 'cover') {
+      if (file.mimetype.includes('png')) {
+        bufferToUpload = await sharp(file.buffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .png({ quality: 80, compressionLevel: 9, palette: true })
+          .toBuffer();
+      } else {
+        bufferToUpload = await sharp(file.buffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .jpeg({ quality: 80, mozjpeg: true })
+          .toBuffer();
+        mimeType = 'image/jpeg';
+      }
     }
 
     const keySuffix = type === 'grid_image' ? `grid-${Date.now()}` : type;
-    const key = `designs/${tenantId}/${designId}-${keySuffix}.png`;
+    const extension = mimeType === 'image/png' ? 'png' : 'jpg';
+    const key = `designs/${tenantId}/${designId}-${keySuffix}.${extension}`;
     const url = await this.s3Service.uploadBuffer(
       key,
       bufferToUpload,
@@ -135,6 +167,8 @@ export class PdfDesignService {
       design.bannerImageUrl = url;
     } else if (type === 'watermark') {
       design.watermarkImageUrl = url;
+    } else if (type === 'cover') {
+      design.coverImageUrl = url;
     }
 
     if (type !== 'grid_image') {
@@ -146,20 +180,24 @@ export class PdfDesignService {
   async deleteAsset(
     designId: string,
     tenantId: string,
-    type: 'banner' | 'watermark',
+    type: 'banner' | 'watermark' | 'cover',
   ): Promise<void> {
     const design = await this.findById(designId, tenantId);
     if (type === 'banner') {
       design.bannerImageUrl = null;
     } else if (type === 'watermark') {
       design.watermarkImageUrl = null;
+    } else if (type === 'cover') {
+      design.coverImageUrl = null;
     }
 
-    try {
-      const key = `designs/${tenantId}/${designId}-${type}.png`;
-      await this.s3Service.deleteObject(key);
-    } catch (error) {
-      // S3 object might not exist, ignore
+    for (const ext of ['png', 'jpg']) {
+      try {
+        const key = `designs/${tenantId}/${designId}-${type}.${ext}`;
+        await this.s3Service.deleteObject(key);
+      } catch (error) {
+        // S3 object might not exist, ignore
+      }
     }
 
     await this.designRepo.save(design);

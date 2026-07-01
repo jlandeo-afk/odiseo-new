@@ -242,7 +242,7 @@ async function renderInlineStyles(usedModules) {
 
 const renderSSRHeadOptions = {"omitLineBreaks":false};
 
-const entryIds = ["../node_modules/nuxt/dist/app/entry.js"];
+const entryIds = ["../node_modules/.pnpm/nuxt@3.21.8_@parcel+watcher@2.5.6_@vue+compiler-sfc@3.5.39_cac@6.7.14_db0@0.3.4_esbuild_b10af7ecb65ca8d8a6bd4d62f85d278d/node_modules/nuxt/dist/app/entry.js"];
 
 // @ts-expect-error private property consumed by vite-generated url helpers
 globalThis.__buildAssetsURL = buildAssetsURL;

@@ -42,7 +42,7 @@ export class SyllabusController {
     @Param('distId') distId: string,
     @Body() dto: UpdateDistributionDto,
   ) {
-    await this.useCase.updateDistributionWeight(distId, syllabusId, dto.weight);
+    await this.useCase.updateDistributionQuantity(distId, syllabusId, dto.questionCount);
     return { status: 'updated' };
   }
 
@@ -68,6 +68,15 @@ export class SyllabusController {
   ) {
     const summary = await this.useCase.cloneSyllabus(syllabusId, sourceId);
     return { status: 'cloned', summary };
+  }
+
+  @Post('cycle/:targetCycleId/clone-from/:sourceCycleId')
+  async cloneCycle(
+    @Param('targetCycleId') targetCycleId: string,
+    @Param('sourceCycleId') sourceCycleId: string,
+  ) {
+    const result = await this.useCase.cloneCycleSyllabuses(targetCycleId, sourceCycleId);
+    return { status: 'cloned', ...result };
   }
 
   @Patch(':id/archive')

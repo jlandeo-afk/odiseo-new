@@ -1,7 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { ICatalogRepository } from './repositories/i-catalog.repository';
+
+const LAST_SYNC_CACHE_KEY = 'catalogs:last-synced-at';
 
 @Injectable()
 export class CatalogCronService {
@@ -10,6 +14,8 @@ export class CatalogCronService {
   constructor(
     @Inject(ICatalogRepository)
     private readonly catalogRepository: ICatalogRepository,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
   ) {}
 
@@ -25,7 +31,6 @@ export class CatalogCronService {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // Add API Key or Auth token if needed
         },
       });
 
@@ -38,6 +43,7 @@ export class CatalogCronService {
       const payload = await response.json();
 
       await this.catalogRepository.upsertCatalogs(payload);
+      await this.cacheManager.set(LAST_SYNC_CACHE_KEY, new Date().toISOString());
 
       this.logger.log(
         'Successfully synchronized catalogs to the public schema.',

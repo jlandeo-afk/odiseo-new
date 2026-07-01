@@ -126,7 +126,7 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
     }
   }
 
-  async function uploadAsset(designId: string, file: File, type: 'banner' | 'watermark' | 'grid_image') {
+  async function uploadAsset(designId: string, file: File, type: 'banner' | 'watermark' | 'grid_image' | 'cover') {
     isLoading.value = true
     error.value = null
     try {
@@ -143,10 +143,12 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
         if (design) {
           if (type === 'banner') design.bannerImageUrl = result.url
           else if (type === 'watermark') design.watermarkImageUrl = result.url
+          else if (type === 'cover') design.coverImageUrl = result.url
         }
         if (currentDesign.value?.id === designId) {
           if (type === 'banner') currentDesign.value.bannerImageUrl = result.url
           else if (type === 'watermark') currentDesign.value.watermarkImageUrl = result.url
+          else if (type === 'cover') currentDesign.value.coverImageUrl = result.url
         }
       }
       return result.url
@@ -158,7 +160,7 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
     }
   }
 
-  async function deleteAsset(designId: string, type: 'banner' | 'watermark') {
+  async function deleteAsset(designId: string, type: 'banner' | 'watermark' | 'cover') {
     isLoading.value = true
     error.value = null
     try {
@@ -170,10 +172,12 @@ export const usePdfDesignsStore = defineStore('pdfDesigns', () => {
       if (design) {
         if (type === 'banner') design.bannerImageUrl = null
         else if (type === 'watermark') design.watermarkImageUrl = null
+        else if (type === 'cover') design.coverImageUrl = null
       }
       if (currentDesign.value?.id === designId) {
         if (type === 'banner') currentDesign.value.bannerImageUrl = null
         else if (type === 'watermark') currentDesign.value.watermarkImageUrl = null
+        else if (type === 'cover') currentDesign.value.coverImageUrl = null
       }
     } catch (e: any) {
       error.value = e.data?.message || e.message || 'Error al eliminar asset'

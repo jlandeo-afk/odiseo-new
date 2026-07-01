@@ -15,3 +15,6 @@ export const useRouter = vi.fn(() => ({
 export const useToast = vi.fn(() => ({
   add: vi.fn(),
 }));
+
+// Make auto-imported Nuxt functions available globally
+(global as any).useToast = useToast;

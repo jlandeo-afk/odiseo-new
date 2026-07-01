@@ -24,10 +24,11 @@ export class QuestionBankService {
     subtopicId: string,
     limit: number,
     tenantId: string,
+    difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | string,
     cycleId?: string, // En un entorno real se usaría para cruzar con el material_request y filtrar por ciclo
   ): Promise<Question[]> {
     this.logger.debug(
-      `Buscando ${limit} preguntas para el subtema ${subtopicId}`,
+      `Buscando ${limit} preguntas para el subtema ${subtopicId} con dificultad ${difficulty || 'CUALQUIERA'}`,
     );
 
     const numericSubtopicId = convertUuidToIntegerId(subtopicId);
@@ -41,7 +42,7 @@ export class QuestionBankService {
 
     const usedIdsList = usedQuestionIds.map((row) => row.question_id);
 
-    // Priority 1: Get random IDs of unused questions
+    // Base query builder for unused questions
     const unusedIdsQb = this.questionRepository
       .createQueryBuilder('q')
       .select('q.id', 'id')
@@ -55,17 +56,43 @@ export class QuestionBankService {
       unusedIdsQb.andWhere('q.id NOT IN (:...usedIdsList)', { usedIdsList });
     }
 
-    const unusedIdRows = await unusedIdsQb
-      .orderBy('RANDOM()')
-      .limit(limit)
-      .getRawMany();
-    let selectedIds = unusedIdRows.map((row) => row.id);
+    let selectedIds: string[] = [];
 
-    // Priority 2 (Fallback): Agotamiento del Banco
+    // If difficulty is specified, try to find questions matching the difficulty first
+    if (difficulty) {
+      let levelIds: number[] = [];
+      const upperDiff = String(difficulty).toUpperCase();
+      if (upperDiff === 'EASY' || upperDiff === 'FACIL') {
+        levelIds = [43, 44];
+      } else if (upperDiff === 'MEDIUM' || upperDiff === 'INTERMEDIO' || upperDiff === 'MEDIA') {
+        levelIds = [45];
+      } else if (upperDiff === 'HARD' || upperDiff === 'DIFICIL') {
+        levelIds = [46, 47, 48, 49, 50, 51, 52];
+      }
+
+      if (levelIds.length > 0) {
+        const diffQb = unusedIdsQb.clone().andWhere('q.level_id IN (:...levelIds)', { levelIds });
+        const diffRows = await diffQb.orderBy('RANDOM()').limit(limit).getRawMany();
+        selectedIds = diffRows.map((row) => row.id);
+      }
+    }
+
+    // If no difficulty was specified or not enough questions found, fall back to any difficulty (still unused)
+    if (selectedIds.length < limit) {
+      const remainingLimit = limit - selectedIds.length;
+      const fallbackQb = unusedIdsQb.clone();
+      if (selectedIds.length > 0) {
+        fallbackQb.andWhere('q.id NOT IN (:...selectedIds)', { selectedIds });
+      }
+      const fallbackRows = await fallbackQb.orderBy('RANDOM()').limit(remainingLimit).getRawMany();
+      selectedIds = [...selectedIds, ...fallbackRows.map((row) => row.id)];
+    }
+
+    // Priority 2 (Fallback): Agotamiento del Banco (relax unused constraint)
     if (selectedIds.length < limit) {
       const missingCount = limit - selectedIds.length;
       this.logger.warn(
-        `Banco agotado para subtema ${subtopicId}. Faltan ${missingCount} preguntas. Relajando regla de no-repetición.`,
+         `Banco agotado para subtema ${subtopicId}. Faltan ${missingCount} preguntas. Relajando regla de no-repetición.`,
       );
 
       const fallbackIdsQb = this.questionRepository

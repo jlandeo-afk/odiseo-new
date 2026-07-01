@@ -132,6 +132,16 @@ export class CatalogRepositoryImpl implements ICatalogRepository {
     });
   }
 
+  async findCourseIdByTopicId(topicId: string): Promise<string | null> {
+    return this.tenantService.runInTenant(async (manager) => {
+      const rows = await manager.query(
+        `SELECT course_id FROM public.topics WHERE id = $1`,
+        [topicId],
+      );
+      return rows.length > 0 ? rows[0].course_id : null;
+    });
+  }
+
   async updateTopicLocalVisibility(
     topicId: string,
     isActive: boolean,

@@ -18,8 +18,7 @@ import { Syllabus } from './syllabus.entity';
   'topicId',
   'subtopicId',
 ])
-@Check(`"weight" > 0`)
-@Check(`"weight" <= 10`)
+@Check(`"question_count" > 0`)
 export class SyllabusDistribution {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -42,8 +41,8 @@ export class SyllabusDistribution {
   @Column({ name: 'subtopic_id', type: 'uuid' })
   subtopicId: string;
 
-  @Column({ name: 'weight', type: 'int' })
-  weight: number;
+  @Column({ name: 'question_count', type: 'int' })
+  questionCount: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,7 +1,7 @@
 <template>
   <div class="px-8 py-6 max-w-full space-y-6">
     <!-- Encabezado de la Página -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30 pb-5">
+    <div class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-6 -mx-8 px-8 pt-6 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30">
       <div>
         <h1 class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
           Catálogo de Cursos
@@ -13,13 +13,16 @@
       <div class="flex items-center gap-2">
         <span class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-2 rounded-xl border border-emerald-100/50 dark:border-emerald-900/40 shadow-sm">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
-          Sincronizado con Banco Global
+          <span>Sincronizado con Banco Global</span>
+          <span v-if="store.lastSyncedAt" class="text-[10px] text-emerald-500/70 dark:text-emerald-500/60 font-medium ml-1">
+            · {{ formatSyncTime(store.lastSyncedAt) }}
+          </span>
         </span>
       </div>
     </div>
 
     <!-- Cargando (Skeletons de Bloques de Cursos) -->
-    <div v-if="store.isLoading && store.courses.length === 0" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div v-if="(!store.hasFetched || store.isLoading) && store.courses.length === 0" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
       <div v-for="i in 4" :key="i" class="bg-white dark:bg-[#2b2b3f] rounded-2xl border border-slate-200 dark:border-slate-700/50 p-6 space-y-4 shadow-sm animate-pulse">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-3">
@@ -37,7 +40,7 @@
     <!-- Componente Principal del Catálogo -->
     <CatalogTable 
       ref="catalogTableRef"
-      v-show="store.courses.length > 0 || !store.isLoading" 
+      v-show="store.courses.length > 0 || (store.hasFetched && !store.isLoading)" 
     />
 
     <!-- Leyenda / Indicador de Teclado -->
@@ -64,6 +67,15 @@ const store = useCatalogsStore()
 const catalogTableRef = ref<any>(null)
 
 // Atajo de teclado global
+function formatSyncTime(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'ahora'
+  if (mins < 60) return `hace ${mins} min`
+  const hours = Math.floor(mins / 60)
+  return `hace ${hours}h`
+}
+
 function handleKeyDown(e: KeyboardEvent) {
   if ((e.metaKey && e.key === 'k') || (e.ctrlKey && e.key === 'k') || (e.key === '/')) {
     const activeEl = document.activeElement

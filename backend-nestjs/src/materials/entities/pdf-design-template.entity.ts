@@ -16,7 +16,7 @@ export class PdfDesignTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'tenant_id', nullable: true })
+  @Column({ name: 'tenant_id', type: 'varchar', nullable: true })
   tenantId: string | null;
 
   @Column({ length: 255 })

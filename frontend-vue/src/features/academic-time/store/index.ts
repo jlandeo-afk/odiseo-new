@@ -27,6 +27,9 @@ export interface CycleMaterialTemplateCourse {
   id?: string;
   courseId: string;
   questionsQuantity: number;
+  easyCount: number;
+  mediumCount: number;
+  hardCount: number;
 }
 
 export interface CycleMaterialTemplate {
@@ -42,6 +45,7 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   const cycles = ref<Cycle[]>([])
   const templatesByCycle = ref<Record<string, CycleMaterialTemplate[]>>({})
   const isLoading = ref(false)
+  const hasFetched = ref(false)
   const error = ref<string | null>(null)
   
   const totalCycles = ref(0)
@@ -90,6 +94,7 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
       
       totalCycles.value = total;
       currentOffset.value += data.length;
+      hasFetched.value = true;
     } catch (e: any) {
       error.value = e.message || 'Error fetching cycles'
     } finally {
@@ -261,7 +266,7 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   }
 
   return { 
-    cycles, templatesByCycle, isLoading, error, hasMore,
+    cycles, templatesByCycle, isLoading, hasFetched, error, hasMore,
     fetchCycles, createCycle, updateCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle,
     fetchTemplates, createTemplate, updateTemplate, deleteTemplate
   }

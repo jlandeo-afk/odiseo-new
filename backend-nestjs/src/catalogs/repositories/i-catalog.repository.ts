@@ -27,6 +27,11 @@ export interface ICatalogRepository {
   updateTopicLocalVisibility(topicId: string, isActive: boolean): Promise<void>;
 
   /**
+   * Obtiene el courseId al que pertenece un topic.
+   */
+  findCourseIdByTopicId(topicId: string): Promise<string | null>;
+
+  /**
    * Realiza un bulk upsert de courses, topics y subtopics en el esquema public.
    */
   upsertCatalogs(payload: any): Promise<void>;
