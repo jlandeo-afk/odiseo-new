@@ -6,11 +6,9 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { Between, DataSource, EntityManager, In } from 'typeorm';
+import { Between, EntityManager, In } from 'typeorm';
 import { InjectEntityManager } from '@nestjs/typeorm';
-import { GenerateMaterialDto } from './dto/generate-material.dto';
 import { WebhookStatusRequestDto } from './dto/webhook-status-request.dto';
-import { GenerateMaterialJobDto } from './dto/generate-material-job.dto';
 import { ApproveReviewDto } from './dto/approve-review.dto';
 import { MaterialRequest } from './entities/material-request.entity';
 import { MaterialRequestStatus } from './entities/material-status.enum';
@@ -30,7 +28,6 @@ import { Company } from '../tenants/entities/tenant.entity';
 import { Topic } from '../catalogs/entities/topic.entity';
 import { Subtopic } from '../catalogs/entities/subtopic.entity';
 import { Question } from '../question-bank/entities/question.entity';
-import { PdfDesignTemplate } from './entities/pdf-design-template.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -55,284 +52,6 @@ export class MaterialsService {
     @InjectEntityManager('questionsConnection')
     private readonly questionsEntityManager: EntityManager,
   ) {}
-
-  async generate(dto: GenerateMaterialDto): Promise<any> {
-    const tenantId = this.cls.get('companyId') || '7b89-11c2-d344';
-    const requestId = uuidv4();
-
-    this.logger.log(`Initiating material generation. Request ID: ${requestId}`);
-
-    return this.tenantService.runInTenant(async (manager) => {
-      // 1. Fetch academic template (profile)
-      const template = await manager.findOne(CycleMaterialTemplate, {
-        where: { id: dto.profile_id },
-        relations: ['courses'],
-      });
-      if (!template) {
-        throw new BadRequestException('El perfil seleccionado no existe');
-      }
-
-      // Resolve design template
-      let designTemplateId = dto.design_template_id || null;
-      if (!designTemplateId) {
-        const defaultDesign = await manager.findOne(PdfDesignTemplate, {
-          where: { tenantId, isDefault: true },
-        });
-        if (defaultDesign) {
-          designTemplateId = defaultDesign.id;
-        }
-      }
-
-      // 2. Fetch company info for branding
-      const company = await manager.findOne(Company, {
-        where: { id: tenantId },
-      });
-
-      const courseRequests: Partial<MaterialRequestCourse>[] = [];
-      const sqsJobs: GenerateMaterialJobDto[] = [];
-      const coursesResponseList: { courseId: string; status: string }[] = [];
-
-      // 3. For each course, fetch its syllabus and distributions
-      for (const templateCourse of template.courses) {
-        const syllabus = await manager.findOne(Syllabus, {
-          where: {
-            courseId: templateCourse.courseId,
-            cycleId: template.cycleId,
-            isActive: true,
-          },
-        });
-        if (!syllabus) {
-          continue;
-        }
-
-        let distributions: SyllabusDistribution[] = [];
-        if (template.scope === 'CURRENT_WEEK') {
-          distributions = await manager.find(SyllabusDistribution, {
-            where: { syllabusId: syllabus.id, weekNumber: dto.week_number },
-          });
-        } else if (template.scope === 'ACCUMULATIVE') {
-          const startWeek = template.accumulationWeeks
-            ? Math.max(1, dto.week_number - template.accumulationWeeks + 1)
-            : 1;
-          distributions = await manager.find(SyllabusDistribution, {
-            where: {
-              syllabusId: syllabus.id,
-              weekNumber: Between(startWeek, dto.week_number),
-            },
-          });
-        }
-
-        if (distributions.length === 0) {
-          continue;
-        }
-
-        const courseRequestId = uuidv4();
-        courseRequests.push({
-          id: courseRequestId,
-          materialRequestId: requestId,
-          courseId: templateCourse.courseId,
-          status: CourseMaterialStatus.PENDING,
-        });
-
-        coursesResponseList.push({
-          courseId: templateCourse.courseId,
-          status: 'PENDING',
-        });
-
-        let easyCount = templateCourse.easyCount || 0;
-        let mediumCount = templateCourse.mediumCount || 0;
-        let hardCount = templateCourse.hardCount || 0;
-
-        // Fallback for old templates without difficulty distribution
-        if (easyCount === 0 && mediumCount === 0 && hardCount === 0) {
-          const totalQty = templateCourse.questionsQuantity || 35;
-          easyCount = Math.floor(totalQty * 0.3);
-          hardCount = Math.floor(totalQty * 0.2);
-          mediumCount = totalQty - easyCount - hardCount;
-        }
-
-        const syllabusPayload = distributions.map((dist, idx) => {
-          const baseEasy = Math.floor(easyCount / distributions.length);
-          const remEasy = easyCount % distributions.length;
-          const easyQty = idx < remEasy ? baseEasy + 1 : baseEasy;
-
-          const baseMedium = Math.floor(mediumCount / distributions.length);
-          const remMedium = mediumCount % distributions.length;
-          const mediumQty = idx < remMedium ? baseMedium + 1 : baseMedium;
-
-          const baseHard = Math.floor(hardCount / distributions.length);
-          const remHard = hardCount % distributions.length;
-          const hardQty = idx < remHard ? baseHard + 1 : baseHard;
-
-          return {
-            topic_id: dist.topicId,
-            subtopic_id: dist.subtopicId,
-            quantity: easyQty + mediumQty + hardQty,
-            easyCount: easyQty,
-            mediumCount: mediumQty,
-            hardCount: hardQty,
-          };
-        }).filter((t) => t.quantity > 0);
-
-        sqsJobs.push({
-          job_id: courseRequestId,
-          tenant: {
-            tenant_id: tenantId,
-            commercial_name: company?.commercialName || 'Colegio Odiseo Innova',
-            logo_url:
-              company?.logoUrl ||
-              'https://s3.aws.com/tenant-assets/odiseo-innova.png',
-          },
-          material_type: 'BALOTARIO',
-          course_id: templateCourse.courseId,
-          difficulty_level: 'MEDIA',
-          syllabus_distribution: syllabusPayload,
-          notification: {
-            admin_user_id: 'uuid_admin_user',
-          },
-          design_template_id: designTemplateId,
-          material_request_id: requestId,
-          cycle_id: template.cycleId,
-          week_number: dto.week_number,
-          template_name: template.name || 'Material',
-        });
-      }
-
-      if (courseRequests.length === 0) {
-        throw new BadRequestException(
-          'No hay distribución de sílabo configurada para la semana seleccionada',
-        );
-      }
-
-      // 4. Save Main Request
-      const mainRequest = manager.create(MaterialRequest, {
-        id: requestId,
-        tenantId,
-        profileId: dto.profile_id,
-        weekNumber: dto.week_number,
-        requiresReview: dto.requires_review,
-        status: dto.requires_review
-          ? MaterialRequestStatus.REVIEW_REQUIRED
-          : MaterialRequestStatus.PROCESSING,
-        materialType: 'BALOTARIO',
-        designTemplateId,
-      });
-      await manager.save(mainRequest);
-
-      // 5. Save Course Requests
-      for (const cr of courseRequests) {
-        const courseRequest = manager.create(MaterialRequestCourse, cr);
-        await manager.save(courseRequest);
-      }
-
-      // 6. Generate review questions (always pre-generate so they are available in case of curation/warnings)
-      let position = 1;
-      for (const cr of courseRequests) {
-        const syllabus = await manager.findOne(Syllabus, {
-          where: {
-            courseId: cr.courseId,
-            cycleId: template.cycleId,
-            isActive: true,
-          },
-        });
-        if (!syllabus) continue;
-
-        // Fetch distributions again to map questions to correct subtopics
-        let distributions: SyllabusDistribution[] = [];
-        if (template.scope === 'CURRENT_WEEK') {
-          distributions = await manager.find(SyllabusDistribution, {
-            where: { syllabusId: syllabus.id, weekNumber: dto.week_number },
-          });
-        } else if (template.scope === 'ACCUMULATIVE') {
-          const startWeek = template.accumulationWeeks
-            ? Math.max(1, dto.week_number - template.accumulationWeeks + 1)
-            : 1;
-          distributions = await manager.find(SyllabusDistribution, {
-            where: {
-              syllabusId: syllabus.id,
-              weekNumber: Between(startWeek, dto.week_number),
-            },
-          });
-        }
-
-        const templateCourse = template.courses.find(
-          (tc) => tc.courseId === cr.courseId,
-        );
-        const targetQuantity = templateCourse?.questionsQuantity || 35;
-
-        for (let idx = 0; idx < distributions.length; idx++) {
-          const dist = distributions[idx];
-          const baseQty = Math.floor(targetQuantity / distributions.length);
-          const remainder = targetQuantity % distributions.length;
-          const quantity = idx < remainder ? baseQty + 1 : baseQty;
-
-          if (quantity <= 0) continue;
-
-          // Fetch actual questions from database for this subtopic
-          const allQuestions = await this.questionsEntityManager.find(
-            Question,
-            {
-              where: {
-                subtopicId: String(convertUuidToIntegerId(dist.subtopicId)),
-              },
-              relations: ['alternatives'],
-            },
-          );
-          // Shuffle in memory and take quantity
-          const dbQuestions = allQuestions
-            .sort(() => 0.5 - Math.random())
-            .slice(0, quantity);
-
-          // Generate review questions per subtopic slot
-          for (let i = 0; i < quantity; i++) {
-            const dbQ = dbQuestions[i];
-            const isVacant = !dbQ;
-            const reviewQ = manager.create(MaterialReviewQuestion, {
-              id: uuidv4(),
-              materialRequestId: requestId,
-              questionId: isVacant ? (null as any) : dbQ.id,
-              topicId: dist.topicId,
-              subtopicId: dist.subtopicId,
-              position: position++,
-              status: isVacant
-                ? ReviewQuestionStatus.EMPTY
-                : ReviewQuestionStatus.FOUND,
-            });
-            await manager.save(reviewQ);
-          }
-        }
-      }
-
-      if (dto.requires_review) {
-        this.logger.log(
-          `MaterialRequest ${requestId} paused for curation. Review questions generated.`,
-        );
-      } else {
-        // Dispatch BullMQ jobs immediately
-        for (const job of sqsJobs) {
-          // Update status to PROCESSING since we dispatched it
-          await manager.update(MaterialRequestCourse, job.job_id, {
-            status: CourseMaterialStatus.PROCESSING,
-          });
-          await this.materialsQueue.add('generate', job);
-        }
-        this.logger.log(
-          `MaterialRequest ${requestId} dispatched to BullMQ immediately.`,
-        );
-      }
-
-      return {
-        jobId: requestId,
-        status: dto.requires_review
-          ? MaterialRequestStatus.REVIEW_REQUIRED
-          : MaterialRequestStatus.PROCESSING,
-        message: dto.requires_review
-          ? 'La solicitud requiere revisión intermedia antes de compilar.'
-          : 'Solicitud de material encolada exitosamente',
-        courses: coursesResponseList,
-      };
-    });
-  }
 
   async generateMaterial(dto: {
     course_id: string;
@@ -444,7 +163,11 @@ export class MaterialsService {
             where: { id: courseReq.materialRequestId },
           });
           if (request) {
-            const tenantId = this.cls.get('companyId') || '7b89-11c2-d344';
+            const tenantId = this.cls.get('companyId');
+            if (!tenantId) {
+              this.logger.warn('Cannot dispatch merge job: tenant not identified');
+              return;
+            }
             await this.materialsQueue.add('merge-pdf', {
               material_request_id: courseReq.materialRequestId,
               tenant_id: tenantId,
@@ -542,8 +265,11 @@ export class MaterialsService {
     });
   }
 
-  async approveCuration(id: string, dto: ApproveReviewDto): Promise<any> {
-    const tenantId = this.cls.get('companyId') || '7b89-11c2-d344';
+  async approveCuration(id: string, dto: ApproveReviewDto, userId: string): Promise<any> {
+    const tenantId = this.cls.get('companyId');
+    if (!tenantId) {
+      throw new NotFoundException('Tenant not identified');
+    }
 
     return this.tenantService.runInTenant(async (manager) => {
       const request = await manager.findOne(MaterialRequest, {
@@ -625,7 +351,7 @@ export class MaterialsService {
         const syllabus = await manager.findOne(Syllabus, {
           where: {
             courseId: courseReq.courseId,
-            cycleId: request.profileId,
+            cycleId: request.cycleId,
             isActive: true,
           },
         });
@@ -666,7 +392,7 @@ export class MaterialsService {
           job_id: courseReq.id,
           material_request_id: request.id,
           tenant_id: tenantId,
-          cycle_id: request.profileId || template?.cycleId,
+          cycle_id: request.cycleId,
           week_number: request.weekNumber,
           template_name: template?.name || 'Material',
           design_template_id: request.designTemplateId,
@@ -682,7 +408,7 @@ export class MaterialsService {
           difficulty_level: 'MEDIA',
           syllabus_distribution: syllabusPayload,
           notification: {
-            admin_user_id: 'uuid_admin_user',
+            admin_user_id: userId,
           },
         };
 

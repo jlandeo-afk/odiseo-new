@@ -71,83 +71,6 @@ describe('MaterialsService', () => {
     service = module.get<MaterialsService>(MaterialsService);
   });
 
-  describe('generate', () => {
-    it('should throw BadRequestException if profile/template does not exist', async () => {
-      mockEntityManager.findOne.mockResolvedValue(null);
-
-      await expect(
-        service.generate({
-          profile_id: 'non-existent-id',
-          week_number: 1,
-          requires_review: false,
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if no syllabus distributions configured', async () => {
-      const mockTemplate = {
-        id: 'template-id',
-        cycleId: 'cycle-id',
-        scope: 'CURRENT_WEEK',
-        courses: [{ courseId: 'course-1' }],
-      };
-      const mockSyllabus = { id: 'syllabus-id' };
-
-      mockEntityManager.findOne.mockImplementation((entityClass, options) => {
-        if (options.where && options.where.id === 'template-id')
-          return Promise.resolve(mockTemplate);
-        if (options.where && options.where.courseId === 'course-1')
-          return Promise.resolve(mockSyllabus);
-        return Promise.resolve(null);
-      });
-      mockEntityManager.find.mockResolvedValue([]);
-
-      await expect(
-        service.generate({
-          profile_id: 'template-id',
-          week_number: 1,
-          requires_review: false,
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should generate materials directly (no review) and dispatch to SQS', async () => {
-      const mockTemplate = {
-        id: 'template-id',
-        cycleId: 'cycle-id',
-        scope: 'CURRENT_WEEK',
-        courses: [{ courseId: 'course-1' }],
-      };
-      const mockSyllabus = { id: 'syllabus-id', courseId: 'course-1' };
-      const mockDistributions = [
-        {
-          id: 'dist-1',
-          topicId: 'topic-1',
-          subtopicId: 'subtopic-1',
-          questionCount: 3,
-        },
-      ];
-
-      mockEntityManager.findOne.mockImplementation((entityClass, options) => {
-        if (options.where && options.where.id === 'template-id')
-          return Promise.resolve(mockTemplate);
-        if (options.where && options.where.courseId === 'course-1')
-          return Promise.resolve(mockSyllabus);
-        return Promise.resolve(null);
-      });
-      mockEntityManager.find.mockResolvedValue(mockDistributions);
-
-      const result = await service.generate({
-        profile_id: 'template-id',
-        week_number: 1,
-        requires_review: false,
-      });
-
-      expect(result.status).toBe(MaterialRequestStatus.PROCESSING);
-      expect(materialsQueue.add).toHaveBeenCalled();
-    });
-  });
-
   describe('getReviewData', () => {
     it('should throw NotFoundException if request not found', async () => {
       mockEntityManager.findOne.mockResolvedValue(null);
@@ -208,7 +131,7 @@ describe('MaterialsService', () => {
           continueWithWarnings: false,
           replacements: [],
           removals: [],
-        }),
+        }, 'test-user'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -225,7 +148,7 @@ describe('MaterialsService', () => {
           continueWithWarnings: false,
           replacements: [],
           removals: [],
-        }),
+        }, 'test-user'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -264,7 +187,7 @@ describe('MaterialsService', () => {
         continueWithWarnings: false,
         replacements: [{ reviewQuestionId: 'q-1', questionId: 'new-q-1' }],
         removals: [],
-      });
+      }, 'test-user');
 
       expect(result.status).toBe(MaterialRequestStatus.PROCESSING);
       expect(mockEntityManager.update).toHaveBeenCalled();

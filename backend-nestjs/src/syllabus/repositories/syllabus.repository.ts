@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ISyllabusRepository } from './i-syllabus.repository';
+import { ISyllabusRepository, SyllabusWithProgress } from './i-syllabus.repository';
 import { Syllabus } from '../entities/syllabus.entity';
 import { SyllabusDistribution } from '../entities/syllabus-distribution.entity';
 import { TenantService } from '../../database/tenant.service';
@@ -35,6 +35,30 @@ export class SyllabusRepositoryImpl implements ISyllabusRepository {
   async findByCycle(cycleId: string): Promise<Syllabus[]> {
     return this.tenantService.runInTenant(async (manager) => {
       return manager.find(Syllabus, { where: { cycleId } });
+    });
+  }
+
+  async findByCycleWithProgress(cycleId: string): Promise<SyllabusWithProgress[]> {
+    return this.tenantService.runInTenant(async (manager) => {
+      return manager.query(
+        `SELECT
+          s.id,
+          s.cycle_id AS "cycleId",
+          s.course_id AS "courseId",
+          s.name,
+          s.is_active AS "isActive",
+          s.created_at AS "createdAt",
+          s.updated_at AS "updatedAt",
+          COALESCE(c.total_weeks, 0) AS "totalWeeks",
+          COALESCE(
+            (SELECT array_agg(DISTINCT sd.week_number) FROM syllabus_distribution sd WHERE sd.syllabus_id = s.id),
+            ARRAY[]::integer[]
+          ) AS "filledWeeks"
+        FROM syllabus s
+        LEFT JOIN cycles c ON c.id = s.cycle_id
+        WHERE s.cycle_id = $1`,
+        [cycleId],
+      );
     });
   }
 

@@ -41,7 +41,7 @@
     
     <!-- Main Content Area: List -->
     <div class="flex-1 bg-white dark:bg-[#1e1e2d] border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-sm overflow-hidden flex flex-col min-h-0 ring-1 ring-black/[0.02]">
-      <div v-if="store.isLoadingProfiles" class="flex items-center justify-center h-full">
+      <div v-if="store.isLoadingTemplates" class="flex items-center justify-center h-full">
         <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-slate-300" />
       </div>
       

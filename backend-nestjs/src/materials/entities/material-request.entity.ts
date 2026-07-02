@@ -42,6 +42,9 @@ export class MaterialRequest {
   @Column({ name: 'requires_review', default: false })
   requiresReview: boolean;
 
+  @Column({ name: 'material_type', type: 'varchar', nullable: true, length: 50 })
+  materialType: string | null;
+
   @Column({ name: 'design_template_id', nullable: true, type: 'uuid' })
   designTemplateId: string | null;
 

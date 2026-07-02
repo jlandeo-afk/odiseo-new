@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col bg-white dark:bg-[#1e1e2d] border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-sm overflow-hidden min-h-[360px] ring-1 ring-black/[0.02]">
 
-    <div v-if="store.isLoadingProfiles" class="flex items-center justify-center flex-1 py-20">
+    <div v-if="store.isLoadingTemplates" class="flex items-center justify-center flex-1 py-20">
       <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-slate-300" />
     </div>
 
@@ -84,6 +84,43 @@
       </div>
     </div>
 
+    <!-- Modal de Confirmación de Eliminación -->
+    <UModal v-model:open="isDeleteConfirmOpen">
+      <template #content>
+        <UCard>
+          <div class="p-4 flex flex-col items-center text-center">
+            <div class="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 ring-8 ring-red-50/50 dark:ring-red-900/10">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+              ¿Eliminar plantilla?
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
+              Los exámenes generados con esta plantilla no se borrarán, pero no podrás usarla para nuevas generaciones.
+            </p>
+            <div class="flex items-center gap-3 w-full mt-6">
+              <UButton
+                variant="outline"
+                color="neutral"
+                class="flex-1 justify-center rounded-lg py-2 text-xs font-semibold"
+                @click="isDeleteConfirmOpen = false"
+              >
+                Cancelar
+              </UButton>
+              <UButton
+                color="error"
+                class="flex-1 justify-center rounded-lg py-2 text-xs font-semibold"
+                :loading="isDeletingTemplate"
+                @click="confirmDeleteTemplate"
+              >
+                Confirmar Eliminación
+              </UButton>
+            </div>
+          </div>
+        </UCard>
+      </template>
+    </UModal>
+
     <!-- Generate Modal -->
     <MaterialGenerateModal
       ref="generateModalRef"
@@ -108,19 +145,30 @@ const generateModalRef = ref<any>(null)
 const activeTemplateId = ref<string>('')
 
 const templates = computed(() => store.templatesByCycle[props.cycleId] ?? [])
+const isDeleteConfirmOpen = ref(false)
+const isDeletingTemplate = ref(false)
+const templateToDeleteId = ref<string>('')
 
 onMounted(async () => {
   await store.fetchTemplates(props.cycleId)
 })
 
-async function handleDelete(templateId: string) {
-  if (!confirm('¿Seguro que deseas eliminar esta plantilla? Los exámenes generados con ella no se borrarán.')) return
+function handleDelete(templateId: string) {
+  templateToDeleteId.value = templateId
+  isDeleteConfirmOpen.value = true
+}
+
+async function confirmDeleteTemplate() {
+  isDeletingTemplate.value = true
   try {
-    await store.deleteTemplate(props.cycleId, templateId)
+    await store.deleteTemplate(props.cycleId, templateToDeleteId.value)
     toast.add({ title: 'Plantilla eliminada', color: 'success', timeout: 2000 })
+    isDeleteConfirmOpen.value = false
   } catch (e) {
     console.error(e)
     toast.add({ title: 'Error al eliminar', description: 'Ocurrió un problema, inténtalo de nuevo.', color: 'red' })
+  } finally {
+    isDeletingTemplate.value = false
   }
 }
 

@@ -43,6 +43,11 @@ export interface SyllabusSummary {
   generatedWeeks: number[]
 }
 
-export interface SyllabusListWithCourse extends Syllabus {
+export interface SyllabusWithProgress extends Syllabus {
+  totalWeeks: number
+  filledWeeks: number[]
+}
+
+export interface SyllabusListWithCourse extends SyllabusWithProgress {
   courseName: string
 }

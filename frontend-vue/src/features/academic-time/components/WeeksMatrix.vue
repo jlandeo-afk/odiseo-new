@@ -190,7 +190,7 @@
     </div>
 
     <!-- Gatillo de Infinite Scroll -->
-    <div ref="loadMoreTrigger" class="h-10 flex items-center justify-center pt-2">
+    <div v-if="store.cycles.length > 0" ref="loadMoreTrigger" class="h-10 flex items-center justify-center pt-2">
       <span v-if="store.isLoading && store.cycles.length > 0" class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5 font-medium animate-pulse">
         <UIcon name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin text-indigo-500" />
         Cargando más ciclos...
@@ -202,6 +202,43 @@
       <UIcon name="i-heroicons-inbox" class="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
       <p class="text-sm text-slate-500 dark:text-slate-400">No se encontraron ciclos configurados.</p>
     </div>
+
+    <!-- Modal de Confirmación de Eliminación -->
+    <UModal v-model:open="isDeleteConfirmOpen">
+      <template #content>
+        <UCard>
+          <div class="p-4 flex flex-col items-center text-center">
+            <div class="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 ring-8 ring-red-50/50 dark:ring-red-900/10">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+              ¿Eliminar ciclo académico?
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
+              Esta acción eliminará el ciclo <strong class="text-slate-800 dark:text-slate-200">"{{ cycleToDeleteName }}"</strong> y todas sus semanas. Los sílabos asociados se archivarán automáticamente.
+            </p>
+            <div class="flex items-center gap-3 w-full mt-6">
+              <UButton
+                variant="outline"
+                color="neutral"
+                class="flex-1 justify-center rounded-lg py-2 text-xs font-semibold"
+                @click="isDeleteConfirmOpen = false"
+              >
+                Cancelar
+              </UButton>
+              <UButton
+                color="error"
+                class="flex-1 justify-center rounded-lg py-2 text-xs font-semibold"
+                :loading="isDeleting"
+                @click="confirmDeleteCycle"
+              >
+                Confirmar Eliminación
+              </UButton>
+            </div>
+          </div>
+        </UCard>
+      </template>
+    </UModal>
   </div>
 </template>
 
@@ -221,6 +258,11 @@ const emit = defineEmits<{
 const pendingWeeks = ref(new Set<string>())
 const expandedCycles = ref(new Set<string>())
 const loadMoreTrigger = ref<HTMLElement | null>(null)
+
+const isDeleteConfirmOpen = ref(false)
+const isDeleting = ref(false)
+const cycleToDeleteId = ref<string>('')
+const cycleToDeleteName = ref('')
 
 const targetIsVisible = ref(false)
 
@@ -321,13 +363,24 @@ async function onToggleCycleVisibility(cycle: Cycle) {
   }
 }
 
-async function onDeleteCycle(cycleId: string) {
-  if (!confirm('¿Estás seguro de eliminar este ciclo académico?')) return;
+function onDeleteCycle(cycleId: string) {
+  const cycle = store.cycles.find(c => c.id === cycleId)
+  if (!cycle) return
+  cycleToDeleteId.value = cycleId
+  cycleToDeleteName.value = cycle.name
+  isDeleteConfirmOpen.value = true
+}
+
+async function confirmDeleteCycle() {
+  isDeleting.value = true
   try {
-    await store.deleteCycle(cycleId)
+    await store.deleteCycle(cycleToDeleteId.value)
     toast.add({ title: 'Ciclo eliminado con éxito', color: 'success', timeout: 2000 })
+    isDeleteConfirmOpen.value = false
   } catch (e: any) {
     toast.add({ title: e.message, color: 'red', timeout: 3000 })
+  } finally {
+    isDeleting.value = false
   }
 }
 

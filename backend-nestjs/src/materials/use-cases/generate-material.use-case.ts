@@ -191,6 +191,7 @@ export class GenerateMaterialUseCase {
         cycleId,
         weekNumber: dto.week_number,
         requiresReview: dto.requires_review,
+        materialType: dto.exam_areas ? 'EXAMEN' : 'BALOTARIO',
         designTemplateId,
         createdBy: userId,
         status: initialStatus,

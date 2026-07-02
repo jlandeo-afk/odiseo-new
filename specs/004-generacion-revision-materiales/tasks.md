@@ -91,11 +91,11 @@ description: "Task list for Generación y Revisión de Materiales PDF"
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Crear endpoint `GET /api/v1/materials/:id/review` en controller de NestJS
-- [ ] T023 [P] [US3] Crear endpoints `PUT /approve` y `PUT /replace` en controller con bloqueo optimista
-- [ ] T024 [P] [US3] Crear `MaterialReviewList.vue` en `frontend-vue/src/features/materials/components/`
-- [ ] T025 [P] [US3] Implementar página `review.vue` en `frontend-vue/src/pages/materials/[id]/`
-- [ ] T026 [US3] Integrar Processor para pausar generación en `REVIEW_REQUIRED` (Spec 004)
+- [x] T022 [US3] Crear endpoint `GET /api/v1/materials/:id/review` en controller de NestJS
+- [x] T023 [P] [US3] Crear endpoints `PUT /approve` y `PUT /replace` en controller con bloqueo optimista
+- [x] T024 [P] [US3] Crear `MaterialReviewList.vue` en `frontend-vue/src/features/materials/components/`
+- [x] T025 [P] [US3] Implementar página `review.vue` en `frontend-vue/src/pages/materials/[id]/`
+- [x] T026 [US3] Integrar Processor para pausar generación en `REVIEW_REQUIRED` (Spec 004)
 
 **Checkpoint**: Flujo de revisión operativa.
 
@@ -109,8 +109,8 @@ description: "Task list for Generación y Revisión de Materiales PDF"
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Implementar composable `useMaterialWebSocket.ts` en `frontend-vue/src/features/materials/composables/`
-- [ ] T028 [US4] Escuchar eventos y mostrar `Toast` nativo en layout principal
+- [x] T027 [US4] Implementar composable `useMaterialWebSocket.ts` en `frontend-vue/src/features/materials/composables/`
+- [x] T028 [US4] Escuchar eventos y mostrar `Toast` nativo en layout principal
 
 ---
 

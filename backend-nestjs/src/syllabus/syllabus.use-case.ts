@@ -36,7 +36,7 @@ export class SyllabusUseCase {
   }
 
   async findByCycle(cycleId: string) {
-    return await this.syllabusRepo.findByCycle(cycleId);
+    return await this.syllabusRepo.findByCycleWithProgress(cycleId);
   }
 
   async addDistribution(syllabusId: string, dto: CreateDistributionDto) {

@@ -1,26 +1,27 @@
 <template>
-  <div
-    class="px-6 md:px-10 py-8 max-w-[100vw] space-y-6 overflow-hidden min-h-screen bg-slate-50 dark:bg-gradient-to-br dark:from-[#0f172a] dark:via-[#111827] dark:to-[#1e1b4b] text-slate-900 dark:text-white">
+  <div class="px-8 py-6 max-w-full space-y-6">
 
-    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-20">
-      <div class="flex items-center gap-3.5">
+    <!-- Sticky Header -->
+    <div
+      class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-6 -mx-8 px-8 pt-6 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30">
+      <div class="flex items-center gap-3">
         <div
-          class="w-12 h-12 rounded-2xl bg-indigo-55 dark:bg-indigo-950/45 border border-indigo-100/50 dark:border-indigo-900/50 flex items-center justify-center text-indigo-650 dark:text-indigo-400 shadow-sm shrink-0">
-          <UIcon name="i-heroicons-cpu-chip" class="w-6 h-6 animate-pulse" />
+          class="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+          <UIcon name="i-heroicons-cpu-chip" class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
           <h1 class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
             Monitor de Generación
           </h1>
-          <p class="text-xs text-slate-400 dark:text-slate-500 font-medium tracking-wide">
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Centro avanzado de revisión y seguimiento de materiales académicos en tiempo real.
           </p>
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2">
         <div
-          class="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200/80 dark:border-white/5 shadow-inner mr-2">
+          class="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200/80 dark:border-white/5 shadow-inner">
           <button @click="currentViewMode = 'kanban'"
             class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all" :class="currentViewMode === 'kanban'
               ? 'bg-white dark:bg-[#1a1b2e] text-indigo-650 dark:text-indigo-400 shadow-sm border border-slate-200/60 dark:border-white/5'
@@ -42,15 +43,16 @@
           Actualizar
         </UButton>
 
-        <UButton color="primary" icon="i-heroicons-plus" @click="openMatrixModal"
-          class="shadow-md font-bold tracking-wide rounded-xl">
+        <UButton color="neutral" variant="ghost" icon="i-heroicons-plus" size="md" class="btn-premium-primary"
+          @click="openMatrixModal">
           Solicitar Material
         </UButton>
       </div>
     </div>
 
+    <!-- Sticky Filter Bar -->
     <div
-      class="bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 rounded-2xl p-5 flex flex-col xl:flex-row items-center gap-4 shadow-sm relative z-20">
+      class="sticky top-[8.5rem] z-20 bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 rounded-2xl p-5 flex flex-col xl:flex-row items-center gap-4 shadow-md">
       <div class="w-full xl:flex-1">
         <label
           class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Ciclos
@@ -177,7 +179,7 @@
         class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto text-center font-medium leading-relaxed mb-6">
         Aún no has generado materiales para este ciclo. Haz clic en "Solicitar Material" para comenzar la magia.
       </p>
-      <UButton color="primary" icon="i-heroicons-plus" @click="openMatrixModal" class="rounded-xl shadow-sm font-bold">
+      <UButton color="neutral" variant="ghost" icon="i-heroicons-plus" size="md" class="btn-premium-primary" @click="openMatrixModal">
         Solicitar Material
       </UButton>
     </div>
@@ -278,7 +280,7 @@
             <span class="text-xs text-slate-500 dark:text-slate-400 font-semibold mr-1 hidden lg:inline">
               {{ formatDate(req.createdAt) }}
             </span>
-            <UButton size="xs" color="primary" variant="soft" icon="i-heroicons-eye" class="rounded-lg font-bold"
+            <UButton size="xs" color="neutral" variant="ghost" icon="i-heroicons-eye" class="btn-premium-soft font-bold rounded-lg"
               @click.stop="handleCardClick(req)">
               Detalle
             </UButton>
@@ -288,6 +290,14 @@
     </template>
 
     <MaterialMatrixGenerator ref="matrixGeneratorRef" @success="handleGenerateSuccess" />
+
+    <!-- Keyboard Hint -->
+    <div class="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 pt-2 select-none">
+      <kbd class="inline-flex h-5 items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 px-2 text-[10px] font-bold text-slate-400 font-mono shadow-sm">⌘ K</kbd>
+      <span>o</span>
+      <kbd class="inline-flex h-5 items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 px-2 text-[10px] font-bold text-slate-400 font-mono shadow-sm">/</kbd>
+      <span>para enfocar el buscador de cursos</span>
+    </div>
 
   </div>
 </template>
@@ -300,11 +310,14 @@ import { useMaterialsStore } from '@/features/materials/store/materials';
 import { useCatalogsStore } from '@/features/catalogs/store';
 import MaterialBoardColumn from '@/features/materials/components/MaterialBoardColumn.vue';
 import MaterialMatrixGenerator from '@/features/materials/components/MaterialMatrixGenerator.vue';
+import { useMaterialWebSocket } from '@/features/materials/composables/useMaterialWebSocket';
 
 definePageMeta({
   layout: 'b2b',
   permissions: ['generate_material']
 });
+
+useMaterialWebSocket().connect();
 
 const materials = ref<any[]>([]);
 const isInitialLoading = ref(true);

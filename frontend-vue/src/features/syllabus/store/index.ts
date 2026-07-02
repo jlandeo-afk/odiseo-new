@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth.store';
-import type { Syllabus, SyllabusDistribution, CreateDistributionPayload, SyllabusSummary } from '../types';
+import type { Syllabus, SyllabusWithProgress, SyllabusDistribution, CreateDistributionPayload, SyllabusSummary } from '../types';
 
 export const useSyllabusStore = defineStore('syllabus', () => {
   const syllabus = ref<Syllabus | null>(null);
-  const syllabiList = ref<Syllabus[]>([]);
+  const syllabiList = ref<SyllabusWithProgress[]>([]);
   const distributions = ref<SyllabusDistribution[]>([]);
   const generatedWeeks = ref<number[]>([]);
   const loading = ref(false);
@@ -25,6 +25,7 @@ export const useSyllabusStore = defineStore('syllabus', () => {
       hasFetched.value = true;
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Error al obtener los sílabos del ciclo.';
+      hasFetched.value = true;
     } finally {
       loading.value = false;
     }

@@ -3,6 +3,18 @@ import { SyllabusDistribution } from '../entities/syllabus-distribution.entity';
 
 export const I_SYLLABUS_REPOSITORY = 'ISyllabusRepository';
 
+export interface SyllabusWithProgress {
+  id: string;
+  cycleId: string;
+  courseId: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  totalWeeks: number;
+  filledWeeks: number[];
+}
+
 export interface ISyllabusRepository {
   createSyllabus(syllabus: Partial<Syllabus>): Promise<Syllabus>;
   findById(id: string): Promise<Syllabus | null>;
@@ -11,6 +23,7 @@ export interface ISyllabusRepository {
     cycleId: string,
   ): Promise<Syllabus | null>;
   findByCycle(cycleId: string): Promise<Syllabus[]>;
+  findByCycleWithProgress(cycleId: string): Promise<SyllabusWithProgress[]>;
   updateVisibility(id: string, isActive: boolean): Promise<void>;
 
   createDistribution(

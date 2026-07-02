@@ -6,6 +6,7 @@ import { useAcademicTimeStore } from '@/features/academic-time/store';
 import { useMaterialsStore } from '../store/materials';
 import { usePdfDesignsStore } from '../store/pdfDesigns';
 import { useCatalogsStore } from '@/features/catalogs/store';
+import { useAuthStore } from '@/stores/auth.store';
 import MaterialReviewList from '@/features/materials/components/MaterialReviewList.vue';
 import PdfDesignSelector from '@/features/materials/components/PdfDesignSelector.vue';
 
@@ -17,6 +18,7 @@ const materialsStore = useMaterialsStore();
 const catalogsStore = useCatalogsStore();
 const pdfDesignsStore = usePdfDesignsStore();
 const toast = useToast();
+const authStore = useAuthStore();
 
 const isOpen = ref(false);
 const selectedCycleId = ref('');
@@ -242,7 +244,7 @@ const downloadPdf = async (course: any) => {
   try {
     const response = await fetch(
       `/api/v1/materials/${currentRequest.value.id}/courses/${course.courseId}/download`,
-      { headers: { 'x-subdomain': 'colegio' } }
+      { headers: { 'x-subdomain': authStore.getSubdomain() } }
     );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const blob = await response.blob();
@@ -265,7 +267,7 @@ const downloadMergedPdf = async () => {
   try {
     const response = await fetch(
       `/api/v1/materials/${currentRequest.value.id}/download-merged`,
-      { headers: { 'x-subdomain': 'colegio' } }
+      { headers: { 'x-subdomain': authStore.getSubdomain() } }
     );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const contentDisposition = response.headers.get('Content-Disposition') || '';
@@ -316,12 +318,12 @@ const downloadMergedPdfForAttempt = async (attempt: any) => {
   try {
     const response = await fetch(
       `/api/v1/materials/${attempt.id}/download-merged`,
-      { headers: { 'x-subdomain': 'colegio' } }
+      { headers: { 'x-subdomain': authStore.getSubdomain() } }
     );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const contentDisposition = response.headers.get('Content-Disposition') || '';
     const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-    const filename = filenameMatch?.[1] || `Completo_v${attempt.version}.pdf`;
+    const filename = filenameMatch?.[1] || 'Completo.pdf';
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -332,7 +334,7 @@ const downloadMergedPdfForAttempt = async (attempt: any) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch (err) {
-    console.error('Error downloading merged PDF for attempt:', err);
+    console.error('Error downloading merged PDF:', err);
     toast.add({ title: 'Error', description: 'Ocurrió un error al descargar el PDF combinado.', color: 'error' });
   }
 };

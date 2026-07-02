@@ -12,6 +12,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes } from '@nestjs/swagger';
@@ -28,7 +29,11 @@ export class PdfDesignController {
   ) {}
 
   private getTenantId(): string {
-    return this.cls.get('companyId') || '619cbafa-b169-4c7e-a95c-b9923a408b7d';
+    const tenantId = this.cls.get('companyId');
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant not identified');
+    }
+    return tenantId;
   }
 
   @Get()

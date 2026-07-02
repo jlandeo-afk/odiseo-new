@@ -8,7 +8,7 @@ import SyllabusDistributionMatrix from '../../features/syllabus/components/Sylla
 import SyllabusCloneModal from '../../features/syllabus/components/SyllabusCloneModal.vue';
 import CycleCloneModal from '../../features/syllabus/components/CycleCloneModal.vue';
 import { useToast } from '#imports';
-import type { Syllabus } from '../../features/syllabus/types';
+import type { Syllabus, SyllabusWithProgress } from '../../features/syllabus/types';
 
 definePageMeta({
   layout: 'b2b',
@@ -89,15 +89,23 @@ const filteredSyllabusesList = computed(() => {
   return list;
 });
 
-// Estadísticas dinámicas basadas en el catálogo y los sílabos activos
-const activeSyllabiCount = computed(() => store.syllabiList.filter(s => s.isActive).length);
-const totalCatalogCoursesCount = computed(() => catalogsStore.courses.length);
-const coveragePercent = computed(() => {
-  if (!totalCatalogCoursesCount.value) return 0;
-  return Math.round((activeSyllabiCount.value / totalCatalogCoursesCount.value) * 100);
+// Progreso global: semanas completadas / semanas totales del ciclo
+const overallProgress = computed(() => {
+  const syllabi = store.syllabiList.filter(s => s.isActive) as SyllabusWithProgress[];
+  if (!syllabi.length) return 0;
+  const totalFilled = syllabi.reduce((sum, s) => sum + (s.filledWeeks?.length || 0), 0);
+  const totalWeeks = syllabi.reduce((sum, s) => sum + (s.totalWeeks || 0), 0);
+  if (!totalWeeks) return 0;
+  return Math.round((totalFilled / totalWeeks) * 100);
 });
 
+const CIRCLE_R = 15.5;
+const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_R;
+
+const ringDashOffset = computed(() => CIRCUMFERENCE - (overallProgress.value / 100) * CIRCUMFERENCE);
+
 const isPageLoading = computed(() => {
+  if (timeStore.cycles.length === 0) return false;
   return !timeStore.hasFetched || !catalogsStore.hasFetched || !store.hasFetched || 
          timeStore.isLoading || catalogsStore.isLoading || store.loading;
 });
@@ -153,10 +161,10 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
 </script>
 
 <template>
-  <div class="p-8 max-w-7xl mx-auto space-y-6">
+  <div class="px-8 py-6 max-w-full space-y-6">
 
     <!-- 1. Encabezado de la Página -->
-    <div class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-8 -mx-8 px-8 pt-8 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30">
+    <div class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-6 -mx-8 px-8 pt-6 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30">
       <div>
         <h1 class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">Gestión de Sílabos</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -176,6 +184,22 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
           class="w-56"
           :search-input="false"
         />
+        <div
+          v-if="!store.syllabus && store.syllabiList.length > 0"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50"
+        >
+          <svg class="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" :r="CIRCLE_R" fill="none" stroke="currentColor" stroke-width="3"
+              class="text-slate-200 dark:text-slate-700" />
+            <circle cx="18" cy="18" :r="CIRCLE_R" fill="none" stroke="currentColor" stroke-width="3"
+              stroke-linecap="round"
+              :stroke-dasharray="CIRCUMFERENCE"
+              :stroke-dashoffset="ringDashOffset"
+              class="text-indigo-500 transition-all duration-700"
+            />
+          </svg>
+          <span class="text-xs font-bold text-slate-600 dark:text-slate-300 tabular-nums">{{ overallProgress }}%</span>
+        </div>
         <UButton 
           v-if="!store.syllabus" 
           color="gray" 
@@ -224,56 +248,8 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
     <!-- ── CASO B: Listado de Sílabos por Curso ── -->
     <div v-else class="space-y-6">
       
-      <!-- 2. Panel de Estadísticas (Reactivo al Ciclo Seleccionado) -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <!-- Sílabos Planificados -->
-        <div class="bg-white/80 dark:bg-[#2b2b3f]/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 shadow-sm hover:shadow-md transition-all group duration-300">
-          <div class="flex items-center justify-between">
-            <div class="space-y-1">
-              <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Sílabos Planificados</span>
-              <p class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                {{ activeSyllabiCount }} <span class="text-sm font-semibold text-slate-400">cursos</span>
-              </p>
-            </div>
-            <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/50 dark:border-indigo-900/50 flex items-center justify-center text-indigo-500 shadow-sm transition-transform group-hover:scale-110">
-              <UIcon name="i-heroicons-document-text" class="w-6 h-6" />
-            </div>
-          </div>
-        </div>
-        
-        <!-- Cursos Sin Planificar -->
-        <div class="bg-white/80 dark:bg-[#2b2b3f]/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 shadow-sm hover:shadow-md transition-all group duration-300">
-          <div class="flex items-center justify-between">
-            <div class="space-y-1">
-              <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cursos Sin Planificar</span>
-              <p class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                {{ Math.max(0, totalCatalogCoursesCount - activeSyllabiCount) }}
-              </p>
-            </div>
-            <div class="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100/50 dark:border-amber-900/50 flex items-center justify-center text-amber-500 shadow-sm transition-transform group-hover:scale-110">
-              <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Cobertura Global -->
-        <div class="bg-white/80 dark:bg-[#2b2b3f]/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 shadow-sm hover:shadow-md transition-all group duration-300">
-          <div class="flex items-center justify-between">
-            <div class="space-y-1">
-              <span class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cobertura de Sílabos</span>
-              <p class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                {{ coveragePercent }}% <span class="text-xs text-slate-400 font-medium">del catálogo</span>
-              </p>
-            </div>
-            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/50 dark:border-emerald-900/50 flex items-center justify-center text-emerald-500 shadow-sm transition-transform group-hover:scale-110">
-              <UIcon name="i-heroicons-check-badge" class="w-6 h-6" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-       <!-- 3. Barra de Búsqueda y Filtro Premium (Sticky Floating Card) -->
-       <div class="sticky top-[9rem] z-20 bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl shadow-md flex flex-col sm:flex-row items-center gap-4 transition-all">
+       <!-- 2. Barra de Búsqueda y Filtro Premium (Sticky Floating Card) -->
+       <div class="sticky top-[6rem] z-20 bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 p-4 rounded-2xl shadow-md flex flex-col sm:flex-row items-center gap-4 transition-all">
          <div class="flex-1 w-full max-w-md relative">
            <UInput
              v-model="searchQuery"
@@ -302,9 +278,9 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
       <div class="space-y-3.5">
         <!-- Encabezados de Columna (Alineados con el grid de las Cards) -->
         <div v-if="filteredSyllabusesList.length > 0 && !isPageLoading" class="hidden md:grid grid-cols-12 px-6 py-1.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest select-none">
-          <div class="col-span-5">Curso</div>
-          <div class="col-span-3">Estado Sílabo</div>
-          <div class="col-span-4 text-right">Acciones</div>
+          <div class="col-span-5">Curso / Avance Semanal</div>
+          <div class="col-span-2">Estado</div>
+          <div class="col-span-5 text-right">Acciones</div>
         </div>
 
         <!-- Skeletons de Carga -->
@@ -319,16 +295,28 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
             :key="item.id"
             class="bg-white dark:bg-[#2b2b3f] border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 grid grid-cols-1 md:grid-cols-12 items-center gap-4 group"
           >
-            <!-- Columna: Curso con Avatar Premium -->
+            <!-- Columna: Curso con Avatar Premium + Dots Semanales -->
             <div class="col-span-12 md:col-span-5 flex items-center gap-3.5">
               <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/30 dark:border-indigo-900/30 text-indigo-500 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105">
                 <UIcon name="i-heroicons-book-open" class="w-5.5 h-5.5" />
               </div>
-              <span class="text-sm font-black text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ item.courseName }}</span>
+              <div class="flex flex-col min-w-0">
+                <span class="text-sm font-black text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{{ item.courseName }}</span>
+                <div v-if="item.isActive && item.totalWeeks > 0" class="flex items-center gap-1 mt-1.5">
+                  <div
+                    v-for="w in item.totalWeeks"
+                    :key="w"
+                    class="w-2 h-2 rounded-full transition-all duration-300"
+                    :class="item.filledWeeks?.includes(w) ? 'bg-emerald-400 dark:bg-emerald-500 shadow-sm shadow-emerald-200 dark:shadow-emerald-900/30' : 'bg-slate-200 dark:bg-slate-600'"
+                  />
+                  <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500 ml-1 tabular-nums">{{ item.filledWeeks?.length || 0 }}/{{ item.totalWeeks }}</span>
+                </div>
+                <span v-else-if="!item.isActive" class="text-[10px] text-slate-400 mt-1.5">Archivado — sin progreso</span>
+              </div>
             </div>
 
             <!-- Columna: Estado Badge Premium -->
-            <div class="col-span-6 md:col-span-3">
+            <div class="col-span-6 md:col-span-2">
               <span
                 v-if="item.isActive"
                 class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-500/20"
@@ -346,7 +334,7 @@ async function onToggleSyllabus(syllabusId: string, isActive: boolean) {
             </div>
 
             <!-- Columna: Acciones Agrupadas -->
-            <div class="col-span-6 md:col-span-4 flex justify-end items-center gap-2">
+            <div class="col-span-6 md:col-span-5 flex justify-end items-center gap-2">
               <UButton
                 size="sm"
                 :color="item.isActive ? 'error' : 'success'"

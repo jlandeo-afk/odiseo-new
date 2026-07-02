@@ -26,33 +26,31 @@ function goBack() {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-white dark:bg-[#0f1117]">
-    <!-- List View -->
-    <template v-if="currentView === 'list'">
-      <div class="px-8 pt-6 pb-4 border-b border-slate-200 dark:border-white/5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
-              <UIcon name="i-heroicons-paint-brush" class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Plantillas de Diseño PDF</h1>
-              <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Personaliza la apariencia de los PDFs generados</p>
-            </div>
+  <!-- List View -->
+  <template v-if="currentView === 'list'">
+    <div class="px-8 py-6 max-w-full space-y-6">
+      <div class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-6 -mx-8 px-8 pt-6 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/50 dark:border-slate-700/30">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+            <UIcon name="i-heroicons-paint-brush" class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <UButton color="indigo" size="md" icon="i-heroicons-plus" @click="openNew">
-            Nueva plantilla
-          </UButton>
+          <div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">Plantillas de Diseño PDF</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Personaliza la apariencia de los PDFs generados</p>
+          </div>
         </div>
+        <UButton color="neutral" variant="ghost" icon="i-heroicons-plus" size="md" class="btn-premium-primary" @click="openNew">
+          Nueva plantilla
+        </UButton>
       </div>
-      <div class="flex-1 overflow-y-auto px-8 py-6">
-        <PdfDesignList @create="openNew" @edit="openEdit" />
-      </div>
-    </template>
+      <PdfDesignList @create="openNew" @edit="openEdit" />
+    </div>
+  </template>
 
-    <!-- Editor View -->
-    <template v-else>
-      <div class="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-[#11131a] shrink-0">
+  <!-- Editor View -->
+  <template v-else>
+    <div class="px-8 py-6 max-w-full space-y-6 bg-slate-50/50 dark:bg-[#0f1117] min-h-screen">
+      <div class="sticky top-0 z-30 bg-white dark:bg-[#1e1e2d] -mt-6 -mx-8 px-8 pt-5 pb-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30">
         <div class="flex items-center gap-3">
           <UButton color="gray" variant="ghost" icon="i-heroicons-arrow-left" @click="goBack" size="sm" />
           <span class="text-sm font-bold text-slate-700 dark:text-slate-300">
@@ -60,10 +58,7 @@ function goBack() {
           </span>
         </div>
       </div>
-
-      <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 dark:bg-[#0f1117]">
-        <PdfDesignForm :design-id="editingId || undefined" @saved="goBack" @cancelled="goBack" />
-      </div>
-    </template>
-  </div>
+      <PdfDesignForm :design-id="editingId || undefined" @saved="goBack" @cancelled="goBack" />
+    </div>
+  </template>
 </template>

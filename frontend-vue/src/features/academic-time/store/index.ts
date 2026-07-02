@@ -45,6 +45,7 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   const cycles = ref<Cycle[]>([])
   const templatesByCycle = ref<Record<string, CycleMaterialTemplate[]>>({})
   const isLoading = ref(false)
+  const isLoadingTemplates = ref(false)
   const hasFetched = ref(false)
   const error = ref<string | null>(null)
   
@@ -202,6 +203,7 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   // --- Material Templates ---
 
   async function fetchTemplates(cycleId: string) {
+    isLoadingTemplates.value = true;
     try {
       const authStore = useAuthStore();
       const subdomain = authStore.getSubdomain();
@@ -213,6 +215,8 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
     } catch (e: any) {
       console.error('Error fetching templates', e);
       throw new Error('Error al cargar las plantillas del ciclo.');
+    } finally {
+      isLoadingTemplates.value = false;
     }
   }
 
@@ -266,7 +270,7 @@ export const useAcademicTimeStore = defineStore('academicTime', () => {
   }
 
   return { 
-    cycles, templatesByCycle, isLoading, hasFetched, error, hasMore,
+    cycles, templatesByCycle, isLoading, isLoadingTemplates, hasFetched, error, hasMore,
     fetchCycles, createCycle, updateCycle, toggleCycleVisibility, toggleWeekVisibility, deleteCycle,
     fetchTemplates, createTemplate, updateTemplate, deleteTemplate
   }

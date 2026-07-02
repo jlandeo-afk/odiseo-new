@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Query,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -38,9 +39,11 @@ export class MaterialsController {
   })
   @ApiResponse({ status: 400, description: 'Error de validación de negocio.' })
   async generateMaterial(@Body() request: GenerateMaterialDto) {
-    const tenantId =
-      this.cls.get('companyId') || '619cbafa-b169-4c7e-a95c-b9923a408b7d';
-    const userId = 'uuid_admin_user';
+    const tenantId = this.cls.get('companyId');
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant not identified');
+    }
+    const userId = tenantId;
     return await this.generateMaterialUseCase.execute(
       tenantId,
       userId,
@@ -89,7 +92,8 @@ export class MaterialsController {
     @Param('id') id: string,
     @Body() request: ApproveReviewDto,
   ) {
-    return await this.materialsService.approveCuration(id, request);
+    const userId = this.cls.get('companyId') || 'system';
+    return await this.materialsService.approveCuration(id, request, userId);
   }
 
   @Get(':id/courses/:courseId/download')

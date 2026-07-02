@@ -8,18 +8,20 @@
 /** Estados posibles de un MaterialRequest en la BD */
 export enum MaterialRequestStatus {
   PENDING = 'PENDING',
+  IN_REVIEW = 'IN_REVIEW',
   PROCESSING = 'PROCESSING',
-  CURATION_REQUIRED = 'CURATION_REQUIRED',
+  REVIEW_REQUIRED = 'REVIEW_REQUIRED',
   COMPLETED = 'COMPLETED',
+  COMPLETED_WITH_WARNINGS = 'COMPLETED_WITH_WARNINGS',
   FAILED = 'FAILED',
 }
 
 /** Estados de curaduría individual de una pregunta */
-export enum CurationQuestionStatus {
-  MISSING = 'MISSING',
-  GENERATED = 'GENERATED',
-  AUTO_COMPLETED = 'AUTO_COMPLETED',
-  MANUAL_REMOVED = 'MANUAL_REMOVED',
+export enum ReviewQuestionStatus {
+  FOUND = 'FOUND',
+  EMPTY = 'EMPTY',
+  REPLACED = 'REPLACED',
+  REMOVED = 'REMOVED',
 }
 
 // --- Interfaces de Datos ---
@@ -27,21 +29,39 @@ export enum CurationQuestionStatus {
 export interface MaterialRequest {
   id: string;
   tenantId: string;
-  materialType: 'EXAMEN' | 'BALOTARIO';
-  courseId: string;
+  profileId: string;
+  cycleId: string;
+  weekNumber: number;
   status: MaterialRequestStatus;
-  downloadUrl?: string;
-  errorMessage?: string;
+  requiresReview: boolean;
+  designTemplateId: string | null;
+  materialId: string | null;
+  mergedDownloadUrl: string | null;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
+  version: number;
+  courses: MaterialRequestCourse[];
+  reviewQuestions: MaterialReviewQuestion[];
 }
 
-export interface CurationQuestion {
-  questionId: string;
-  jobId: string;
-  content: string;
-  options: { key: string; value: string }[];
-  status: CurationQuestionStatus;
+export interface MaterialRequestCourse {
+  id: string;
+  materialRequestId: string;
+  courseId: string;
+  status: string;
+  downloadUrl?: string;
+  warnings?: any;
+}
+
+export interface MaterialReviewQuestion {
+  id: string;
+  materialRequestId: string;
+  questionId: string | null;
+  topicId: string;
+  subtopicId: string;
+  position: number;
+  status: ReviewQuestionStatus;
 }
 
 // --- WebSocket Event Payloads ---

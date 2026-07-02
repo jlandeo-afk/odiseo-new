@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Put,
+  HttpCode,
 } from '@nestjs/common';
 import { AcademicTimeUseCase } from './academic-time.use-case';
 import { CreateCycleMaterialTemplateDto } from './dtos/create-material-template.dto';
@@ -67,6 +68,16 @@ export class AcademicTimeController {
   ) {
     await this.academicTimeUseCase.toggleWeekVisibility(id, body.isActive);
     return { success: true };
+  }
+
+  @Delete('weeks/:id')
+  @HttpCode(405)
+  async deleteWeekNotAllowed() {
+    return {
+      statusCode: 405,
+      error: 'Method Not Allowed',
+      message: 'Las semanas no pueden eliminarse individualmente. Desactívelas desde PATCH /academic-time/weeks/:id/visibility.',
+    };
   }
 
   @Delete('cycles/:id')

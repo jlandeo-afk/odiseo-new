@@ -156,9 +156,26 @@ const confirmReplacement = (questionId: string) => {
   activeReplacingId.value = null;
 };
 
+const confirmRemoveId = ref<string | null>(null);
+const isRemoveModalOpen = ref(false);
+
 const handleRemove = (questionId: string) => {
-  localRemovals.value.add(questionId);
-  delete localReplacements.value[questionId];
+  confirmRemoveId.value = questionId;
+  isRemoveModalOpen.value = true;
+};
+
+const confirmRemove = () => {
+  if (confirmRemoveId.value) {
+    localRemovals.value.add(confirmRemoveId.value);
+    delete localReplacements.value[confirmRemoveId.value];
+  }
+  confirmRemoveId.value = null;
+  isRemoveModalOpen.value = false;
+};
+
+const cancelRemove = () => {
+  confirmRemoveId.value = null;
+  isRemoveModalOpen.value = false;
 };
 
 const handleRestore = (questionId: string) => {
@@ -516,6 +533,29 @@ const handleApprove = async () => {
       </div>
     </div>
   </div>
+
+  <!-- Confirm Remove Modal -->
+  <UModal v-model="isRemoveModalOpen">
+    <div class="p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 text-rose-600 dark:text-rose-400" />
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Descartar pregunta</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Esta pregunta no se incluirá en el PDF compilado.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <UButton color="neutral" variant="ghost" @click="cancelRemove" class="font-bold rounded-xl">
+          Cancelar
+        </UButton>
+        <UButton color="error" @click="confirmRemove" class="font-bold rounded-xl shadow-sm">
+          Sí, descartar
+        </UButton>
+      </div>
+    </div>
+  </UModal>
 </template>
 
 <style scoped>
