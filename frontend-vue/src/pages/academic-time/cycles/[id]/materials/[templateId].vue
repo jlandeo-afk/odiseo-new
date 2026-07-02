@@ -159,43 +159,39 @@
                       <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                         {{ c.courseName }}
                       </h4>
-                      <!-- Difficulty breakdown -->
-                      <div class="flex flex-wrap items-center gap-3 mt-2 text-[10px] text-slate-500 dark:text-slate-400">
-                        <div class="flex items-center gap-1">
-                          <span class="font-semibold text-emerald-650 dark:text-emerald-450">Fácil:</span>
-                          <input type="number" 
-                                 v-model.number="c.easyCount" 
-                                 min="0" 
-                                 max="100" 
-                                 class="w-9 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center font-bold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500 py-0.5" />
-                        </div>
-                        <div class="flex items-center gap-1">
-                          <span class="font-semibold text-amber-650 dark:text-amber-450">Medio:</span>
-                          <input type="number" 
-                                 v-model.number="c.mediumCount" 
-                                 min="0" 
-                                 max="100" 
-                                 class="w-9 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center font-bold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-amber-500 py-0.5" />
-                        </div>
-                        <div class="flex items-center gap-1">
-                          <span class="font-semibold text-rose-650 dark:text-rose-455">Difícil:</span>
-                          <input type="number" 
-                                 v-model.number="c.hardCount" 
-                                 min="0" 
-                                 max="100" 
-                                 class="w-9 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center font-bold text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-rose-500 py-0.5" />
-                        </div>
-                        <!-- Validation Indicator -->
-                        <div v-if="((Number(c.easyCount) || 0) + (Number(c.mediumCount) || 0) + (Number(c.hardCount) || 0)) !== Number(c.questionsQuantity)" 
-                             class="text-[9px] text-rose-500 dark:text-rose-400 font-extrabold flex items-center gap-0.5 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded border border-rose-100 dark:border-rose-950">
-                          <UIcon name="i-heroicons-exclamation-triangle" class="w-3.5 h-3.5" />
-                          <span>Suma: {{ (Number(c.easyCount) || 0) + (Number(c.mediumCount) || 0) + (Number(c.hardCount) || 0) }} / {{ c.questionsQuantity }}</span>
-                        </div>
-                        <div v-else 
-                             class="text-[9px] text-emerald-650 dark:text-emerald-405 font-extrabold flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-950">
-                          <UIcon name="i-heroicons-check-circle" class="w-3.5 h-3.5" />
-                          <span>OK</span>
-                        </div>
+                      <!-- Difficulty trigger icon + mini summary -->
+                      <div class="flex items-center gap-2 mt-1.5">
+                        <UPopover mode="click" :popper="{ placement: 'bottom-start' }">
+                          <button class="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group">
+                            <UIcon name="i-heroicons-chart-bar" class="w-4 h-4 text-slate-350 dark:text-slate-500 group-hover:text-indigo-500 transition-colors" />
+                            <span class="border-b border-dashed border-slate-300 dark:border-slate-600 group-hover:border-indigo-400">
+                              {{ c.easyCount }}F · {{ c.mediumCount }}M · {{ c.hardCount }}D
+                            </span>
+                          </button>
+
+                          <template #content>
+                            <div class="p-2.5 w-40 space-y-1.5 bg-white dark:bg-[#2b2b3f] rounded-xl shadow-xl ring-1 ring-slate-200 dark:ring-slate-700/50">
+                              <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 w-10 shrink-0">Fácil</span>
+                                <input type="number" v-model.number="c.easyCount" min="0" :max="c.questionsQuantity"
+                                       @input="clampDifficulty(c, 'easy')"
+                                       class="w-full text-xs font-extrabold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 focus:ring-1 focus:ring-emerald-500" />
+                              </div>
+                              <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 w-10 shrink-0">Medio</span>
+                                <input type="number" v-model.number="c.mediumCount" min="0" :max="c.questionsQuantity"
+                                       @input="clampDifficulty(c, 'medium')"
+                                       class="w-full text-xs font-extrabold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 focus:ring-1 focus:ring-amber-500" />
+                              </div>
+                              <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold text-rose-600 dark:text-rose-400 w-10 shrink-0">Difícil</span>
+                                <input type="number" v-model.number="c.hardCount" min="0" :max="c.questionsQuantity"
+                                       @input="clampDifficulty(c, 'hard')"
+                                       class="w-full text-xs font-extrabold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 focus:ring-1 focus:ring-rose-500" />
+                              </div>
+                            </div>
+                          </template>
+                        </UPopover>
                       </div>
                     </div>
                   </div>
@@ -350,6 +346,10 @@ const totalQuestionsAllocated = computed(() => {
   return activeCourses.value.reduce((sum, c) => sum + (Number(c.questionsQuantity) || 0), 0)
 })
 
+function sumDifficulty(c: any): number {
+  return (Number(c.easyCount) || 0) + (Number(c.mediumCount) || 0) + (Number(c.hardCount) || 0)
+}
+
 function autoDistributeDifficulties(course: any) {
   const total = Number(course.questionsQuantity) || 0
   if (total <= 0) {
@@ -358,12 +358,28 @@ function autoDistributeDifficulties(course: any) {
     course.hardCount = 0
     return
   }
-  const easy = Math.floor(total * 0.3)
-  const hard = Math.floor(total * 0.2)
-  const medium = total - easy - hard
-  course.easyCount = easy
-  course.mediumCount = medium
-  course.hardCount = hard
+  const base = Math.floor(total / 3)
+  const rem = total % 3
+  course.easyCount = base + (rem >= 1 ? 1 : 0)
+  course.mediumCount = base + (rem >= 2 ? 1 : 0)
+  course.hardCount = base
+}
+
+function clampDifficulty(course: any, changed: 'easy' | 'medium' | 'hard') {
+  const total = Number(course.questionsQuantity) || 0
+  const easy = Number(course.easyCount) || 0
+  const medium = Number(course.mediumCount) || 0
+  const hard = Number(course.hardCount) || 0
+  const sum = easy + medium + hard
+  if (sum <= total) return
+  const diff = sum - total
+  if (changed === 'easy') {
+    course.easyCount = Math.max(0, easy - diff)
+  } else if (changed === 'medium') {
+    course.mediumCount = Math.max(0, medium - diff)
+  } else {
+    course.hardCount = Math.max(0, hard - diff)
+  }
 }
 
 function addCourse(course: any) {
